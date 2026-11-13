@@ -982,6 +982,13 @@ export interface Api {
   /** 语义索引结束（完成 / 取消 / 出错都会发），用来收起进度卡片 */
   onClipIndexEnd: (cb: () => void) => () => void
   onClipDownload: (cb: (progress: ClipDownloadProgress) => void) => () => void
+  /** 模型下载结束（成功或失败）——设置页也会发起下载，全局进度卡片统一在这里收起 */
+  onClipDownloadEnd: (cb: () => void) => () => void
+  /** 人像检测：模型状态、下载与扫描 */
+  portraitStatus: () => Promise<PortraitStatus>
+  portraitDownloadModel: () => Promise<string>
+  onPortraitDownload: (cb: (progress: ClipDownloadProgress) => void) => () => void
+  portraitScan: (ids: number[]) => Promise<PortraitFlag[]>
   autoTagCategories: () => Promise<AutoTagCategory[]>
   getAutoTagSettings: () => Promise<AutoTagSettings>
   saveAutoTagSettings: (patch: Partial<AutoTagSettings>) => Promise<AutoTagSettings>
@@ -1130,6 +1137,27 @@ export interface ClipDownloadProgress {
   received: number
   total: number
   file: string
+}
+
+/** 人像检测模型的准备情况 */
+export interface PortraitStatus {
+  modelReady: boolean
+  modelBytes: number
+  /** 已检测且仍在库里的照片数 */
+  detected: number
+  /** 库内可检测的照片总数 */
+  total: number
+}
+
+export interface PortraitFlag {
+  id: number
+  hasPerson: boolean
+  score: number
+}
+
+export interface PortraitScanProgress {
+  done: number
+  total: number
 }
 
 export interface AutoTagCategory {

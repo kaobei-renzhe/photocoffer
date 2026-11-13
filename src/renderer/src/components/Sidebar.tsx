@@ -40,7 +40,6 @@ import type {
   Tag
 } from '@shared/types'
 import { folderName, samePath, thumbUrl } from '../lib/format'
-import Logo from './Logo'
 
 interface DirRowsProps {
   nodes: ImportDirNode[]
@@ -811,19 +810,21 @@ export default function Sidebar({
       className="shrink-0 border-r border-[var(--border)] bg-[var(--chrome)] flex flex-col min-h-0 overflow-x-hidden"
       style={{ width: 'var(--sidebar-w, 236px)' }}
     >
-      <div className="px-4 pt-4 pb-3 border-b border-[var(--border)]">
+      <div className="px-4 pt-3.5 pb-3 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
-          <div className="w-[26px] h-[26px]">
-            <Logo size={26} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12.5px] font-medium" title={library}>
+              {libraryName}
+            </div>
+            {filter.dir && !samePath(filter.dir, library) && (
+              <div className="mt-0.5 truncate text-[10.5px] text-[var(--faint)]" title={filter.dir}>
+                {folderName(filter.dir)}
+              </div>
+            )}
           </div>
-          <div className="font-semibold text-[13.5px] tracking-wide">月相</div>
-          <button className="btn btn-ghost h-6 px-1.5 ml-auto" title="切换图库" onClick={onSwitch}>
+          <button className="btn btn-ghost h-6 px-1.5 shrink-0" title="切换图库" onClick={onSwitch}>
             <ArrowLeftRight size={13} />
           </button>
-        </div>
-        <div className="mt-1.5 truncate text-[11px] text-[var(--faint)]" title={library}>
-          {libraryName}
-          {filter.dir && !samePath(filter.dir, library) ? ` › ${folderName(filter.dir)}` : ''}
         </div>
       </div>
 

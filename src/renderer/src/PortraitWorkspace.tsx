@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { ArrowLeft, Camera, Folder as FolderIcon, Images, Plus, RefreshCw, Trash2, X } from 'lucide-react'
-import type { Facet, FacetValue, Folder, Item, Tag } from '@shared/types'
+import type {
+  Facet,
+  FacetValue,
+  Folder,
+  Item,
+  PortraitScanProgress,
+  PortraitStatus,
+  Tag
+} from '@shared/types'
 import { PORTRAIT_THUMB } from '@shared/layout'
 import { photoUrl, thumbUrl } from './lib/format'
 import { inAiScope, outOfScopeText, type AiScope } from './lib/aiScope'
@@ -50,6 +58,17 @@ export default function PortraitWorkspace({
   /** 瀑布流卡片宽度：拖动时只改本地，停手后落盘 */
   const [thumbSize, setThumbSize] = useState<number>(PORTRAIT_THUMB.default)
   const thumbSaveTimer = useRef<number | null>(null)
+  /** 人像检测：默认只看人像；模型与结果都由主进程缓存 */
+  const [portraitOnly, setPortraitOnly] = useState(true)
+  const [portraitStatus, setPortraitStatus] = useState<PortraitStatus | null>(null)
+  const [portraitFlags, setPortraitFlags] = useState<Record<number, boolean>>({})
+  const [portraitScanning, setPortraitScanning] = useState(false)
+  const [portraitProgress, setPortraitProgress] = useState<PortraitScanProgress | null>(null)
+  const [portraitMsg, setPortraitMsg] = useState('')
+  const [modelDownload, setModelDownload] = useState<{ received: number; total: number } | null>(null)
+  const scanToken = useRef(0)
+  const portraitFlagsRef = useRef(portraitFlags)
+  portraitFlagsRef.current = portraitFlags
 
   const loadFacets = useCallback(async () => {
     setFacets(await window.api.listFacets())
@@ -107,6 +126,97 @@ export default function PortraitWorkspace({
       thumbSaveTimer.current = null
       void window.api.savePortraitThumbSize(value).catch(() => undefined)
     }, 150)
+  }
+
+  const loadPortraitStatus = useCallback(async (): Promise<void> => {
+    try {
+      setPortraitStatus(await window.api.portraitStatus())
+    } catch (error) {
+      setPortraitMsg(`读取人像模型状态失败：${(error as Error).message}`)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadPortraitStatus()
+  }, [loadPortraitStatus])
+
+  // 分块扫描：每 20 张更新一次界面，未识别完之前不阻塞其它操作
+  useEffect(() => {
+    if (!portraitOnly) {
+      setPortraitScanning(false)
+      setPortraitProgress(null)
+      return
+    }
+    if (!portraitStatus?.modelReady || items.length === 0) return
+    const known = portraitFlagsRef.current
+    const missing = items.filter((item) => known[item.id] === undefined).map((item) => item.id)
+    if (missing.length === 0) return
+
+    const token = ++scanToken.current
+    setPortraitScanning(true)
+    setPortraitProgress({ done: 0, total: missing.length })
+    setPortraitMsg('')
+    void (async () => {
+      const CHUNK = 20
+      let done = 0
+      for (let i = 0; i < missing.length; i += CHUNK) {
+        if (scanToken.current !== token) return
+        const flags = await window.api.portraitScan(missing.slice(i, i + CHUNK))
+        if (scanToken.current !== token) return
+        setPortraitFlags((prev) => {
+          const next = { ...prev }
+          for (const flag of flags) next[flag.id] = flag.hasPerson
+          return next
+        })
+        done += Math.min(CHUNK, missing.length - i)
+        setPortraitProgress({ done, total: missing.length })
+      }
+      void window.api.portraitStatus().then(setPortraitStatus).catch(() => undefined)
+    })()
+      .catch((error) => {
+        if (scanToken.current === token) setPortraitMsg(`人像识别失败：${(error as Error).message}`)
+      })
+      .finally(() => {
+        if (scanToken.current === token) {
+          setPortraitScanning(false)
+          setPortraitProgress(null)
+        }
+      })
+
+    return () => {
+      scanToken.current++
+    }
+  }, [items, portraitOnly, portraitStatus?.modelReady])
+
+  const shownItems = useMemo(() => {
+    if (!portraitOnly) return items
+    if (!portraitStatus?.modelReady) return []
+    return items.filter((item) => portraitFlags[item.id] === true)
+  }, [items, portraitOnly, portraitStatus?.modelReady, portraitFlags])
+
+  // 切换筛选后，右侧详情不能继续显示已经被隐藏的照片
+  useEffect(() => {
+    if (activeId !== null && !shownItems.some((item) => item.id === activeId)) {
+      setActiveId(null)
+      setSelection([])
+    }
+  }, [shownItems, activeId])
+
+  const downloadPortraitModel = async (): Promise<void> => {
+    setPortraitMsg('')
+    setModelDownload({ received: 0, total: 0 })
+    const off = window.api.onPortraitDownload((progress) =>
+      setModelDownload({ received: progress.received, total: progress.total })
+    )
+    try {
+      await window.api.portraitDownloadModel()
+      setPortraitStatus(await window.api.portraitStatus())
+    } catch (error) {
+      setPortraitMsg(`模型下载失败：${(error as Error).message}`)
+    } finally {
+      off()
+      setModelDownload(null)
+    }
   }
 
   // 当前照片被筛掉时清空详情，避免右侧显示一张已经不在列表里的图
@@ -235,7 +345,7 @@ export default function PortraitWorkspace({
   }
 
   const pickedCount = Object.values(picked).reduce((sum, list) => sum + list.length, 0)
-  const lightboxItem = lightIndex !== null ? items[lightIndex] : null
+  const lightboxItem = lightIndex !== null ? shownItems[lightIndex] : null
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg)]">
@@ -282,8 +392,40 @@ export default function PortraitWorkspace({
           )}
         </div>
         <span className="ml-auto text-[11.5px] text-[var(--faint)] tabular-nums">
-          {loading ? '读取中…' : `${items.length} / ${total} 张`}
+          {loading ? '读取中…' : `${portraitOnly ? shownItems.length : items.length} / ${total} 张`}
         </span>
+        <div className="flex items-center rounded-md border border-[var(--border)] bg-[var(--card)] p-0.5">
+          <button
+            className={`h-6 rounded px-2 text-[11px] transition-colors ${
+              portraitOnly
+                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                : 'text-[var(--faint)] hover:text-[var(--text)]'
+            }`}
+            onClick={() => {
+              setPortraitOnly(true)
+              setSelection([])
+              setActiveId(null)
+            }}
+            title="只显示检测到人物的照片"
+          >
+            仅人像
+          </button>
+          <button
+            className={`h-6 rounded px-2 text-[11px] transition-colors ${
+              !portraitOnly
+                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                : 'text-[var(--faint)] hover:text-[var(--text)]'
+            }`}
+            onClick={() => {
+              setPortraitOnly(false)
+              setSelection([])
+              setActiveId(null)
+            }}
+            title="显示全部照片"
+          >
+            全部
+          </button>
+        </div>
         <div className="flex items-center gap-1.5" title="调整瀑布流卡片大小">
           <span className="text-[10.5px] text-[var(--faint)]">大小</span>
           <input
@@ -464,7 +606,53 @@ export default function PortraitWorkspace({
 
         {/* 中：瀑布流 */}
         <main className="flex-1 min-w-0 overflow-y-auto px-3 py-3">
-          {loading && items.length === 0 ? (
+          {portraitOnly && portraitStatus && !portraitStatus.modelReady ? (
+            <div className="h-full grid place-items-center">
+              <div className="max-w-[360px] text-center">
+                <div className="text-[13px] text-[var(--text)]">人像识别需要本地检测模型</div>
+                <div className="mt-1.5 text-[11.5px] leading-5 text-[var(--faint)]">
+                  DETR-ResNet-50 · 约 41 MB · 只下载一次。下载后会自动识别人像，结果缓存在当前图库。
+                </div>
+                {modelDownload ? (
+                  <div className="mt-3">
+                    <div className="h-1 overflow-hidden rounded bg-[var(--border)]">
+                      <div
+                        className="h-full rounded bg-[var(--accent)] transition-[width]"
+                        style={{
+                          width: `${
+                            modelDownload.total
+                              ? Math.round((modelDownload.received / modelDownload.total) * 100)
+                              : 0
+                          }%`
+                        }}
+                      />
+                    </div>
+                    <div className="mt-1 text-[10.5px] text-[var(--faint)] tabular-nums">
+                      {modelDownload.total
+                        ? `${Math.round((modelDownload.received / modelDownload.total) * 100)}%`
+                        : '准备下载…'}
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-primary mt-3 h-8 px-3 text-[12px]"
+                    onClick={() => void downloadPortraitModel()}
+                  >
+                    下载人像模型
+                  </button>
+                )}
+                {portraitMsg && (
+                  <div className="mt-2 text-[11px] leading-4 text-[var(--danger-text)]">{portraitMsg}</div>
+                )}
+                <button
+                  className="btn btn-ghost mt-3 h-7 px-2 text-[11.5px]"
+                  onClick={() => setPortraitOnly(false)}
+                >
+                  先看全部照片
+                </button>
+              </div>
+            </div>
+          ) : loading && items.length === 0 ? (
             <div className="text-[12px] text-[var(--faint)] px-1">读取中…</div>
           ) : items.length === 0 ? (
             <div className="h-full grid place-items-center">
@@ -474,53 +662,104 @@ export default function PortraitWorkspace({
                 换几个分类取值，或先在图库里导入人像。
               </div>
             </div>
-          ) : (
-            <div style={{ columnWidth: thumbSize, columnGap: 12 }}>
-              {items.map((item, index) => {
-                const on = selection.includes(item.id)
-                const marks = item.tags
-                  .filter((tag) => valueName.has(tag.id))
-                  .slice(0, 3)
-                return (
+          ) : portraitOnly && !portraitStatus ? (
+            <div className="h-full grid place-items-center">
+              <div className="text-center text-[12px] text-[var(--faint)] max-w-[300px] leading-5">
+                {portraitMsg || '读取人像模型状态…'}
+                <div className="mt-2">
                   <button
-                    key={item.id}
-                    data-gallery-id={item.id}
-                    className={`block w-full mb-3 break-inside-avoid text-left rounded-lg overflow-hidden border transition-colors ${
-                      on
-                        ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]'
-                        : 'border-[var(--border)] hover:border-[var(--border-strong)]'
-                    }`}
-                    onClick={(event) => selectCard(item, event)}
-                    onDoubleClick={() => setLightIndex(index)}
+                    className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                    onClick={() => void loadPortraitStatus()}
                   >
-                    <img
-                      src={thumbUrl(item.id, 'mid')}
-                      alt={item.name}
-                      loading="lazy"
-                      draggable={false}
-                      className="w-full block bg-[var(--card)]"
-                      style={{ aspectRatio: item.width > 0 && item.height > 0 ? `${item.width} / ${item.height}` : '3 / 4' }}
-                    />
-                    {marks.length > 0 && (
-                      <div className="flex flex-wrap gap-1 px-2 py-1.5 bg-[var(--card)]">
-                        {marks.map((tag) => (
-                          <span
-                            key={tag.id}
-                            className="inline-flex items-center gap-1 text-[9.5px] text-[var(--faint)]"
-                          >
-                            <span
-                              className="w-[5px] h-[5px] rounded-full"
-                              style={{ background: valueName.get(tag.id)?.color ?? '#7aa2f7' }}
-                            />
-                            {valueName.get(tag.id)?.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    重试
                   </button>
-                )
-              })}
+                </div>
+              </div>
             </div>
+          ) : portraitOnly && shownItems.length === 0 ? (
+            <div className="h-full grid place-items-center">
+              <div className="text-center text-[12px] text-[var(--faint)] max-w-[300px] leading-5">
+                {portraitMsg ? (
+                  <span className="text-[var(--danger-text)]">{portraitMsg}</span>
+                ) : portraitScanning && portraitProgress ? (
+                  `正在识别人像 ${portraitProgress.done} / ${portraitProgress.total}…`
+                ) : (
+                  '当前筛选下没有识别到人像，可以切到「全部」看看。'
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              {portraitOnly && portraitScanning && portraitProgress && (
+                <div className="mb-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-2">
+                  <div className="flex items-center justify-between text-[11px] text-[var(--muted)]">
+                    <span>正在识别人像</span>
+                    <span className="tabular-nums">
+                      {portraitProgress.done} / {portraitProgress.total}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1 overflow-hidden rounded bg-[var(--border)]">
+                    <div
+                      className="h-full rounded bg-[var(--accent)] transition-[width]"
+                      style={{
+                        width: `${Math.round(
+                          (portraitProgress.done / Math.max(1, portraitProgress.total)) * 100
+                        )}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              {portraitMsg && (
+                <div className="mb-2 text-[11px] text-[var(--danger-text)]">{portraitMsg}</div>
+              )}
+              <div style={{ columnWidth: thumbSize, columnGap: 10 }}>
+                {shownItems.map((item, index) => {
+                  const on = selection.includes(item.id)
+                  const marks = item.tags
+                    .filter((tag) => valueName.has(tag.id))
+                    .slice(0, 3)
+                  return (
+                    <button
+                      key={item.id}
+                      data-gallery-id={item.id}
+                      className={`block w-full mb-2.5 break-inside-avoid text-left rounded-lg overflow-hidden border transition-colors ${
+                        on
+                          ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]'
+                          : 'border-[var(--border)] hover:border-[var(--border-strong)]'
+                      }`}
+                      onClick={(event) => selectCard(item, event)}
+                      onDoubleClick={() => setLightIndex(index)}
+                    >
+                      <img
+                        src={thumbUrl(item.id, 'mid')}
+                        alt={item.name}
+                        loading="lazy"
+                        draggable={false}
+                        className="w-full block bg-[var(--card)]"
+                        style={{ aspectRatio: item.width > 0 && item.height > 0 ? `${item.width} / ${item.height}` : '3 / 4' }}
+                      />
+                      {marks.length > 0 && (
+                        <div className="flex flex-wrap gap-1 px-2 py-1.5 bg-[var(--card)]">
+                          {marks.map((tag) => (
+                            <span
+                              key={tag.id}
+                              className="inline-flex items-center gap-1 text-[9.5px] text-[var(--faint)]"
+                            >
+                              <span
+                                className="w-[5px] h-[5px] rounded-full"
+                                style={{ background: valueName.get(tag.id)?.color ?? '#7aa2f7' }}
+                              />
+                              {valueName.get(tag.id)?.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
           )}
         </main>
 
@@ -574,7 +813,7 @@ export default function PortraitWorkspace({
 
       {lightboxItem && lightIndex !== null && (
         <Lightbox
-          items={items}
+          items={shownItems}
           index={lightIndex}
           onClose={() => setLightIndex(null)}
           onNavigate={setLightIndex}

@@ -6,7 +6,7 @@ import { pickThumbQuality, type ThumbQuality, type ThumbQualityPref } from '@sha
 import { RAW_EXT } from '@shared/formats'
 import { scoreColor, thumbUrl } from '../lib/format'
 
-const GAP = 12
+const GAP = 10
 const PAD = 14
 
 interface GalleryProps {

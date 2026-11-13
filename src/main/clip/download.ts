@@ -2,7 +2,7 @@ import { createWriteStream, existsSync, mkdirSync, renameSync, rmSync, statSync 
 import { join } from 'node:path'
 import { get } from 'node:https'
 import type { EmbeddingModelId } from '../../shared/types'
-import { modelDirFor, modelSpec } from './models'
+import { modelDirFor, modelSpec, type ModelFileSpec } from './models'
 
 export interface DownloadProgress {
   received: number
@@ -63,17 +63,17 @@ function fetchTo(
   })
 }
 
-async function doDownload(
-  id: EmbeddingModelId,
+/** 通用多文件下载：断点续传、大小校验、失败清理 .part；语义模型与人像模型共用 */
+export async function downloadFiles(
+  dir: string,
+  files: ModelFileSpec[],
   onProgress: (progress: DownloadProgress) => void
 ): Promise<string> {
-  const spec = modelSpec(id)
-  const dir = modelDirFor(id)
   mkdirSync(dir, { recursive: true })
-  const total = spec.files.reduce((sum, file) => sum + file.size, 0)
+  const total = files.reduce((sum, file) => sum + file.size, 0)
   let base = 0
 
-  for (const file of spec.files) {
+  for (const file of files) {
     const target = join(dir, file.name)
     if (existsSync(target) && statSync(target).size === file.size) {
       base += file.size
@@ -119,6 +119,14 @@ async function doDownload(
   }
 
   return dir
+}
+
+async function doDownload(
+  id: EmbeddingModelId,
+  onProgress: (progress: DownloadProgress) => void
+): Promise<string> {
+  const spec = modelSpec(id)
+  return downloadFiles(modelDirFor(id), spec.files, onProgress)
 }
 
 export function downloadModel(

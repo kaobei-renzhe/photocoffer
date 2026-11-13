@@ -10,10 +10,10 @@ let indexPath = ''
 
 /**
  * 结构化 schema 版本，存在 SQLite 的 `PRAGMA user_version` 里。
- * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次。
+ * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次；4 = 人像检测缓存。
  * 以后每次加表 / 加列都必须 +1 并在 MIGRATION_STEPS 里补一步。
  */
-export const CURRENT_SCHEMA = 3
+export const CURRENT_SCHEMA = 4
 
 /** 迁移步骤必须幂等：老库可能从任意版本开始，补齐缺失的表与列即可收敛 */
 const SCHEMA = /* sql */ `
@@ -313,10 +313,27 @@ interface MigrationStep {
   up: (db: Database.Database) => void
 }
 
+/** v4：人像检测结果缓存（has_person=0 也要存，避免每次重扫） */
+function migrationV4(db: Database.Database): void {
+  subStep('建人像检测表', () => {
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS person_flags (
+      item_id    INTEGER PRIMARY KEY,
+      has_person INTEGER NOT NULL DEFAULT 0,
+      score      REAL NOT NULL DEFAULT 0,
+      model      TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_person_flags_model ON person_flags(model);
+    `)
+  })
+}
+
 const MIGRATION_STEPS: MigrationStep[] = [
   { version: 1, up: migrationV1 },
   { version: 2, up: migrationV2 },
-  { version: 3, up: migrationV3 }
+  { version: 3, up: migrationV3 },
+  { version: 4, up: migrationV4 }
 ]
 
 /** 按 user_version 逐级升级；每一步独立事务，版本号跟着步骤走 */

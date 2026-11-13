@@ -281,6 +281,19 @@ const api: Api = {
     ipcRenderer.on('clip:download-progress', handler)
     return () => ipcRenderer.removeListener('clip:download-progress', handler)
   },
+  onClipDownloadEnd: (cb: () => void) => {
+    const handler = (): void => cb()
+    ipcRenderer.on('clip:download-end', handler)
+    return () => ipcRenderer.removeListener('clip:download-end', handler)
+  },
+  portraitStatus: () => ipcRenderer.invoke('portrait:status'),
+  portraitDownloadModel: () => ipcRenderer.invoke('portrait:download'),
+  onPortraitDownload: (cb: (progress: ClipDownloadProgress) => void) => {
+    const handler = (_e: unknown, payload: ClipDownloadProgress): void => cb(payload)
+    ipcRenderer.on('portrait:download-progress', handler)
+    return () => ipcRenderer.removeListener('portrait:download-progress', handler)
+  },
+  portraitScan: (ids: number[]) => ipcRenderer.invoke('portrait:scan', ids),
   onAutoTagProgress: (cb: (progress: AutoTagProgress) => void) => {
     const handler = (_e: unknown, payload: AutoTagProgress): void => cb(payload)
     ipcRenderer.on('clip:autotag-progress', handler)

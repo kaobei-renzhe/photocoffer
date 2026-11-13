@@ -80,6 +80,7 @@ import { applyRelocate, buildRelocatePlan, getLastRelocateDir, rememberRelocateD
 import { deleteGear, deleteKit, gearCatalog, gearScenarios, gearSuggestions, gearUsage, listGear, listKits, recommendGear, saveGear, saveKit } from './gear'
 import { startWatching, stopWatching } from './watcher'
 import { startVolumeWatch, volumeStatus } from './volumes'
+import { downloadPersonModel, portraitStatus, scanPortrait } from './portrait'
 import { clearThumbCache, pruneHighCache, thumbCacheStats } from './thumbs'
 import { syncLibrary } from './sync'
 import { moveIndexTo } from './libraryStore'
@@ -1429,12 +1430,34 @@ export function registerIpc(): void {
   ipcMain.handle('clip:download', async (_e, modelId?: EmbeddingModelId) => {
     const win = activeWindow()
     const id = isEmbeddingModelId(modelId) ? modelId : getEmbeddingModel()
-    const dir = await downloadModel(id, (progress) => {
-      win?.webContents.send('clip:download-progress', progress)
-    })
-    resetModel(id)
-    return dir
+    try {
+      const dir = await downloadModel(id, (progress) => {
+        if (win && !win.isDestroyed()) win.webContents.send('clip:download-progress', progress)
+      })
+      resetModel(id)
+      return dir
+    } finally {
+      // 设置页也会直接调这个入口；统一发结束事件，避免全局下载卡片停在 100%
+      if (win && !win.isDestroyed()) win.webContents.send('clip:download-end')
+    }
   })
+
+  ipcMain.handle('portrait:status', () => portraitStatus())
+
+  ipcMain.handle('portrait:download', async () => {
+    const win = activeWindow()
+    try {
+      return await downloadPersonModel((progress) => {
+        if (win && !win.isDestroyed()) win.webContents.send('portrait:download-progress', progress)
+      })
+    } finally {
+      if (win && !win.isDestroyed()) win.webContents.send('portrait:download-end')
+    }
+  })
+
+  ipcMain.handle('portrait:scan', (_e, ids: number[]) =>
+    scanPortrait(Array.isArray(ids) ? ids : [])
+  )
 
   ipcMain.handle('clip:autoTagCategories', () => listAutoTagCategories())
 

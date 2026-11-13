@@ -446,6 +446,8 @@ export default function App() {
   )
   useEffect(() => window.api.onClipAutoStatus(setClipStatus), [])
   useEffect(() => window.api.onClipDownload(setClipDownload), [])
+  // 设置页也能发起模型下载；结束事件一到就收起全局进度卡片
+  useEffect(() => window.api.onClipDownloadEnd(() => setClipDownload(null)), [])
 
   useEffect(
     () =>

@@ -959,7 +959,7 @@ export default function SettingsDialog({
   const activeSkin = findSkin(skin)
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-[760px] h-[560px] max-h-[86vh] flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -981,7 +981,7 @@ export default function SettingsDialog({
                   key={id}
                   className={`w-full text-left rounded-lg px-2.5 py-2 transition-colors ${
                     active
-                      ? 'bg-[var(--accent-soft)]'
+                      ? 'settings-nav-active'
                       : 'hover:bg-[var(--panel-2)]'
                   }`}
                   onClick={() => setTab(id)}

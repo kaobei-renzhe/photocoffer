@@ -144,7 +144,7 @@ export default function GearSearch({
   const trimmed = query.trim()
 
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-[660px] max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}

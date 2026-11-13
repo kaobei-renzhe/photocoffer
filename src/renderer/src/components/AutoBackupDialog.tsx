@@ -27,7 +27,7 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
 
   if (!settings) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-black/60">
+      <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm">
         <div className="text-[12.5px] text-[var(--muted)]">读取设置…</div>
       </div>
     )
@@ -58,7 +58,7 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-[520px] rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}

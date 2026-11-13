@@ -187,7 +187,7 @@ export default function DraftPhotoPicker({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60"
+      className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm"
       onClick={saving ? undefined : onClose}
     >
       <div

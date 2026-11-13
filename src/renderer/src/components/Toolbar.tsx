@@ -215,7 +215,7 @@ export default function Toolbar({
     : '用自然语言描述画面来找图（本地模型，不上传）'
 
   return (
-    <div className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--chrome)] px-3 py-2">
+    <div className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--chrome)] px-3 py-2.5">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-[420px]">
           <Search
@@ -244,6 +244,8 @@ export default function Toolbar({
             <Sparkles size={13} />
           </button>
         </div>
+
+        <span className="tb-sep" />
 
         <button
           className={`btn h-8 px-2.5 shrink-0 ${
@@ -283,6 +285,8 @@ export default function Toolbar({
           <option value="size">文件大小</option>
           {aiReady && canScore && <option value="ai">AI 评分</option>}
         </select>
+
+        <span className="tb-sep" />
 
         <div className="relative shrink-0">
           <button

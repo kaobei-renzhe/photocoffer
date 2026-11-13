@@ -619,7 +619,7 @@ export default function Lightbox({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--overlay)]">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--lightbox)]">
       <div className={`h-[46px] shrink-0 px-4 flex items-center gap-3 text-[12.5px] ${chrome}`}>
         <span className="truncate text-[var(--text)]">{item.name}</span>
         <span className="text-[var(--faint)] tabular-nums">

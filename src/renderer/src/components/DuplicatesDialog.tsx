@@ -33,7 +33,7 @@ export default function DuplicatesDialog({ onClose, onRemove }: DuplicatesDialog
   const total = groups.reduce((sum, g) => sum + g.items.length - 1, 0)
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-[760px] max-h-[80vh] rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}

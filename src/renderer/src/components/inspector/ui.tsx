@@ -12,11 +12,18 @@ export function Section({
   compact?: boolean
 }) {
   return (
-    <div className={compact ? 'mt-3' : 'mt-[18px]'}>
-      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--faint)]">
+    <div className={compact ? 'mt-3' : 'mt-4'}>
+      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--faint)]">
+        <span className="h-[3px] w-[3px] rounded-full bg-[var(--accent)] opacity-70" />
         {title}
       </div>
-      {children}
+      <div
+        className={`rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--card)] ${
+          compact ? 'p-2' : 'p-2.5'
+        }`}
+      >
+        {children}
+      </div>
     </div>
   )
 }

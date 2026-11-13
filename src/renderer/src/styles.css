@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 
 @theme {
-  /* 圆角只留两档：控件 8px（rounded-lg），面板与卡片 10px（rounded-xl） */
-  --radius-xl: 10px;
+  /* 圆角只留两档：控件 8px（rounded-lg），面板与卡片 11px（rounded-xl） */
+  --radius-xl: 11px;
 }
 
 :root {
@@ -16,6 +16,18 @@
   --canvas: #0b0d11;
   --card: #171c25;
   --overlay: rgba(6, 8, 12, 0.82);
+  /* 灯箱单独用近黑遮罩：浅色主题下看图也不该被亮背景干扰 */
+  --lightbox: rgba(4, 5, 10, 0.97);
+  /* 设计 token：两级圆角、两级阴影、统一动效 */
+  --radius-control: 8px;
+  --radius-panel: 11px;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.18), 0 4px 14px rgba(0, 0, 0, 0.14);
+  --elev-2: 0 10px 28px rgba(0, 0, 0, 0.32);
+  --motion: 150ms cubic-bezier(0.2, 0, 0, 1);
+  /* 字阶三档 + 面板标题一档，避免到处出现 10.5/11.5 的随手值 */
+  --fs-xs: 10.5px;
+  --fs-sm: 11.5px;
+  --fs-base: 12.5px;
   --border: #232936;
   --border-strong: #2f3746;
   --text: #e7ebf2;
@@ -55,6 +67,8 @@
   --canvas: #eff1f5;
   --card: #ffffff;
   --overlay: rgba(20, 24, 32, 0.35);
+  --elev-1: 0 1px 2px rgba(30, 40, 60, 0.06), 0 4px 14px rgba(30, 40, 60, 0.05);
+  --elev-2: 0 10px 26px rgba(30, 40, 60, 0.12);
   --border: #dfe3ea;
   --border-strong: #cfd6e0;
   --text: #1b2029;
@@ -125,9 +139,6 @@
   --input-focus-border: #443a63;
   --input-focus-bg: #0e0b18;
 }
-:root[data-skin='eclipse'] .card-thumb {
-  border-radius: 6px;
-}
 :root[data-skin='eclipse'] .btn,
 :root[data-skin='eclipse'] .input {
   border-radius: 6px;
@@ -182,10 +193,6 @@
   background: color-mix(in srgb, var(--chrome) 88%, transparent);
   backdrop-filter: blur(20px);
 }
-:root[data-skin='aurora'] .card-thumb {
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-}
 :root[data-skin='aurora'] .btn,
 :root[data-skin='aurora'] .input,
 :root[data-skin='aurora'] .side-item {
@@ -231,9 +238,6 @@
   --input-focus-border: #46505d;
   --input-focus-bg: #14171b;
 }
-:root[data-skin='graphite'] .card-thumb {
-  border-radius: 4px;
-}
 :root[data-skin='graphite'] .btn,
 :root[data-skin='graphite'] .input {
   border-radius: 6px;
@@ -250,6 +254,8 @@
   --canvas: #f0ece6;
   --card: #fffdfa;
   --overlay: rgba(40, 32, 22, 0.35);
+  --elev-1: 0 1px 2px rgba(80, 60, 40, 0.06), 0 4px 14px rgba(80, 60, 40, 0.05);
+  --elev-2: 0 10px 26px rgba(80, 60, 40, 0.12);
   --border: #e6e0d6;
   --border-strong: #d8d0c2;
   --text: #26231f;
@@ -278,10 +284,6 @@
   --input-focus-border: #c9a17c;
   --input-focus-bg: #fffdf9;
 }
-:root[data-skin='paper'] .card-thumb {
-  border-radius: 4px;
-  box-shadow: 0 6px 18px rgba(60, 45, 30, 0.07);
-}
 :root[data-skin='paper'] .btn,
 :root[data-skin='paper'] .input {
   border-radius: 8px;
@@ -298,6 +300,8 @@
   --canvas: #ebf2f9;
   --card: #ffffff;
   --overlay: rgba(20, 32, 48, 0.35);
+  --elev-1: 0 1px 2px rgba(30, 60, 100, 0.06), 0 4px 14px rgba(30, 60, 100, 0.05);
+  --elev-2: 0 10px 26px rgba(30, 60, 100, 0.12);
   --border: #dce5ef;
   --border-strong: #c8d5e4;
   --text: #1c2633;
@@ -326,13 +330,34 @@
   --input-focus-border: #8fb1e0;
   --input-focus-bg: #ffffff;
 }
-:root[data-skin='mist'] .card-thumb {
-  border-radius: 8px;
-  box-shadow: 0 4px 14px rgba(30, 60, 100, 0.06);
-}
 :root[data-skin='mist'] .btn,
 :root[data-skin='mist'] .input {
   border-radius: 8px;
+}
+
+/* B 深度改版：皮肤只保留配色差异，圆角统一到两档 */
+:root[data-skin] .btn,
+:root[data-skin] .input,
+:root[data-skin] .side-item {
+  border-radius: var(--radius-control);
+}
+:root[data-skin] .card-thumb {
+  border-radius: var(--radius-panel);
+}
+
+/* 工具栏功能分组之间的竖线 */
+.tb-sep {
+  width: 1px;
+  height: 18px;
+  flex: none;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+/* 设置页左侧导航：和主侧栏一样的 2px 指示条 */
+.settings-nav-active {
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 * {
@@ -358,19 +383,32 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
+  /* 透明边框 + background-clip：滚动条在 chrome / canvas 上都不会露出异色描边 */
   background: var(--scroll-thumb);
   border-radius: 999px;
-  border: 2px solid var(--bg);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scroll-thumb-hover);
+  background-clip: padding-box;
+}
+
+/* 键盘 focus 统一用强调色细环，鼠标点击不出现 */
+:where(button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 65%, transparent);
+  outline-offset: 2px;
+}
+.input:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 input,
@@ -386,14 +424,14 @@ select {
   gap: 6px;
   height: 30px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--panel-2);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--fs-base);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition: background var(--motion), border-color var(--motion), color var(--motion);
 }
 .btn:hover {
   background: var(--panel-3);
@@ -432,13 +470,13 @@ select {
 .input {
   height: 30px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border);
   background: var(--panel-2);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--fs-base);
   outline: none;
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition: border-color var(--motion), background var(--motion), box-shadow var(--motion);
 }
 .input:focus {
   border-color: var(--input-focus-border);
@@ -457,13 +495,14 @@ select.input {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: 8px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: var(--radius-control);
   color: var(--muted);
   cursor: pointer;
-  font-size: 12.5px;
-  transition: background 0.12s ease, color 0.12s ease;
+  font-size: var(--fs-base);
+  position: relative;
+  transition: background var(--motion), color var(--motion), box-shadow var(--motion);
 }
 .side-item:hover {
   background: var(--panel-2);
@@ -472,10 +511,12 @@ select.input {
 .side-item.active {
   background: var(--accent-soft);
   color: var(--accent-text);
+  /* 左侧 2px 指示条：用 inset 阴影实现，不会被侧栏的 overflow 裁掉 */
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .side-item .count {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--faint);
   font-variant-numeric: tabular-nums;
 }
@@ -485,7 +526,7 @@ select.input {
   align-items: center;
   height: 28px;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   letter-spacing: 0.08em;
   color: var(--faint);
@@ -493,16 +534,16 @@ select.input {
 }
 
 .card-thumb {
-  border-radius: 10px;
+  border-radius: var(--radius-panel);
   overflow: hidden;
   background: var(--card);
   position: relative;
-  box-shadow: 0 1px 2px color-mix(in srgb, #000 12%, transparent);
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  box-shadow: var(--elev-1);
+  transition: box-shadow var(--motion), transform var(--motion);
 }
 .card-thumb:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px color-mix(in srgb, #000 20%, transparent);
+  box-shadow: var(--elev-2);
 }
 .card-thumb img {
   width: 100%;
@@ -510,12 +551,6 @@ select.input {
   object-fit: contain;
   display: block;
 }
-:root[data-skin='aurora'] .card-thumb:hover,
-:root[data-skin='paper'] .card-thumb:hover,
-:root[data-skin='mist'] .card-thumb:hover {
-  box-shadow: 0 10px 26px color-mix(in srgb, #000 24%, transparent);
-}
-
 .stars {
   display: inline-flex;
   gap: 1px;

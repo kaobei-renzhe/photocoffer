@@ -112,8 +112,8 @@ export default function PhotoInspector({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div
-        className={`flex shrink-0 items-center gap-0.5 border-b border-[var(--border)] ${
-          compact ? 'px-1.5' : 'px-2'
+        className={`flex shrink-0 items-center gap-0.5 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--card)] p-0.5 ${
+          compact ? 'm-1.5' : 'm-2'
         }`}
       >
         {visibleTabs.map(({ id, label, Icon }) => {
@@ -121,10 +121,10 @@ export default function PhotoInspector({
           return (
             <button
               key={id}
-              className={`flex h-8 items-center gap-1 rounded-t-md border-b-2 px-2 text-[11.5px] transition-colors ${
+              className={`flex h-7 flex-1 items-center justify-center gap-1 rounded-md px-1.5 text-[11.5px] transition-colors ${
                 active
-                  ? 'border-[var(--accent)] text-[var(--text)]'
-                  : 'border-transparent text-[var(--faint)] hover:text-[var(--text)]'
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                  : 'text-[var(--faint)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]'
               }`}
               onClick={() => setTab(id)}
               title={label}

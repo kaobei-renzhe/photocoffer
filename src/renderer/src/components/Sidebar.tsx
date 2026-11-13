@@ -808,7 +808,7 @@ export default function Sidebar({
 
   return (
     <aside
-      className="shrink-0 border-r border-[var(--border)] bg-[var(--panel)] flex flex-col min-h-0 overflow-x-hidden"
+      className="shrink-0 border-r border-[var(--border)] bg-[var(--chrome)] flex flex-col min-h-0 overflow-x-hidden"
       style={{ width: 'var(--sidebar-w, 236px)' }}
     >
       <div className="px-4 pt-4 pb-3 border-b border-[var(--border)]">

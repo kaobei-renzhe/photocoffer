@@ -11,7 +11,8 @@ import {
   RefreshCw,
   Star,
   Tag as TagIcon,
-  Trash2
+  Trash2,
+  TriangleAlert
 } from 'lucide-react'
 import type {
   AppUseCase,
@@ -31,7 +32,8 @@ import type {
   PickSessionSummary,
   SmartFolder,
   Stats,
-  Tag
+  Tag,
+  VolumeStatus
 } from '@shared/types'
 import Sidebar from './components/Sidebar'
 import Toolbar from './components/Toolbar'
@@ -113,6 +115,8 @@ export default function App() {
   const [smarts, setSmarts] = useState<SmartFolder[]>([])
   const [dirTree, setDirTree] = useState<ImportDirNode[]>([])
   const [stats, setStats] = useState<Stats>(EMPTY_STATS)
+  /** 移动硬盘在线状态：盘拔掉时用横幅提示，避免用户以为照片丢了 */
+  const [volume, setVolume] = useState<VolumeStatus | null>(null)
   const [filter, setFilter] = useState<FilterState>({ sort: 'added' })
   const [thumbSize, setThumbSize] = useState(230)
   const [duplicatesOpen, setDuplicatesOpen] = useState(false)
@@ -451,6 +455,27 @@ export default function App() {
       }),
     []
   )
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api
+      .volumeStatus()
+      .then((next) => {
+        if (!cancelled) setVolume(next)
+      })
+      .catch(() => undefined)
+    const off = window.api.onVolumeStatus((next) => {
+      setVolume(next)
+      if (next.libraryRecovered || next.recoveredSources.length > 0) {
+        setToast({ text: '磁盘已重新连接，正在接回照片' })
+        setTick((v) => v + 1)
+      }
+    })
+    return () => {
+      cancelled = true
+      off()
+    }
+  }, [])
 
   useEffect(
     () =>
@@ -1588,6 +1613,22 @@ export default function App() {
         />
 
         <div className="flex-1 flex flex-col min-w-0">
+          {volume && (volume.libraryOffline || volume.offlineSources.length > 0) && (
+            <div className="shrink-0 flex items-center gap-2 border-b border-[var(--warn-border)] bg-[var(--warn-soft)] px-4 py-2 text-[11.5px] text-[var(--text)]">
+              <TriangleAlert size={13} className="text-[var(--warn)] shrink-0" />
+              <span>
+                {volume.libraryOffline
+                  ? '图库所在磁盘未连接，自动同步已暂停；插回后会自动恢复。'
+                  : `有 ${volume.offlineSources.length} 个导入目录所在磁盘未连接，插回后会自动接回。`}
+              </span>
+              <button
+                className="btn ml-auto h-6 px-2 text-[11px]"
+                onClick={() => setRelocateOpen(true)}
+              >
+                重新定位
+              </button>
+            </div>
+          )}
           <Toolbar
             filter={filter}
             onFilter={setFilter}

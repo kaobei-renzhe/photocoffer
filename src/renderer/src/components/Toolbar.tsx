@@ -215,7 +215,7 @@ export default function Toolbar({
     : '用自然语言描述画面来找图（本地模型，不上传）'
 
   return (
-    <div className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--panel)] px-3 py-2">
+    <div className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--chrome)] px-3 py-2">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-[420px]">
           <Search

@@ -14,6 +14,7 @@ import type {
   FinalsExportProgress,
   PickExportProgress,
   UpdateStatus,
+  VolumeStatus,
   XmpProgress
 } from '../shared/types'
 
@@ -31,6 +32,7 @@ const api: Api = {
   saveGrownFeatures: (features) => ipcRenderer.invoke('settings:grownFeatures:save', features),
   appInfo: () => ipcRenderer.invoke('app:info'),
   updateStatus: () => ipcRenderer.invoke('update:status'),
+  updateEnabled: () => ipcRenderer.invoke('update:enabled'),
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateInstall: () => ipcRenderer.invoke('update:install'),
   onUpdateStatus: (cb) => {
@@ -210,6 +212,8 @@ const api: Api = {
   saveLayout: (patch) => ipcRenderer.invoke('settings:layout:save', patch),
   getThumbQuality: () => ipcRenderer.invoke('settings:thumbQuality:get'),
   saveThumbQuality: (quality) => ipcRenderer.invoke('settings:thumbQuality:save', quality),
+  getPortraitThumbSize: () => ipcRenderer.invoke('settings:portraitThumbSize:get'),
+  savePortraitThumbSize: (size) => ipcRenderer.invoke('settings:portraitThumbSize:save', size),
   thumbCacheStats: () => ipcRenderer.invoke('thumbs:cacheStats'),
   clearThumbCache: (target) => ipcRenderer.invoke('thumbs:cacheClear', target),
   getThumbCacheLimit: () => ipcRenderer.invoke('settings:thumbCacheLimit:get'),
@@ -245,6 +249,12 @@ const api: Api = {
     const handler = (_e: unknown, payload: LibraryChange): void => cb(payload)
     ipcRenderer.on('library:changed', handler)
     return () => ipcRenderer.removeListener('library:changed', handler)
+  },
+  volumeStatus: () => ipcRenderer.invoke('volumes:status'),
+  onVolumeStatus: (cb: (status: VolumeStatus) => void) => {
+    const handler = (_e: unknown, payload: VolumeStatus): void => cb(payload)
+    ipcRenderer.on('volumes:status', handler)
+    return () => ipcRenderer.removeListener('volumes:status', handler)
   },
   onAutoBackup: (cb: (result: AutoBackupResult) => void) => {
     const handler = (_e: unknown, payload: AutoBackupResult): void => cb(payload)

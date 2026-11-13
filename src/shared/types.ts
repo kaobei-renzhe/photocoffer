@@ -692,6 +692,18 @@ export interface LibrarySummary extends LibraryEntry {
   driveMissing?: boolean
 }
 
+/** 移动硬盘在线状态：只在「拔掉 / 插回」的瞬间推送，避免界面频繁刷新 */
+export interface VolumeStatus {
+  /** 当前图库所在盘离线 */
+  libraryOffline: boolean
+  /** 本轮刚从离线恢复（用于自动重扫/接回） */
+  libraryRecovered: boolean
+  /** 当前离线或丢失的导入目录 */
+  offlineSources: string[]
+  /** 本轮刚恢复的导入目录 */
+  recoveredSources: string[]
+}
+
 /** 跨库搜索里命中的一个库 */
 export interface CrossLibraryMatch {
   id: string
@@ -780,6 +792,8 @@ export interface Api {
   appInfo: () => Promise<AppInfo>
   /** 自动更新：当前状态；没配更新地址时 state = disabled */
   updateStatus: () => Promise<UpdateStatus>
+  /** 是否配置了可用的更新源；未配置时关于页隐藏更新入口 */
+  updateEnabled: () => Promise<boolean>
   /** 手动检查更新 */
   updateCheck: () => Promise<UpdateStatus>
   /** 已下载完成后重启安装 */
@@ -815,6 +829,9 @@ export interface Api {
   /** 瀑布流缩略图清晰度 */
   getThumbQuality: () => Promise<ThumbQualityPref>
   saveThumbQuality: (pref: ThumbQualityPref) => Promise<ThumbQualityPref>
+  /** 人像工作台瀑布流卡片宽度 */
+  getPortraitThumbSize: () => Promise<number>
+  savePortraitThumbSize: (size: number) => Promise<number>
   /** 三档缩略图各占多少磁盘 */
   thumbCacheStats: () => Promise<ThumbCacheStats>
   /** 清理缩略图缓存（high = 只删高清档） */
@@ -1024,6 +1041,9 @@ export interface Api {
   getPathForFile: (file: File) => string
   onImportProgress: (cb: (p: ImportProgress) => void) => () => void
   onLibraryChanged: (cb: (info: LibraryChange) => void) => () => void
+  /** 移动硬盘在线状态（拔掉/插回时推送） */
+  volumeStatus: () => Promise<VolumeStatus>
+  onVolumeStatus: (cb: (status: VolumeStatus) => void) => () => void
   onDialogRequest: (cb: (request: AppDialogRequest) => void) => () => void
 }
 

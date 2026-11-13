@@ -19,6 +19,19 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
+/** 人像工作台瀑布流的卡片宽度（CSS 像素）；存一份，主进程与界面共用 */
+export const PORTRAIT_THUMB = {
+  default: 190,
+  min: 140,
+  max: 320,
+  step: 10
+} as const
+
+export function normalizePortraitThumb(value: unknown): number {
+  const num = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : PORTRAIT_THUMB.default
+  return clamp(num, PORTRAIT_THUMB.min, PORTRAIT_THUMB.max)
+}
+
 /** 把存下来的宽度收进合法范围；配置文件被手改也不会把界面搞崩 */
 export function normalizeLayout(input: Partial<LayoutSizes> | undefined): LayoutSizes {
   // 配置文件可能被手改成字符串或 NaN，先挡掉再取整

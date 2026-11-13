@@ -31,6 +31,7 @@ import {
   getUseCase,
   getThumbCacheLimitMB,
   getThumbQuality,
+  getPortraitThumbSize,
   getPickDefaults,
   getFinalsDefaults,
   getAiFolderIds,
@@ -54,11 +55,12 @@ import {
   saveAiScoreMinRating,
   getAiScoreMinRating,
   saveThumbQuality,
+  savePortraitThumbSize,
   setIndexDirFor,
   updateConfig
 } from './settings'
 import { startAutoBackup } from './scheduler'
-import { checkForUpdates, onUpdateStatus, quitAndInstall, updateStatus } from './updater'
+import { checkForUpdates, onUpdateStatus, quitAndInstall, updateStatus, updatesEnabled } from './updater'
 import {
   clipStatus,
   cancelClipIndex,
@@ -77,6 +79,7 @@ import { startAutoClipIndex, stopAutoClipIndex } from './clip/autoIndex'
 import { applyRelocate, buildRelocatePlan, getLastRelocateDir, rememberRelocateDir } from './relocate'
 import { deleteGear, deleteKit, gearCatalog, gearScenarios, gearSuggestions, gearUsage, listGear, listKits, recommendGear, saveGear, saveKit } from './gear'
 import { startWatching, stopWatching } from './watcher'
+import { startVolumeWatch, volumeStatus } from './volumes'
 import { clearThumbCache, pruneHighCache, thumbCacheStats } from './thumbs'
 import { syncLibrary } from './sync'
 import { moveIndexTo } from './libraryStore'
@@ -430,6 +433,34 @@ export function registerIpc(): void {
   })
 
   ipcMain.handle('libraries:list', () => listLibraries())
+
+  ipcMain.handle('volumes:status', () => volumeStatus())
+
+  // 移动硬盘插回：重开监听，并把高置信匹配的照片自动接回（其余仍留给用户确认）
+  startVolumeWatch((next) => {
+    activeWindow()?.webContents.send('volumes:status', next)
+    const recovered = [
+      ...(next.libraryRecovered ? [getLibraryPath()] : []),
+      ...next.recoveredSources
+    ].filter(Boolean)
+    if (!recovered.length) return
+    restartWatcher()
+    for (const dir of recovered) {
+      void buildRelocatePlan(dir)
+        .then((plan) => {
+          if (!plan.matched.length) return
+          rememberRelocateDir(dir)
+          const result = applyRelocate(plan.matched)
+          if (result.relinked > 0) invalidateItemTotals()
+        })
+        .catch((error) => {
+          void log.warn('volumes', '磁盘恢复后自动接回失败', {
+            dir,
+            error: String((error as Error)?.message ?? error)
+          })
+        })
+    }
+  })
 
   ipcMain.handle('libraries:cover', (_e, id: string) => libraryCover(String(id)))
 
@@ -1262,6 +1293,8 @@ export function registerIpc(): void {
   })
 
   ipcMain.handle('update:status', () => updateStatus())
+  // 没配更新源时关于页直接隐藏入口，而不是显示一个永远失败的按钮
+  ipcMain.handle('update:enabled', () => updatesEnabled())
   ipcMain.handle('update:check', () => checkForUpdates())
   ipcMain.handle('update:install', () => quitAndInstall())
   // 状态变化（检查中 / 下载进度 / 下载完成）主动推给设置页
@@ -1317,6 +1350,10 @@ export function registerIpc(): void {
   ipcMain.handle('settings:thumbQuality:get', () => getThumbQuality())
 
   ipcMain.handle('settings:thumbQuality:save', (_e, pref: ThumbQualityPref) => saveThumbQuality(pref))
+
+  ipcMain.handle('settings:portraitThumbSize:get', () => getPortraitThumbSize())
+
+  ipcMain.handle('settings:portraitThumbSize:save', (_e, size: number) => savePortraitThumbSize(size))
 
   ipcMain.handle('thumbs:cacheStats', () => thumbCacheStats())
 

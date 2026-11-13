@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
 import { ArrowLeft, Camera, Folder as FolderIcon, Images, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import type { Facet, FacetValue, Folder, Item, Tag } from '@shared/types'
+import { PORTRAIT_THUMB } from '@shared/layout'
 import { photoUrl, thumbUrl } from './lib/format'
 import { inAiScope, outOfScopeText, type AiScope } from './lib/aiScope'
 import { modLabel } from './lib/platform'
@@ -46,6 +47,9 @@ export default function PortraitWorkspace({
   const [creatingFacet, setCreatingFacet] = useState(false)
   const [facetDraft, setFacetDraft] = useState('')
   const [message, setMessage] = useState('')
+  /** 瀑布流卡片宽度：拖动时只改本地，停手后落盘 */
+  const [thumbSize, setThumbSize] = useState<number>(PORTRAIT_THUMB.default)
+  const thumbSaveTimer = useRef<number | null>(null)
 
   const loadFacets = useCallback(async () => {
     setFacets(await window.api.listFacets())
@@ -88,6 +92,22 @@ export default function PortraitWorkspace({
   useEffect(() => {
     void loadItems()
   }, [loadItems])
+
+  useEffect(() => {
+    void window.api.getPortraitThumbSize().then(setThumbSize).catch(() => undefined)
+    return () => {
+      if (thumbSaveTimer.current !== null) window.clearTimeout(thumbSaveTimer.current)
+    }
+  }, [])
+
+  const changeThumbSize = (value: number): void => {
+    setThumbSize(value)
+    if (thumbSaveTimer.current !== null) window.clearTimeout(thumbSaveTimer.current)
+    thumbSaveTimer.current = window.setTimeout(() => {
+      thumbSaveTimer.current = null
+      void window.api.savePortraitThumbSize(value).catch(() => undefined)
+    }, 150)
+  }
 
   // 当前照片被筛掉时清空详情，避免右侧显示一张已经不在列表里的图
   useEffect(() => {
@@ -219,7 +239,7 @@ export default function PortraitWorkspace({
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg)]">
-      <header className="h-[52px] shrink-0 px-3 flex items-center gap-2 border-b border-[var(--border)] bg-[var(--panel)]">
+      <header className="h-[52px] shrink-0 px-3 flex items-center gap-2 border-b border-[var(--border)] bg-[var(--chrome)]">
         <button className="btn btn-ghost h-7 px-2 text-[11.5px]" onClick={onBack}>
           <ArrowLeft size={13} /> 返回图库
         </button>
@@ -264,6 +284,18 @@ export default function PortraitWorkspace({
         <span className="ml-auto text-[11.5px] text-[var(--faint)] tabular-nums">
           {loading ? '读取中…' : `${items.length} / ${total} 张`}
         </span>
+        <div className="flex items-center gap-1.5" title="调整瀑布流卡片大小">
+          <span className="text-[10.5px] text-[var(--faint)]">大小</span>
+          <input
+            type="range"
+            min={PORTRAIT_THUMB.min}
+            max={PORTRAIT_THUMB.max}
+            step={PORTRAIT_THUMB.step}
+            value={thumbSize}
+            onChange={(event) => changeThumbSize(Number(event.target.value))}
+            className="w-[92px] accent-[var(--accent)]"
+          />
+        </div>
         <button
           className="btn h-7 px-2 text-[11.5px]"
           onClick={() => void Promise.all([loadItems(), loadFacets(), loadFolders()])}
@@ -443,7 +475,7 @@ export default function PortraitWorkspace({
               </div>
             </div>
           ) : (
-            <div className="columns-2 md:columns-3 xl:columns-4 gap-3">
+            <div style={{ columnWidth: thumbSize, columnGap: 12 }}>
               {items.map((item, index) => {
                 const on = selection.includes(item.id)
                 const marks = item.tags
@@ -466,28 +498,25 @@ export default function PortraitWorkspace({
                       alt={item.name}
                       loading="lazy"
                       draggable={false}
-                      className="w-full block bg-[var(--panel-2)]"
+                      className="w-full block bg-[var(--card)]"
                       style={{ aspectRatio: item.width > 0 && item.height > 0 ? `${item.width} / ${item.height}` : '3 / 4' }}
                     />
-                    <div className="px-2 py-1.5 bg-[var(--panel)]">
-                      <div className="text-[10.5px] text-[var(--text)] truncate">{item.name}</div>
-                      {marks.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {marks.map((tag) => (
+                    {marks.length > 0 && (
+                      <div className="flex flex-wrap gap-1 px-2 py-1.5 bg-[var(--card)]">
+                        {marks.map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="inline-flex items-center gap-1 text-[9.5px] text-[var(--faint)]"
+                          >
                             <span
-                              key={tag.id}
-                              className="inline-flex items-center gap-1 text-[9.5px] text-[var(--faint)]"
-                            >
-                              <span
-                                className="w-[5px] h-[5px] rounded-full"
-                                style={{ background: valueName.get(tag.id)?.color ?? '#7aa2f7' }}
-                              />
-                              {valueName.get(tag.id)?.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                              className="w-[5px] h-[5px] rounded-full"
+                              style={{ background: valueName.get(tag.id)?.color ?? '#7aa2f7' }}
+                            />
+                            {valueName.get(tag.id)?.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </button>
                 )
               })}
@@ -506,7 +535,7 @@ export default function PortraitWorkspace({
           ) : (
             <>
               <div className="shrink-0 space-y-3 px-3 pt-3">
-                <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)]">
+                <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)]">
                   <img
                     src={photoUrl(current.id)}
                     alt={current.name}

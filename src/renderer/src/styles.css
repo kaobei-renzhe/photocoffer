@@ -11,6 +11,11 @@
   --panel: #161a22;
   --panel-2: #1a1f28;
   --panel-3: #202631;
+  /* 语义层：侧栏/工具栏/详情 chrome，图库 canvas，卡片 card，遮罩 overlay */
+  --chrome: #12161d;
+  --canvas: #0b0d11;
+  --card: #171c25;
+  --overlay: rgba(6, 8, 12, 0.82);
   --border: #232936;
   --border-strong: #2f3746;
   --text: #e7ebf2;
@@ -46,6 +51,10 @@
   --panel: #ffffff;
   --panel-2: #f2f4f8;
   --panel-3: #e9edf4;
+  --chrome: #f7f8fb;
+  --canvas: #eff1f5;
+  --card: #ffffff;
+  --overlay: rgba(20, 24, 32, 0.35);
   --border: #dfe3ea;
   --border-strong: #cfd6e0;
   --text: #1b2029;
@@ -84,6 +93,10 @@
   --panel: #1a1429;
   --panel-2: #211a33;
   --panel-3: #282040;
+  --chrome: #171128;
+  --canvas: #09070f;
+  --card: #1d1730;
+  --overlay: rgba(5, 3, 10, 0.86);
   --border: #201b2d;
   --border-strong: #2b243d;
   --text: #eceaf5;
@@ -128,6 +141,10 @@
   --panel: #0f1824;
   --panel-2: rgba(255, 255, 255, 0.072);
   --panel-3: rgba(255, 255, 255, 0.1);
+  --chrome: #0c151f;
+  --canvas: #05080f;
+  --card: #101a26;
+  --overlay: rgba(2, 5, 9, 0.86);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
   --text: #eaf0ff;
@@ -161,7 +178,8 @@
     radial-gradient(900px 620px at 100% 0%, rgba(167, 139, 250, 0.15), transparent 58%), #05080f;
 }
 :root[data-skin='aurora'] aside {
-  background: rgba(255, 255, 255, 0.045);
+  /* 玻璃感保留，但四个分区共用同一层 chrome，不再各自叠色 */
+  background: color-mix(in srgb, var(--chrome) 88%, transparent);
   backdrop-filter: blur(20px);
 }
 :root[data-skin='aurora'] .card-thumb {
@@ -181,6 +199,10 @@
   --panel: #141619;
   --panel-2: #1b1f24;
   --panel-3: #23282e;
+  --chrome: #101214;
+  --canvas: #07080a;
+  --card: #171a1e;
+  --overlay: rgba(4, 5, 6, 0.86);
   --border: #23272d;
   --border-strong: #2e343c;
   --text: #e6e9ee;
@@ -224,6 +246,10 @@
   --panel: #fbfaf8;
   --panel-2: #f1ede6;
   --panel-3: #e9e3d9;
+  --chrome: #f7f4ef;
+  --canvas: #f0ece6;
+  --card: #fffdfa;
+  --overlay: rgba(40, 32, 22, 0.35);
   --border: #e6e0d6;
   --border-strong: #d8d0c2;
   --text: #26231f;
@@ -268,6 +294,10 @@
   --panel: #ffffff;
   --panel-2: #eef3f9;
   --panel-3: #e4ebf4;
+  --chrome: #f5f8fc;
+  --canvas: #ebf2f9;
+  --card: #ffffff;
+  --overlay: rgba(20, 32, 48, 0.35);
   --border: #dce5ef;
   --border-strong: #c8d5e4;
   --text: #1c2633;
@@ -465,7 +495,7 @@ select.input {
 .card-thumb {
   border-radius: 10px;
   overflow: hidden;
-  background: var(--panel-2);
+  background: var(--card);
   position: relative;
   box-shadow: 0 1px 2px color-mix(in srgb, #000 12%, transparent);
   transition: box-shadow 0.15s ease, transform 0.15s ease;

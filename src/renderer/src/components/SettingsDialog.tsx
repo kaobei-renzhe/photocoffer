@@ -241,6 +241,8 @@ export default function SettingsDialog({
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
   /** 关于页：自动更新状态（没配更新地址时是 disabled） */
   const [update, setUpdate] = useState<UpdateStatus | null>(null)
+  /** 没有可用更新源时，整块更新入口都不渲染 */
+  const [updateEnabled, setUpdateEnabled] = useState(false)
   /** 打开目录失败的那一行显示原因 */
   const [openError, setOpenError] = useState<string | null>(null)
   /** 配置导出/导入的状态提示 */
@@ -310,6 +312,10 @@ export default function SettingsDialog({
       .updateStatus()
       .then(setUpdate)
       .catch(() => setUpdate(null))
+    void window.api
+      .updateEnabled()
+      .then(setUpdateEnabled)
+      .catch(() => setUpdateEnabled(false))
   }, [])
 
   // 下载进度由主进程推送，设置页打开时保持同步
@@ -1835,35 +1841,36 @@ export default function SettingsDialog({
                   <span className="text-[11px] text-[var(--faint)]">
                     {appInfo ? `版本 ${appInfo.version}` : '读取版本中…'}
                   </span>
-                  {update?.state === 'downloaded' ? (
-                    <button
-                      className="btn ml-auto h-6 px-2 text-[11px]"
-                      onClick={() => void window.api.updateInstall()}
-                    >
-                      <RefreshCw size={11} /> 重启安装
-                    </button>
-                  ) : (
-                    <button
-                      className="btn ml-auto h-6 px-2 text-[11px]"
-                      onClick={() => void checkUpdate()}
-                      disabled={update?.state === 'checking' || update?.state === 'downloading'}
-                      title="检查有没有新版本"
-                    >
-                      <RefreshCw
-                        size={11}
-                        className={update?.state === 'checking' ? 'animate-spin' : ''}
-                      />
-                      {update?.state === 'checking' ? '检查中…' : '检查更新'}
-                    </button>
-                  )}
+                  {updateEnabled &&
+                    (update?.state === 'downloaded' ? (
+                      <button
+                        className="btn ml-auto h-6 px-2 text-[11px]"
+                        onClick={() => void window.api.updateInstall()}
+                      >
+                        <RefreshCw size={11} /> 重启安装
+                      </button>
+                    ) : (
+                      <button
+                        className="btn ml-auto h-6 px-2 text-[11px]"
+                        onClick={() => void checkUpdate()}
+                        disabled={update?.state === 'checking' || update?.state === 'downloading'}
+                        title="检查有没有新版本"
+                      >
+                        <RefreshCw
+                          size={11}
+                          className={update?.state === 'checking' ? 'animate-spin' : ''}
+                        />
+                        {update?.state === 'checking' ? '检查中…' : '检查更新'}
+                      </button>
+                    ))}
                 </div>
 
-                {updateHintText(update) && (
+                {updateEnabled && updateHintText(update) && (
                   <div className="text-[10.5px] leading-4 text-[var(--faint)]">
                     {updateHintText(update)}
                   </div>
                 )}
-                {update?.state === 'downloading' && (
+                {updateEnabled && update?.state === 'downloading' && (
                   <div className="h-1 overflow-hidden rounded bg-[var(--border)]">
                     <div
                       className="h-full rounded bg-[var(--accent)] transition-[width]"

@@ -30,7 +30,11 @@ for (const [name, v] of Object.entries(blocks)) {
     ['faint/panel', v.faint, v.panel, 4.5],
     ['muted/panel', v.muted, v.panel, 4.5],
     ['bg/panel 层次', v.bg, v.panel, 1.1],
-    ['star/panel', v.star, v.panel, 3.0]
+    ['star/panel', v.star, v.panel, 3.0],
+    ['text/chrome', v.text, v.chrome, 4.5],
+    ['muted/chrome', v.muted, v.chrome, 4.5],
+    ['chrome/canvas 层次', v.chrome, v.canvas, 1.05],
+    ['card/canvas 层次', v.card, v.canvas, 1.08]
   ]
   for (const [label, a, b, need] of checks) {
     if (!a || !b) continue

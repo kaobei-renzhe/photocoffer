@@ -17,7 +17,7 @@ import type {
 } from '../shared/types'
 import { PICK_WATERMARK_DEFAULT, normalizePickWatermark } from '../shared/pick'
 import type { LayoutSizes } from '../shared/layout'
-import { normalizeLayout } from '../shared/layout'
+import { normalizeLayout, normalizePortraitThumb } from '../shared/layout'
 import type { ThumbQualityPref } from '../shared/thumbs'
 import { THUMB_CACHE_LIMIT_DEFAULT, THUMB_QUALITY_DEFAULT, isThumbQualityPref } from '../shared/thumbs'
 import type { LlmStoredSettings } from '../shared/llm'
@@ -49,6 +49,8 @@ export interface AppConfig {
   layout?: Partial<LayoutSizes>
   /** 瀑布流缩略图清晰度（auto = 按卡片实际像素自动选档） */
   thumbQuality?: ThumbQualityPref
+  /** 人像工作台瀑布流卡片宽度（CSS 像素） */
+  portraitThumbSize?: number
   /** 高清缩略图缓存上限（MB），0 = 不限 */
   thumbCacheLimitMB?: number
   /** AI 评分的最低星级：0 = 全部；>0 时只评 rating >= N，未标星（0 星）不参与 */
@@ -253,6 +255,17 @@ export function getThumbQuality(): ThumbQualityPref {
 export function saveThumbQuality(pref: ThumbQualityPref): ThumbQualityPref {
   const next = isThumbQualityPref(pref) ? pref : THUMB_QUALITY_DEFAULT
   updateConfig({ thumbQuality: next })
+  return next
+}
+
+/** 人像工作台瀑布流卡片宽度 */
+export function getPortraitThumbSize(): number {
+  return normalizePortraitThumb(readConfig().portraitThumbSize)
+}
+
+export function savePortraitThumbSize(value: number): number {
+  const next = normalizePortraitThumb(value)
+  updateConfig({ portraitThumbSize: next })
   return next
 }
 

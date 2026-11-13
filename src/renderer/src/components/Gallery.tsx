@@ -6,7 +6,7 @@ import { pickThumbQuality, type ThumbQuality, type ThumbQualityPref } from '@sha
 import { RAW_EXT } from '@shared/formats'
 import { scoreColor, thumbUrl } from '../lib/format'
 
-const GAP = 14
+const GAP = 12
 const PAD = 14
 
 interface GalleryProps {
@@ -127,7 +127,7 @@ const Card = memo(function Card({
       }}
     >
       {item.error ? (
-        <div className="absolute inset-0 grid place-items-center bg-[var(--panel-2)] px-2 text-center">
+        <div className="absolute inset-0 grid place-items-center bg-[var(--card)] px-2 text-center">
           <div>
             <TriangleAlert size={18} className="mx-auto text-[var(--danger-text)]" />
             <div className="mt-1 text-[10px] text-[var(--danger-text)]">无法读取</div>

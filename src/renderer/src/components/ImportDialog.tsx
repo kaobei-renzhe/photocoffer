@@ -80,8 +80,7 @@ export default function ImportDialog({
 
         <div className="p-4 space-y-4">
           <div className="text-[11.5px] text-[var(--muted)] leading-5">
-            选择一个文件夹，月相会扫描并识别其中的照片（JPG、PNG、RAW、HEIC、TIFF 等）。
-            导入在后台进行，期间可以继续浏览和整理其它照片。
+            选一个文件夹，月相会扫描并导入里面的照片。
           </div>
 
           <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3 space-y-3">
@@ -104,7 +103,7 @@ export default function ImportDialog({
           </div>
 
           <div className="rounded-lg border border-[var(--border)] px-3 py-2.5 text-[11px] text-[var(--faint)] leading-4">
-            导入完成后会按原文件夹结构归档，损坏或无法读取的文件会单独标记，不会中断整个导入。
+            按原文件夹归档；坏掉的文件会单独标记，不影响其它照片。
           </div>
         </div>
 

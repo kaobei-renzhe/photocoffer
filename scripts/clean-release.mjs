@@ -2,7 +2,7 @@ import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * 打包后清理 release：只保留最新版本的安装包与 blockmap。
+ * 打包后清理 release：保留最近两个版本，回滚和增量更新都靠上一版。
  * 由 `npm run dist` 自动调用。
  */
 const dir = join(process.cwd(), 'release')
@@ -27,23 +27,24 @@ const installers = entries
   .filter((name) => /^月相 Setup \d+\.\d+\.\d+\.exe$/.test(name))
   .sort(compare)
 
-if (installers.length <= 1) {
+if (installers.length <= 2) {
   process.exit(0)
 }
 
-const keep = installers[installers.length - 1]
-const keepVersion = versionOf(keep).join('.')
+const kept = installers.slice(-2)
+const keepSet = new Set(kept)
+const keepVersions = new Set(kept.map((name) => versionOf(name).join('.')))
 
 for (const name of installers) {
-  if (name === keep) continue
+  if (keepSet.has(name)) continue
   rmSync(join(dir, name), { force: true })
   rmSync(join(dir, `${name}.blockmap`), { force: true })
 }
 
 for (const name of entries) {
   if (!/^lunaris-\d+\.\d+\.\d+-x64\.nsis\.7z$/.test(name)) continue
-  if (versionOf(name).join('.') === keepVersion) continue
+  if (keepVersions.has(versionOf(name).join('.'))) continue
   rmSync(join(dir, name), { force: true })
 }
 
-console.log(`[release] 只保留最新安装包：${keep}`)
+console.log(`[release] 保留最近两个版本：${kept.join('、')}`)

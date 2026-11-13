@@ -1,4 +1,5 @@
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import type { Dirent } from 'node:fs'
 import { extname, join, sep } from 'node:path'
 import { getDb, getLibraryPath } from './db'
@@ -138,26 +139,39 @@ export async function syncLibrary(
   const restoredIds: number[] = []
   const modified: string[] = []
 
-  for (const row of rows) {
+  // 分批异步 stat：3 万条记录也不能把主进程卡住
+  const statInfo = new Array<{ exists: boolean; size: number; mtime: number }>(rows.length)
+  let cursor = 0
+  const worker = async (): Promise<void> => {
+    while (cursor < rows.length) {
+      const index = cursor++
+      const row = rows[index]
+      try {
+        const info = await stat(row.path)
+        statInfo[index] = { exists: true, size: info.size, mtime: Math.round(info.mtimeMs) }
+      } catch {
+        statInfo[index] = { exists: false, size: 0, mtime: 0 }
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(64, rows.length) }, worker))
+
+  rows.forEach((row, index) => {
+    const info = statInfo[index]
     const hit = found.get(row.path.toLowerCase())
     if (!hit) {
-      if (!existsSync(row.path)) deleted.push(row.path)
-      continue
+      if (!info.exists) deleted.push(row.path)
+      return
     }
     if (row.missing === 1) {
       restoredIds.push(row.id)
-      continue
+      return
     }
-    try {
-      const stat = statSync(row.path)
-      const changed =
-        stat.size !== row.size ||
-        (row.file_mtime > 0 && Math.round(stat.mtimeMs) !== row.file_mtime)
-      if (changed) modified.push(row.path)
-    } catch {
-      /* 刚删掉的文件留到下次刷新处理 */
-    }
-  }
+    if (!info.exists) return
+    const changed =
+      info.size !== row.size || (row.file_mtime > 0 && info.mtime !== row.file_mtime)
+    if (changed) modified.push(row.path)
+  })
 
   if (restoredIds.length > 0) {
     const update = db.prepare('UPDATE items SET missing = 0 WHERE id = ?')

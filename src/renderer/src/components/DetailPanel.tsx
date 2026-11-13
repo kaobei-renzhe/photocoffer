@@ -26,6 +26,8 @@ interface DetailPanelProps {
   canAdvice: boolean
   /** 读片对话能力是否开启 */
   canStudy: boolean
+  /** 当前模型看不了图：AI 入口不可用，但要说明原因 */
+  visionBlocked: boolean
 }
 
 export default function DetailPanel({
@@ -45,7 +47,8 @@ export default function DetailPanel({
   aiReady,
   canScore,
   canAdvice,
-  canStudy
+  canStudy,
+  visionBlocked
 }: DetailPanelProps) {
   // 超出 AI 处理范围时不显示任何 AI 操作，已评过的分数照常能看
   const scopeBlocked = aiScope !== null && !inAiScope(item, aiScope)
@@ -64,6 +67,12 @@ export default function DetailPanel({
           <X size={14} />
         </button>
       </div>
+
+      {aiReady && visionBlocked && (
+        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-[10.5px] leading-4 text-[var(--warn)]">
+          当前模型看不了图，AI 入口已停用；可在 设置 → 大模型 里换一个视觉模型。
+        </div>
+      )}
 
       <div className="min-h-0 flex-1">
         <PhotoInspector

@@ -10,6 +10,7 @@ dist/
 .tmp-*
 .cache/
 .history/
+.trae/
 Thumbs.db
 .DS_Store
 .vscode/

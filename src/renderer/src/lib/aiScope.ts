@@ -30,7 +30,7 @@ export function outOfScopeText(
   scope: AiScope
 ): string {
   if (scope.minRating > 0 && item.rating < scope.minRating) {
-    return `这张${item.rating > 0 ? `只有 ${item.rating} 星` : '还没标星'}，低于「AI 处理范围」要求的 ${scope.minRating} 星`
+    return `这张${item.rating > 0 ? `只有 ${item.rating} 星` : '还没标星'}，低于「AI 作用范围」要求的 ${scope.minRating} 星`
   }
-  return '这张不在「AI 处理范围」选中的文件夹里'
+  return '这张不在「AI 作用范围」选中的文件夹里'
 }

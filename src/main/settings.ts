@@ -2,9 +2,12 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type {
+  AppUseCase,
+  AutoBackupSettings,
   AutoTagSettings,
   EmbeddingModelId,
   FinalsDefaults,
+  GrownFeature,
   ImportOptions,
   LibraryEntry,
   PickDefaults,
@@ -17,16 +20,8 @@ import type { LayoutSizes } from '../shared/layout'
 import { normalizeLayout } from '../shared/layout'
 import type { ThumbQualityPref } from '../shared/thumbs'
 import { THUMB_CACHE_LIMIT_DEFAULT, THUMB_QUALITY_DEFAULT, isThumbQualityPref } from '../shared/thumbs'
-import type { LlmConfig } from '../shared/llm'
+import type { LlmStoredSettings } from '../shared/llm'
 import { DEFAULT_SKIN, isSkinId, type SkinId } from '../shared/skins'
-
-export interface AutoBackupSettings {
-  enabled: boolean
-  intervalDays: number
-  keep: number
-  directory: string | null
-  lastRunAt: number
-}
 
 export interface AppConfig {
   library?: string
@@ -44,6 +39,10 @@ export interface AppConfig {
   /** 当前使用的内嵌语义模型；不填按 Chinese-CLIP 处理，老配置零迁移 */
   embeddingModel?: EmbeddingModelId
   skin?: SkinId
+  /** 首启二选一：整理照片 / 拍片接单 */
+  useCase?: AppUseCase
+  /** 摄影功能用过一次后常驻主导航 */
+  grownFeatures?: GrownFeature[]
   relocate?: { lastDir?: string }
   theme?: ThemeMode
   /** 左栏 / 右栏拖过的宽度 */
@@ -56,7 +55,7 @@ export interface AppConfig {
   aiScoreMinRating?: number
   /** AI 处理范围：只处理这些文件夹里的照片；空数组 = 不限 */
   aiFolderIds?: number[]
-  llm?: Partial<LlmConfig>
+  llm?: LlmStoredSettings
   /** 客户选片：记住上次的输出目录、客户名与水印模板 */
   pick?: {
     lastDir?: string
@@ -73,6 +72,8 @@ export interface AppConfig {
     prefix?: string
     watermark?: string
     watermarkStyle?: Partial<PickWatermarkStyle>
+    keepMetadata?: boolean
+    collision?: string
   }
   /** XMP 侧车：默认关闭，只写人的判断 */
   xmp?: Partial<XmpSettings>
@@ -147,6 +148,33 @@ export function getAutoBackup(): AutoBackupSettings {
 export function saveAutoBackup(patch: Partial<AutoBackupSettings>): AutoBackupSettings {
   const next = { ...getAutoBackup(), ...patch }
   updateConfig({ autoBackup: next })
+  return next
+}
+
+export function getUseCase(): AppUseCase | null {
+  const stored = readConfig().useCase
+  return stored === 'manage' || stored === 'pro' ? stored : null
+}
+
+export function saveUseCase(value: AppUseCase): AppUseCase {
+  const next: AppUseCase = value === 'pro' ? 'pro' : 'manage'
+  updateConfig({ useCase: next })
+  return next
+}
+
+const GROWN_FEATURES: GrownFeature[] = ['portrait', 'delivery', 'clientPicked', 'facets']
+
+export function getGrownFeatures(): GrownFeature[] {
+  const stored = readConfig().grownFeatures
+  if (!Array.isArray(stored)) return []
+  return [...new Set(stored.filter((item): item is GrownFeature => GROWN_FEATURES.includes(item as GrownFeature)))]
+}
+
+export function saveGrownFeatures(features: GrownFeature[]): GrownFeature[] {
+  const next = [...new Set((Array.isArray(features) ? features : []).filter(
+    (item): item is GrownFeature => GROWN_FEATURES.includes(item)
+  ))]
+  updateConfig({ grownFeatures: next })
   return next
 }
 
@@ -307,16 +335,22 @@ function normalizeMaxEdge(value: unknown): number | null {
 export function getFinalsDefaults(): FinalsDefaults {
   const stored = readConfig().finals ?? {}
   const quality = Number(stored.quality)
+  const mode =
+    stored.mode === 'copy' || stored.mode === 'png' || stored.mode === 'webp'
+      ? stored.mode
+      : 'jpeg'
   return {
     lastDir: typeof stored.lastDir === 'string' && stored.lastDir ? stored.lastDir : null,
-    mode: stored.mode === 'copy' ? 'copy' : 'jpeg',
+    mode,
     maxEdge:
       stored.maxEdge === null || stored.maxEdge === undefined ? null : normalizeMaxEdge(stored.maxEdge),
     quality: Number.isFinite(quality) ? Math.min(95, Math.max(60, Math.round(quality))) : 90,
     naming: stored.naming === 'prefix' ? 'prefix' : 'original',
     prefix: typeof stored.prefix === 'string' ? stored.prefix : '',
     watermark: typeof stored.watermark === 'string' ? stored.watermark : '',
-    watermarkStyle: normalizePickWatermark(stored.watermarkStyle ?? PICK_WATERMARK_DEFAULT)
+    watermarkStyle: normalizePickWatermark(stored.watermarkStyle ?? PICK_WATERMARK_DEFAULT),
+    keepMetadata: stored.keepMetadata === true,
+    collision: stored.collision === 'skip' ? 'skip' : 'rename'
   }
 }
 
@@ -325,7 +359,9 @@ export function saveFinalsDefaults(patch: Partial<FinalsDefaults>): FinalsDefaul
   const next: FinalsDefaults = {
     ...current,
     ...patch,
-    watermarkStyle: normalizePickWatermark(patch.watermarkStyle ?? current.watermarkStyle)
+    watermarkStyle: normalizePickWatermark(patch.watermarkStyle ?? current.watermarkStyle),
+    collision:
+      patch.collision === 'skip' || patch.collision === 'rename' ? patch.collision : current.collision
   }
   updateConfig({
     finals: {
@@ -336,7 +372,9 @@ export function saveFinalsDefaults(patch: Partial<FinalsDefaults>): FinalsDefaul
       naming: next.naming,
       prefix: next.prefix,
       watermark: next.watermark,
-      watermarkStyle: next.watermarkStyle
+      watermarkStyle: next.watermarkStyle,
+      keepMetadata: next.keepMetadata,
+      collision: next.collision
     }
   })
   return next

@@ -5,6 +5,9 @@
   "main": "./out/main/index.js",
   "author": "silvermoon",
   "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
   "build": {
     "appId": "com.silvermoon.lunaris",
     "productName": "月相",
@@ -18,7 +21,18 @@
       "build/icon.png",
       "!**/node_modules/onnxruntime-node/bin/napi-*/darwin/**",
       "!**/node_modules/onnxruntime-node/bin/napi-*/linux/**",
-      "!**/node_modules/onnxruntime-node/bin/napi-*/win32/arm64/**"
+      "!**/node_modules/onnxruntime-node/bin/napi-*/win32/arm64/**",
+      "!**/node_modules/onnxruntime-node/bin/napi-*/win32/x64/DirectML.dll",
+      "!**/node_modules/onnxruntime-node/bin/napi-*/win32/x64/dxil.dll",
+      "!**/node_modules/onnxruntime-node/bin/napi-*/win32/x64/dxcompiler.dll",
+      "!**/node_modules/@img/sharp-darwin-*/**",
+      "!**/node_modules/@img/sharp-linux-*/**"
+    ],
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://updates.invalid/lunaris"
+      }
     ],
     "npmRebuild": false,
     "asarUnpack": [
@@ -30,25 +44,48 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "shortcutName": "月相"
-    },
-    "mac": {
-      "target": [
-        "dmg"
-      ],
-      "category": "public.app-category.photography",
       "icon": "build/icon.png",
       "files": [
         "out/**/*",
         "package.json",
         "build/icon.png",
+        "!**/node_modules/onnxruntime-node/bin/napi-*/darwin/**",
+        "!**/node_modules/onnxruntime-node/bin/napi-*/linux/**",
+        "!**/node_modules/onnxruntime-node/bin/napi-*/win32/arm64/**",
+        "!**/node_modules/onnxruntime-node/bin/napi-*/win32/x64/DirectML.dll",
+        "!**/node_modules/onnxruntime-node/bin/napi-*/win32/x64/dxil.dll",
+        "!**/node_modules/onnxruntime-node/bin/napi-*/win32/x64/dxcompiler.dll",
+        "!**/node_modules/@img/sharp-darwin-*/**",
+        "!**/node_modules/@img/sharp-linux-*/**"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "月相",
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.photography",
+      "icon": "build/icon.png",
+      "identity": null,
+      "files": [
+        "out/**/*",
+        "package.json",
+        "build/icon.png",
         "!**/node_modules/onnxruntime-node/bin/napi-*/win32/**",
-        "!**/node_modules/onnxruntime-node/bin/napi-*/linux/**"
+        "!**/node_modules/onnxruntime-node/bin/napi-*/linux/**",
+        "!**/node_modules/@img/sharp-win32-*/**",
+        "!**/node_modules/@img/sharp-linux-*/**"
       ]
     },
     "dmg": {
@@ -60,6 +97,8 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "verify:dist": "node scripts/verify-dist.mjs",
     "test": "vitest run",
     "bench": "node scripts/bench.mjs",
     "bench:clip": "node scripts/bench-clip.mjs",
@@ -68,6 +107,7 @@
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
+    "electron-updater": "^6.8.11",
     "exifr": "^7.1.3",
     "lucide-react": "^1.61.0",
     "onnxruntime-node": "^1.30.0",

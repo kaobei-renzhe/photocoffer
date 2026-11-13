@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, relative, sep } from 'node:path'
-import { getDb, getIndexPath, getLibraryPath } from './db'
+import { CURRENT_SCHEMA, getDb, getIndexPath, getLibraryPath } from './db'
 import { exportRows, stats } from './repo'
 import { ZipWriter, listZipEntries, readZipEntry } from './zip'
 
@@ -32,8 +32,10 @@ export async function createBackup(
       Buffer.from(
         JSON.stringify(
           {
-            app: 'image-nest',
+            app: 'lunaris',
             format: 1,
+            // 恢复时用它拒绝「更新版本的备份装进旧版」
+            userVersion: CURRENT_SCHEMA,
             createdAt: new Date().toISOString(),
             library: basename(library),
             stats: stats(),
@@ -70,7 +72,30 @@ export async function createBackup(
 export function restoreBackup(zipPath: string, targetDir: string): { files: number } {
   const entries = listZipEntries(zipPath)
   const hasDb = entries.some((entry) => entry.name === 'library.db')
-  if (!hasDb) throw new Error('备份包里没有 library.db，可能不是月相的备份')
+  if (!hasDb) throw new Error('备份包里没有图库的数据文件，可能不是月相的备份')
+
+  const metaEntry = entries.find((entry) => entry.name === 'meta.json')
+  if (metaEntry) {
+    try {
+      const meta = JSON.parse(readZipEntry(zipPath, metaEntry).toString('utf8')) as {
+        app?: unknown
+        userVersion?: unknown
+      }
+      const app = String(meta.app ?? '')
+      if (app && app !== 'lunaris' && app !== 'image-nest') {
+        throw new Error('这不是月相的备份')
+      }
+      const version = Number(meta.userVersion ?? 0)
+      if (Number.isFinite(version) && version > CURRENT_SCHEMA) {
+        throw new Error(`备份来自更新版本（结构 ${version}），请先升级月相再恢复`)
+      }
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        throw new Error('备份包的元数据损坏，无法确认版本')
+      }
+      throw error
+    }
+  }
 
   let files = 0
   for (const entry of entries) {

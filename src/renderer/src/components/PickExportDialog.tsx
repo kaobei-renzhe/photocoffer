@@ -11,6 +11,9 @@ import { formatBytes } from '../lib/format'
 interface PickExportDialogProps {
   itemIds: number[]
   defaultTitle: string
+  /** 已有草稿单：生成后写回这一单，不新建记录 */
+  sessionId?: number
+  defaultClient?: string
   onClose: () => void
   onExported: (result: PickExportResult) => void
 }
@@ -31,11 +34,13 @@ function cleanError(error: unknown): string {
 export default function PickExportDialog({
   itemIds,
   defaultTitle,
+  sessionId,
+  defaultClient,
   onClose,
   onExported
 }: PickExportDialogProps) {
   const [title, setTitle] = useState(defaultTitle)
-  const [client, setClient] = useState('')
+  const [client, setClient] = useState(defaultClient ?? '')
   const [watermark, setWatermark] = useState('')
   const [watermarkTouched, setWatermarkTouched] = useState(false)
   const [maxEdge, setMaxEdge] = useState(1200)
@@ -88,14 +93,17 @@ export default function PickExportDialog({
     setError(null)
     setResult(null)
     try {
-      const exported = await window.api.pickExport({
+      const payload = {
         itemIds,
         title: title.trim(),
         client: client.trim(),
         watermark: watermarkValue.trim(),
         maxEdge,
         watermarkStyle: style
-      })
+      }
+      const exported = sessionId
+        ? await window.api.pickExportSession(sessionId, payload)
+        : await window.api.pickExport(payload)
       if (exported) {
         setResult(exported)
         onExported(exported)
@@ -116,7 +124,7 @@ export default function PickExportDialog({
       >
         <div className="h-[46px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <FolderOpen size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">生成客户选片页</span>
+          <span className="text-[13.5px] font-medium">生成浏览页</span>
           <span className="text-[11px] text-[var(--faint)]">已选 {itemIds.length} 张</span>
           <button
             className="btn btn-ghost h-7 px-1.5 ml-auto"
@@ -135,7 +143,7 @@ export default function PickExportDialog({
                 <Check size={16} className="mt-0.5 shrink-0 text-[var(--success)]" />
                 <div className="min-w-0">
                   <div className="text-[12.5px] text-[var(--text)]">
-                    已生成 {result.count} 张的选片页 · {formatBytes(result.bytes)}
+                    已生成 {result.count} 张的浏览页 · {formatBytes(result.bytes)}
                   </div>
                   <div className="mt-1 break-all text-[10.5px] leading-4 text-[var(--faint)]" title={result.path}>
                     {result.path}
@@ -165,13 +173,12 @@ export default function PickExportDialog({
               )}
 
               <p className="mt-3 text-[11px] leading-5 text-[var(--muted)]">
-                把文件发给客户就行。客户双击打开后点「要 / 要修 / 不要」，最后复制一段文字发回来；
-                回来后在工具栏点「导入选片结果」粘贴即可。
+                把文件发给对方。对方点「要 / 要修 / 不要」后复制结果发回来，再到「选片交付」粘贴。
               </p>
             </div>
           ) : (
             <>
-              <label className="block text-[11px] text-[var(--muted)] mb-1">标题（客户打开时看到）</label>
+              <label className="block text-[11px] text-[var(--muted)] mb-1">标题（对方打开时看到）</label>
               <input
                 className="input w-full"
                 value={title}
@@ -181,7 +188,7 @@ export default function PickExportDialog({
 
               <div className="mt-3 flex gap-3">
                 <div className="flex-1">
-                  <label className="block text-[11px] text-[var(--muted)] mb-1">客户名</label>
+                  <label className="block text-[11px] text-[var(--muted)] mb-1">发给谁（可选）</label>
                   <input
                     className="input w-full"
                     value={client}
@@ -213,7 +220,7 @@ export default function PickExportDialog({
                   setWatermarkTouched(true)
                   setWatermark(event.target.value)
                 }}
-                placeholder="客户名 · 日期"
+                placeholder="名字 · 日期"
               />
 
               <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)]">
@@ -351,7 +358,7 @@ export default function PickExportDialog({
               </div>
 
               <p className="mt-3 text-[10.5px] leading-5 text-[var(--faint)]">
-                只导出带水印的压缩图，EXIF 拍摄参数不会出现。输出是单个 HTML，断网也能打开。
+                导出带水印的压缩图，不含拍摄参数；单个 HTML，断网也能打开。
               </p>
 
               {exporting && (
@@ -394,7 +401,7 @@ export default function PickExportDialog({
 
         <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center gap-2">
           <span className="text-[10.5px] text-[var(--faint)]">
-            {result ? '客户的选择回传后，再点「导入选片结果」' : '导出过程中别关窗口'}
+            {result ? '对方回传后，在「选片交付」里点「粘贴反馈」' : '导出过程中别关窗口'}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             {result ? (

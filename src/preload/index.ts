@@ -13,6 +13,7 @@ import type {
   LibraryChange,
   FinalsExportProgress,
   PickExportProgress,
+  UpdateStatus,
   XmpProgress
 } from '../shared/types'
 
@@ -22,7 +23,24 @@ const api: Api = {
   openLibrary: (dir: string) => ipcRenderer.invoke('library:open', dir),
   lastLibrary: () => ipcRenderer.invoke('library:last'),
   getLibraryStorage: () => ipcRenderer.invoke('library:storage'),
+  exportSettings: () => ipcRenderer.invoke('settings:export'),
+  importSettings: () => ipcRenderer.invoke('settings:import'),
+  getUseCase: () => ipcRenderer.invoke('settings:useCase:get'),
+  saveUseCase: (value) => ipcRenderer.invoke('settings:useCase:save', value),
+  getGrownFeatures: () => ipcRenderer.invoke('settings:grownFeatures:get'),
+  saveGrownFeatures: (features) => ipcRenderer.invoke('settings:grownFeatures:save', features),
+  appInfo: () => ipcRenderer.invoke('app:info'),
+  updateStatus: () => ipcRenderer.invoke('update:status'),
+  updateCheck: () => ipcRenderer.invoke('update:check'),
+  updateInstall: () => ipcRenderer.invoke('update:install'),
+  onUpdateStatus: (cb) => {
+    const handler = (_e: unknown, payload: UpdateStatus): void => cb(payload)
+    ipcRenderer.on('update:status', handler)
+    return () => ipcRenderer.removeListener('update:status', handler)
+  },
   listLibraries: () => ipcRenderer.invoke('libraries:list'),
+  libraryCover: (id: string) => ipcRenderer.invoke('libraries:cover', id),
+  searchOtherLibraries: (query: string) => ipcRenderer.invoke('libraries:search', query),
   renameLibrary: (id: string, name: string) => ipcRenderer.invoke('libraries:rename', id, name),
   forgetLibrary: (id: string, alsoDeleteData: boolean) =>
     ipcRenderer.invoke('libraries:forget', id, alsoDeleteData),
@@ -44,9 +62,12 @@ const api: Api = {
     ipcRenderer.invoke('items:list', filter, offset, limit),
   getItem: (id: number) => ipcRenderer.invoke('items:get', id),
   updateItem: (id: number, patch) => ipcRenderer.invoke('items:update', id, patch),
+  bulkUpdate: (ids: number[], patch) => ipcRenderer.invoke('items:bulkUpdate', ids, patch),
   deleteItems: (ids: number[]) => ipcRenderer.invoke('items:delete', ids),
   trashMissing: () => ipcRenderer.invoke('items:trashMissing'),
   restoreItems: (ids: number[]) => ipcRenderer.invoke('items:restore', ids),
+  purgeItems: (ids: number[]) => ipcRenderer.invoke('items:purge', ids),
+  purgeAllTrashed: () => ipcRenderer.invoke('items:purgeAllTrashed'),
   copyImage: (id: number) => ipcRenderer.invoke('clipboard:copyImage', id),
   stackItems: (ids: number[]) => ipcRenderer.invoke('items:stack', ids),
   unstack: (stackId: number) => ipcRenderer.invoke('items:unstack', stackId),
@@ -83,7 +104,13 @@ const api: Api = {
   },
 
   listFolders: () => ipcRenderer.invoke('folders:list'),
-  createFolder: (name: string) => ipcRenderer.invoke('folders:create', name),
+  createFolder: (name: string, parentId?: number | null) =>
+    ipcRenderer.invoke('folders:create', name, parentId ?? null),
+  renameFolder: (id: number, name: string) => ipcRenderer.invoke('folders:rename', id, name),
+  moveFolder: (id: number, parentId: number | null, index: number) =>
+    ipcRenderer.invoke('folders:move', id, parentId, index),
+  setFolderCover: (id: number, itemId: number | null) =>
+    ipcRenderer.invoke('folders:cover', id, itemId),
   deleteFolder: (id: number) => ipcRenderer.invoke('folders:delete', id),
   addToFolder: (itemIds: number[], folderId: number) =>
     ipcRenderer.invoke('folders:add', itemIds, folderId),
@@ -96,6 +123,12 @@ const api: Api = {
 
   pickDefaults: () => ipcRenderer.invoke('pick:defaults'),
   pickExport: (input) => ipcRenderer.invoke('pick:export', input),
+  pickCreateDraft: (input) => ipcRenderer.invoke('pick:createDraft', input),
+  pickExportSession: (sessionId, input) => ipcRenderer.invoke('pick:exportSession', sessionId, input),
+  pickUpdateSession: (sessionId, patch) =>
+    ipcRenderer.invoke('pick:updateSession', sessionId, patch),
+  pickUpdateDraftItems: (sessionId, itemIds) =>
+    ipcRenderer.invoke('pick:updateDraftItems', sessionId, itemIds),
   listPickSessions: () => ipcRenderer.invoke('pick:sessions'),
   deletePickSession: (sessionId) => ipcRenderer.invoke('pick:deleteSession', sessionId),
   listPickSessionItems: (sessionId) => ipcRenderer.invoke('pick:sessionItems', sessionId),
@@ -110,6 +143,9 @@ const api: Api = {
   pickFolder: () => ipcRenderer.invoke('import:pickFolder'),
   importPaths: (paths: string[], options?: Partial<ImportOptions>) =>
     ipcRenderer.invoke('import:paths', paths, options),
+  pasteImage: () => ipcRenderer.invoke('import:pasteImage'),
+  importUrl: (url: string) => ipcRenderer.invoke('import:fromUrl', url),
+  retryFailedImports: () => ipcRenderer.invoke('import:retryFailed'),
   pauseImport: () => ipcRenderer.invoke('import:pause'),
   resumeImport: () => ipcRenderer.invoke('import:resume'),
   cancelImport: () => ipcRenderer.invoke('import:cancel'),
@@ -136,10 +172,10 @@ const api: Api = {
   saveClipAutoIndex: (enabled: boolean) => ipcRenderer.invoke('clip:autoIndex:save', enabled),
   clipIndex: () => ipcRenderer.invoke('clip:index'),
   clipCancel: () => ipcRenderer.invoke('clip:cancel'),
-  clipSearchText: (query: string, filter: FilterState, limit?: number) =>
-    ipcRenderer.invoke('clip:searchText', query, filter, limit),
-  clipSimilar: (itemId: number, limit?: number) =>
-    ipcRenderer.invoke('clip:similar', itemId, limit),
+  clipSearchText: (query: string, filter: FilterState, limit?: number, offset?: number) =>
+    ipcRenderer.invoke('clip:searchText', query, filter, limit, offset),
+  clipSimilar: (itemId: number, limit?: number, offset?: number) =>
+    ipcRenderer.invoke('clip:similar', itemId, limit, offset),
   clipDownloadModel: (id) => ipcRenderer.invoke('clip:download', id),
   autoTagCategories: () => ipcRenderer.invoke('clip:autoTagCategories'),
   getAutoTagSettings: () => ipcRenderer.invoke('clip:autoTagSettings:get'),
@@ -148,6 +184,9 @@ const api: Api = {
   autoTag: () => ipcRenderer.invoke('clip:autoTag'),
   clearAutoTags: () => ipcRenderer.invoke('clip:autoTagClear'),
   showInFolder: (path: string) => ipcRenderer.invoke('shell:showItem', path),
+  setFullScreen: (value?: boolean) => ipcRenderer.invoke('window:setFullScreen', value),
+  isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+  openPath: (path: string) => ipcRenderer.invoke('shell:openPath', path),
   pickRelocateDir: () => ipcRenderer.invoke('relocate:pick'),
   planRelocate: (dir) => ipcRenderer.invoke('relocate:plan', dir),
   lastRelocateDir: () => ipcRenderer.invoke('relocate:last'),
@@ -176,10 +215,10 @@ const api: Api = {
   getThumbCacheLimit: () => ipcRenderer.invoke('settings:thumbCacheLimit:get'),
   saveThumbCacheLimit: (mb) => ipcRenderer.invoke('settings:thumbCacheLimit:save', mb),
   llmStatus: () => ipcRenderer.invoke('llm:status'),
-  llmSaveConfig: (patch) => ipcRenderer.invoke('llm:config:save', patch),
-  llmSaveKey: (key) => ipcRenderer.invoke('llm:key:save', key),
-  llmClearKey: () => ipcRenderer.invoke('llm:key:clear'),
-  llmTest: () => ipcRenderer.invoke('llm:test'),
+  llmSaveSettings: (patch) => ipcRenderer.invoke('llm:settings:save', patch),
+  llmSaveKey: (modelId, key) => ipcRenderer.invoke('llm:key:save', modelId, key),
+  llmClearKey: (modelId) => ipcRenderer.invoke('llm:key:clear', modelId),
+  llmTest: (modelId?: string) => ipcRenderer.invoke('llm:test', modelId),
   llmRun: (capabilityId, input) => ipcRenderer.invoke('llm:run', capabilityId, input),
   llmScore: (itemIds) => ipcRenderer.invoke('llm:quality', itemIds),
   getAiScoreMinRating: () => ipcRenderer.invoke('llm:scoreMinRating:get'),
@@ -250,3 +289,6 @@ const api: Api = {
 }
 
 contextBridge.exposeInMainWorld('api', api)
+
+// 渲染层拿不到 process，这里只暴露一个平台字符串，避免用废弃的 navigator.platform
+contextBridge.exposeInMainWorld('env', { platform: process.platform })

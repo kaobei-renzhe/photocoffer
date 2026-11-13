@@ -31,19 +31,31 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Contrast check
+        run: npm run check:contrast
+
       - name: Build installer
         run: npm run dist
+
+      - name: Verify packaged files
+        run: npm run verify:dist
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: lunaris-windows
-          path: release/*.exe
+          path: |
+            release/*.exe
+            release/latest.yml
+            release/*.exe.blockmap
 
       - name: Publish draft release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*.exe
+          files: |
+            release/*.exe
+            release/latest.yml
+            release/*.exe.blockmap
           draft: true
           generate_release_notes: true

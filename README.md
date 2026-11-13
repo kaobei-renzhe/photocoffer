@@ -46,7 +46,7 @@ npm ci
 npm run dist:mac
 ```
 
-产物在 `release/` 下，**在哪种 Mac 上打包就出哪种架构**：Apple 芯片出 `arm64` 的 dmg，Intel 出 `x64` 的。也可以直接用仓库里的 GitHub Actions「build-mac」（Apple 芯片 runner，产出 arm64 包），跑完在 Artifacts 里下载。
+产物在 `release/` 下：macOS 会同时产出 `arm64` 与 `x64` 两个 dmg（需在 macOS 上打包）。也可以在 GitHub Actions 里跑「build-mac」，跑完在 Artifacts 里下载。
 
 第一次打开被 Gatekeeper 拦住时：右键点「月相」→「打开」，或执行 `xattr -cr /Applications/月相.app`。原因是安装包没有 Apple 开发者签名。
 
@@ -211,6 +211,7 @@ macOS 上把 `Ctrl` 换成 `Cmd`；删除也可以直接按 `Backspace`。
 ## 给开发者
 
 技术栈：Electron 45 + React 19 + TypeScript，数据用 better-sqlite3，图像处理用 sharp，语义检索用 onnxruntime-node（Chinese-CLIP / SigLIP 2 的 int8 ONNX 模型）。
+Node 版本要求 ≥ 22（`.nvmrc` 固定 22，与 CI 一致）；原生模块必须在目标平台上 `npm install`，不要跨平台复用 `node_modules`。
 
 ```bash
 npm install
@@ -220,6 +221,7 @@ npm test           # 单元测试
 npm run build      # 构建到 out/
 npm run dist       # 打包 Windows 安装包到 release/
 npm run dist:mac   # 打包 macOS dmg（需在 macOS 上执行）
+npm run verify:dist # 检查打包产物里没有混入其他平台的二进制
 npm run bench:clip # 语义检索性能基准
 ```
 
@@ -234,6 +236,58 @@ build/          图标与打包资源
 design/         界面稿
 docs/           方案与实测文档
 ```
+
+## 发布与更新
+
+### 打包
+
+```bash
+npm run dist      # Windows：release/月相 Setup <版本>.exe + latest.yml + .exe.blockmap
+npm run dist:mac  # macOS：需要在 macOS 上执行
+```
+
+Windows 包已去掉 onnxruntime 的 DirectML 运行库（`DirectML.dll` / `dxil.dll` / `dxcompiler.dll`）。
+应用只用 CPU 推理，裁剪后语义索引、文本语义搜索与识图自动分类都实测通过：
+
+| | 裁剪前 | 裁剪后 |
+| --- | --- | --- |
+| 安装包 | 144.7 MB | 131.2 MB |
+| 解包体积 | 505 MB | 468.8 MB |
+
+对应 `package.json` 里 `files` 的三条排除；换 onnxruntime 版本后需要重新验证一次。
+
+### 自动更新
+
+更新源用 generic 静态文件服务，地址只从环境变量读取：
+
+```bash
+LUNARIS_UPDATE_URL=https://你的更新地址/lunaris
+```
+
+- 留空：完全不联网检查，界面也不出现任何更新提示。
+- 地址必须是 https；只对本机（localhost / 127.0.0.1）放行 http，方便发布前自测。
+- 启动 10 秒后静默检查；失败只写日志，不弹窗。
+- 关于页可以手动「检查更新」，下载完成后点「重启安装」才会替换版本。
+
+每次发版上传三个文件到该地址：
+
+1. `月相 Setup <版本>.exe`
+2. `latest.yml`
+3. `月相 Setup <版本>.exe.blockmap`
+
+记得先把 `latest.yml` 里的版本号改成新版本。打包配置里的 `publish.url` 只是让 electron-builder 生成 `latest.yml` 的占位地址，运行时以 `LUNARIS_UPDATE_URL` 为准。
+
+回滚：把 `latest.yml` 换回上一版（版本号与文件都指回旧版），客户端下次检查会重新下载旧版并覆盖。`npm run dist` 会保留最近两个版本的安装包，上一版随时可以拿来回滚。
+
+### 发布检查清单
+
+- [ ] `npm run typecheck` / `npm test` / `npm run check:contrast` 全过
+- [ ] `npm run dist` 成功，`release/` 下 exe、`latest.yml`、`.exe.blockmap` 齐全
+- [ ] `npm run verify:dist` 通过，产物里没有其他平台的二进制
+- [ ] 覆盖安装一次，确认「关于」页版本号正确
+- [ ] 语义搜图、AI 配置、图库切换各点一次
+- [ ] 三个文件上传到更新源，并把 `latest.yml` 版本号改成新版
+- [ ] 留空 `LUNARIS_UPDATE_URL` 启动一次，确认没有任何更新请求
 
 ## 已知限制
 

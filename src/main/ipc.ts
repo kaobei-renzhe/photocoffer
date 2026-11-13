@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { BrowserWindow, ClipboardItem, app, clipboard, dialog, ipcMain, nativeImage, nativeTheme, shell } from 'electron'
 import sharp from 'sharp'
-import { getIndexPath, getLibraryPath, openLibrary, resolveIndexDir } from './db'
+import { getDb, getIndexPath, getLibraryPath, openLibrary, resolveIndexDir } from './db'
 import {
   importPaths,
   rebuildThumbs,
@@ -12,6 +12,7 @@ import {
   importStatus,
   isImportRunning,
   pauseImport,
+  reprocessPaths,
   resumeImport
 } from './importer'
 import { regroup } from './grouping'
@@ -23,9 +24,11 @@ import {
   getEmbeddingModel,
   getImportOptions,
   getIndexDirFor,
+  getGrownFeatures,
   getLayout,
   getSkin,
   getTheme,
+  getUseCase,
   getThumbCacheLimitMB,
   getThumbQuality,
   getPickDefaults,
@@ -39,8 +42,10 @@ import {
   saveClipAutoIndex,
   saveEmbeddingModel,
   saveImportOptions,
+  saveGrownFeatures,
   saveLayout,
   savePickDefaults,
+  saveUseCase,
   saveFinalsDefaults,
   saveSkin,
   saveXmpSettings,
@@ -53,6 +58,7 @@ import {
   updateConfig
 } from './settings'
 import { startAutoBackup } from './scheduler'
+import { checkForUpdates, onUpdateStatus, quitAndInstall, updateStatus } from './updater'
 import {
   clipStatus,
   cancelClipIndex,
@@ -65,6 +71,7 @@ import {
 import { autoTagStatus, clearAutoTags, getAutoTagSettings, listAutoTagCategories, runAutoTag, saveAutoTagSettings } from './autoTag'
 import { downloadModel } from './clip/download'
 import { resetModel } from './clip/embedder'
+import { exportSettings, importSettings } from './configTransfer'
 import { isEmbeddingModelId } from './clip/models'
 import { startAutoClipIndex, stopAutoClipIndex } from './clip/autoIndex'
 import { applyRelocate, buildRelocatePlan, getLastRelocateDir, rememberRelocateDir } from './relocate'
@@ -75,15 +82,29 @@ import { syncLibrary } from './sync'
 import { moveIndexTo } from './libraryStore'
 import {
   forgetLibrary,
+  libraryCover,
   listLibraries,
   relocateLibrary,
   renameLibrary,
+  searchOtherLibraries,
   touchLibrary
 } from './libraries'
 import {
+  isBlockedExecutable,
+  isInside,
+  isPickedPath,
+  rememberPickedPath
+} from './pathGuard'
+import { assertPublicHttpUrl, UnsafeUrlError } from './netGuard'
+import {
   applyPickReply,
+  createPickDraft,
   deletePickSession,
   exportPickSession,
+  exportPickSessionById,
+  getPickSessionSummary,
+  updatePickDraft,
+  updatePickDraftItems,
   listPickSessionItems,
   listPickSessions,
   newPickToken,
@@ -132,10 +153,15 @@ import {
   listDirTree,
   listSmart,
   listTags,
+  moveFolder,
   removeFromFolder,
+  renameFolder,
   rescan,
   restoreItems,
+  purgeAllTrashed,
+  purgeItems,
   saveSmart,
+  setFolderCover,
   setTag,
   setTagParent,
   stats,
@@ -144,9 +170,10 @@ import {
   trashMissing,
   scoreCandidateCounts,
   unstack,
-  updateItem
+  updateItem,
+  bulkUpdate,
+  invalidateItemTotals
 } from './repo'
-import type { AutoBackupSettings } from './settings'
 import {
   bulkSetFacetValue,
   createFacet,
@@ -159,17 +186,24 @@ import {
 import type {
   AppDialogOptions,
   AppDialogResult,
+  AppUseCase,
+  AutoBackupSettings,
   AutoTagSettings,
   CreateNoteInput,
   EmbeddingModelId,
   FilterState,
   FinalsExportInput,
   GearSpec,
+  GrownFeature,
   ImportOptions,
+  ImportUrlResult,
   NoteKind,
+  PickDraftInput,
   PickExportInput,
   PickReplyPreview,
+  PickSessionPatch,
   RelocatePair,
+  RetryFailedResult,
   ScenarioId,
   ThemeMode,
   IndexMoveResult
@@ -177,7 +211,7 @@ import type {
 import { SUPPORTED_EXT_LIST } from '../shared/formats'
 import type { LayoutSizes } from '../shared/layout'
 import type { ThumbQualityPref, ThumbCacheTarget } from '../shared/thumbs'
-import type { LlmConfig, LlmErrorCode, LlmRunOutcome } from '../shared/llm'
+import type { LlmSettings, LlmErrorCode, LlmRunOutcome } from '../shared/llm'
 import { SKINS, type SkinId } from '../shared/skins'
 
 const IMAGE_FILTERS = [
@@ -191,10 +225,37 @@ function activeWindow(): BrowserWindow | null {
   return BrowserWindow.getAllWindows()[0] ?? null
 }
 
+/** 批量 IPC 的入口上限：渲染层一次传几万个 id 会把主进程同步 SQL 拖死 */
+const MAX_IDS_PER_CALL = 500
+
+function sanitizeIds(value: unknown, max = MAX_IDS_PER_CALL): number[] {
+  if (!Array.isArray(value)) return []
+  const out: number[] = []
+  for (const raw of value) {
+    const id = Number(raw)
+    if (Number.isInteger(id) && id > 0) out.push(id)
+    if (out.length >= max) break
+  }
+  return out
+}
+
 /** 文件名里去掉 Windows 不认的字符，标题再长也截断 */
 function safeFileName(name: string): string {
   const cleaned = name.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim()
   return (cleaned || '选片').slice(0, 60)
+}
+
+/** 渲染层传来的选片参数统一收口，缺字段也能安全落到默认值 */
+function normalizePickExportInput(raw: PickExportInput | undefined): PickExportInput {
+  const input = raw ?? ({} as PickExportInput)
+  return {
+    itemIds: Array.isArray(input.itemIds) ? input.itemIds : [],
+    title: String(input.title ?? '').trim(),
+    client: String(input.client ?? '').trim(),
+    watermark: String(input.watermark ?? '').trim(),
+    maxEdge: Number(input.maxEdge) || 1200,
+    watermarkStyle: normalizePickWatermark(input.watermarkStyle)
+  }
 }
 
 let dialogSeq = 1
@@ -248,6 +309,8 @@ function applySkinNative(id: SkinId): void {
 }
 
 function restartWatcher(): void {
+  // 导入、切库、刷新之后总数都可能变，列表缓存一并失效
+  invalidateItemTotals()
   startWatching((info) => {
     activeWindow()?.webContents.send('library:changed', info)
   })
@@ -264,11 +327,25 @@ export function registerIpc(): void {
       title: '选择图库文件夹',
       properties: ['openDirectory', 'createDirectory']
     })
-    return result.canceled ? null : result.filePaths[0]
+    if (result.canceled || !result.filePaths[0]) return null
+    rememberPickedPath(result.filePaths[0])
+    return result.filePaths[0]
   })
+
+  /** 渲染层只能打开注册表里已有的库、刚选中的目录，或应用自己的数据目录内 */
+  const isKnownLibraryPath = (dir: string): boolean => {
+    if (isPickedPath(dir)) return true
+    if (isInside(app.getPath('userData'), dir)) return true
+    try {
+      return listLibraries().some((entry) => libraryKey(entry.path) === libraryKey(dir))
+    } catch {
+      return false
+    }
+  }
 
   ipcMain.handle('library:create', async (_e, dir: string) => {
     if (isImportRunning()) throw new Error('正在导入图片，等导入结束后再切换图库')
+    if (!isKnownLibraryPath(dir)) throw new Error('请通过「选择文件夹」创建图库')
     mkdirSync(dir, { recursive: true })
     // 新建的图库从零开始，索引就用这个文件夹，别沿用同路径下的旧映射
     setIndexDirFor(dir, null)
@@ -283,6 +360,7 @@ export function registerIpc(): void {
 
   ipcMain.handle('library:open', async (_e, dir: string) => {
     if (isImportRunning()) throw new Error('正在导入图片，等导入结束后再切换图库')
+    if (!isKnownLibraryPath(dir)) throw new Error('请通过「打开图库」选择文件夹')
     if (!existsSync(dir)) throw new Error('图库目录不存在')
     // 用户主动打开一个带 library.db 的目录时，以目录内的索引为准
     if (existsSync(join(dir, 'library.db'))) setIndexDirFor(dir, null)
@@ -340,12 +418,24 @@ export function registerIpc(): void {
       properties: ['openDirectory', 'createDirectory']
     })
     if (picked.canceled || !picked.filePaths[0]) return { ok: false, cancelled: true }
+    rememberPickedPath(picked.filePaths[0])
     return moveIndex(picked.filePaths[0])
   })
 
-  ipcMain.handle('library:index:move', (_e, target: string | null) => moveIndex(target ?? null))
+  ipcMain.handle('library:index:move', (_e, target: string | null) => {
+    if (target !== null && !isPickedPath(target) && !isInside(app.getPath('userData'), target)) {
+      return { ok: false, message: '请通过「选择文件夹」移动索引' }
+    }
+    return moveIndex(target ?? null)
+  })
 
   ipcMain.handle('libraries:list', () => listLibraries())
+
+  ipcMain.handle('libraries:cover', (_e, id: string) => libraryCover(String(id)))
+
+  ipcMain.handle('libraries:search', (_e, query: string) =>
+    searchOtherLibraries(String(query ?? ''))
+  )
 
   ipcMain.handle('libraries:rename', (_e, id: string, name: string) =>
     renameLibrary(String(id), String(name))
@@ -361,6 +451,7 @@ export function registerIpc(): void {
       properties: ['openDirectory']
     })
     if (picked.canceled || !picked.filePaths[0]) return { ok: false, cancelled: true }
+    rememberPickedPath(picked.filePaths[0])
     return relocateLibrary(String(id), picked.filePaths[0])
   })
 
@@ -380,9 +471,7 @@ export function registerIpc(): void {
     return checkXmpConflicts((progress) => win?.webContents.send('xmp:progress', progress))
   })
 
-  ipcMain.handle('xmp:import', (_e, itemIds: number[]) =>
-    importXmpConflicts(Array.isArray(itemIds) ? itemIds : [])
-  )
+  ipcMain.handle('xmp:import', (_e, itemIds: number[]) => importXmpConflicts(sanitizeIds(itemIds)))
 
   ipcMain.handle('items:list', (_e, filter: FilterState, offset?: number, limit?: number) =>
     listItems(filter ?? {}, offset ?? 0, limit ?? 200)
@@ -392,23 +481,52 @@ export function registerIpc(): void {
     'items:update',
     (_e, id: number, patch: { rating?: number; note?: string; url?: string; flag?: number }) => {
       updateItem(id, patch)
+      invalidateItemTotals()
       scheduleXmpWrite([id])
     }
   )
+  ipcMain.handle(
+    'items:bulkUpdate',
+    (
+      _e,
+      ids: number[],
+      patch: { rating?: number; note?: string; noteAppend?: boolean; url?: string; flag?: number }
+    ) => {
+      const safe = sanitizeIds(ids)
+      const updated = bulkUpdate(safe, patch)
+      invalidateItemTotals()
+      scheduleXmpWrite(safe)
+      return updated
+    }
+  )
   ipcMain.handle('items:delete', (_e, ids: number[]) => {
-    trashItems(ids)
+    trashItems(sanitizeIds(ids))
+    invalidateItemTotals()
     regroup()
   })
   ipcMain.handle('items:trashMissing', () => {
     const ids = trashMissing()
+    invalidateItemTotals()
     if (ids.length) regroup()
     return ids
   })
   ipcMain.handle('items:restore', (_e, ids: number[]) => {
-    restoreItems(ids)
+    restoreItems(sanitizeIds(ids))
+    invalidateItemTotals()
     regroup()
   })
-  ipcMain.handle('items:stack', (_e, ids: number[]) => createStack(ids))
+  ipcMain.handle('items:purge', (_e, ids: number[]) => {
+    purgeItems(sanitizeIds(ids))
+    invalidateItemTotals()
+    regroup()
+  })
+  ipcMain.handle('items:purgeAllTrashed', () => {
+    const count = purgeAllTrashed()
+    invalidateItemTotals()
+    regroup()
+    return count
+  })
+  ipcMain.handle('items:stack', (_e, ids: number[]) => createStack(sanitizeIds(ids)))
   ipcMain.handle('items:unstack', (_e, stackId: number) => {
     unstack(stackId)
     regroup()
@@ -422,7 +540,11 @@ export function registerIpc(): void {
     await clipboard.write([item])
     return true
   })
-  ipcMain.handle('items:rescan', () => rescan())
+  ipcMain.handle('items:rescan', async () => {
+    const result = await rescan()
+    invalidateItemTotals()
+    return result
+  })
   ipcMain.handle('stats:get', () => stats())
 
   ipcMain.handle('tags:list', () => listTags())
@@ -487,7 +609,16 @@ export function registerIpc(): void {
   )
 
   ipcMain.handle('folders:list', () => listFolders())
-  ipcMain.handle('folders:create', (_e, name: string) => createFolder(name))
+  ipcMain.handle('folders:create', (_e, name: string, parentId?: number | null) =>
+    createFolder(name, parentId ?? null)
+  )
+  ipcMain.handle('folders:rename', (_e, id: number, name: string) => renameFolder(id, name))
+  ipcMain.handle('folders:move', (_e, id: number, parentId: number | null, index: number) =>
+    moveFolder(id, parentId ?? null, index)
+  )
+  ipcMain.handle('folders:cover', (_e, id: number, itemId: number | null) =>
+    setFolderCover(id, itemId ?? null)
+  )
   ipcMain.handle('folders:delete', (_e, id: number) => deleteFolder(id))
   ipcMain.handle('folders:add', (_e, itemIds: number[], folderId: number) =>
     addToFolder(itemIds, folderId)
@@ -503,15 +634,7 @@ export function registerIpc(): void {
   ipcMain.handle('pick:defaults', () => getPickDefaults())
 
   ipcMain.handle('pick:export', async (_e, input: PickExportInput) => {
-    const raw = input ?? ({} as PickExportInput)
-    const request: PickExportInput = {
-      itemIds: Array.isArray(raw.itemIds) ? raw.itemIds : [],
-      title: String(raw.title ?? '').trim(),
-      client: String(raw.client ?? '').trim(),
-      watermark: String(raw.watermark ?? '').trim(),
-      maxEdge: Number(raw.maxEdge) || 1200,
-      watermarkStyle: normalizePickWatermark(raw.watermarkStyle)
-    }
+    const request = normalizePickExportInput(input)
     if (request.itemIds.length === 0) throw new Error('没有选中照片')
 
     const defaults = getPickDefaults()
@@ -519,7 +642,7 @@ export function registerIpc(): void {
       defaults.lastDir && existsSync(defaults.lastDir) ? defaults.lastDir : app.getPath('documents')
     const token = newPickToken()
     const picked = await dialog.showSaveDialog({
-      title: '保存客户选片页',
+      title: '保存浏览页',
       defaultPath: join(startDir, `${safeFileName(request.title || '选片')}-${token}.html`),
       filters: [{ name: '网页', extensions: ['html'] }]
     })
@@ -536,6 +659,53 @@ export function registerIpc(): void {
     })
     return result
   })
+
+  ipcMain.handle('pick:createDraft', (_e, input: PickDraftInput | undefined) =>
+    createPickDraft(input ?? { itemIds: [], title: '' })
+  )
+
+  ipcMain.handle('pick:updateSession', (_e, sessionId: number, patch: PickSessionPatch) =>
+    updatePickDraft(Number(sessionId), patch ?? {})
+  )
+
+  ipcMain.handle('pick:updateDraftItems', (_e, sessionId: number, itemIds: number[]) =>
+    updatePickDraftItems(Number(sessionId), Array.isArray(itemIds) ? itemIds : [])
+  )
+
+  /** 草稿单生成选片页：沿用同一单号，写回 file_path / sent_at，不新建会话 */
+  ipcMain.handle(
+    'pick:exportSession',
+    async (_e, sessionId: number, input: PickExportInput) => {
+      const session = getPickSessionSummary(Number(sessionId))
+      if (!session) throw new Error('选片单不存在')
+      if (session.sentAt) throw new Error('这单已经生成过选片页了')
+
+      const request = normalizePickExportInput(input)
+      const defaults = getPickDefaults()
+      const startDir =
+        defaults.lastDir && existsSync(defaults.lastDir) ? defaults.lastDir : app.getPath('documents')
+      const picked = await dialog.showSaveDialog({
+        title: '保存浏览页',
+        defaultPath: join(
+          startDir,
+          `${safeFileName(request.title || session.title || '选片')}-${session.token}.html`
+        ),
+        filters: [{ name: '网页', extensions: ['html'] }]
+      })
+      if (picked.canceled || !picked.filePath) return null
+
+      const win = activeWindow()
+      const result = await exportPickSessionById(session.id, request, picked.filePath, (progress) => {
+        win?.webContents.send('pick:export-progress', progress)
+      })
+      savePickDefaults({
+        lastDir: dirname(picked.filePath),
+        lastClient: request.client,
+        watermarkStyle: request.watermarkStyle
+      })
+      return result
+    }
+  )
 
   ipcMain.handle('pick:sessions', () => listPickSessions())
 
@@ -575,15 +745,19 @@ export function registerIpc(): void {
 
   ipcMain.handle('finals:export', async (_e, input: FinalsExportInput) => {
     const raw = input ?? ({} as FinalsExportInput)
+    const mode: FinalsExportInput['mode'] =
+      raw.mode === 'copy' || raw.mode === 'png' || raw.mode === 'webp' ? raw.mode : 'jpeg'
     const request: FinalsExportInput = {
       itemIds: Array.isArray(raw.itemIds) ? raw.itemIds.map(Number) : [],
-      mode: raw.mode === 'copy' ? 'copy' : 'jpeg',
+      mode,
       maxEdge: Number.isFinite(Number(raw.maxEdge)) ? Number(raw.maxEdge) : null,
       quality: Number(raw.quality) || 90,
       naming: raw.naming === 'prefix' ? 'prefix' : 'original',
       prefix: String(raw.prefix ?? '').trim(),
       watermark: String(raw.watermark ?? '').trim(),
-      watermarkStyle: normalizePickWatermark(raw.watermarkStyle)
+      watermarkStyle: normalizePickWatermark(raw.watermarkStyle),
+      keepMetadata: Boolean(raw.keepMetadata),
+      collision: raw.collision === 'skip' ? 'skip' : 'rename'
     }
     if (request.itemIds.length === 0) throw new Error('没有选中照片')
 
@@ -612,7 +786,9 @@ export function registerIpc(): void {
       naming: request.naming,
       prefix: request.prefix,
       watermark: request.watermark,
-      watermarkStyle: request.watermarkStyle
+      watermarkStyle: request.watermarkStyle,
+      keepMetadata: request.keepMetadata,
+      collision: request.collision
     })
     return result
   })
@@ -649,6 +825,196 @@ export function registerIpc(): void {
     // 新导入的目录要纳入监听范围
     restartWatcher()
     return result
+  })
+
+  /**
+   * Ctrl+V 粘贴剪贴板图片：截图类剪贴板没有磁盘路径，
+   * 先落成图库「粘贴图片」目录里的 PNG，再走现有导入流程，不另建入库逻辑。
+   */
+  ipcMain.handle('import:pasteImage', async () => {
+    const library = getLibraryPath()
+    if (!library) return { ok: false, reason: 'no-library' as const }
+
+    // Electron 45 的剪贴板是异步 W3C 风格 API：read() 拿到条目，再按 MIME 取 Blob
+    let image: { data: Buffer; ext: string } | null = null
+    try {
+      const entries = await clipboard.read()
+      for (const entry of entries) {
+        const mime = entry.types.find((type) => type.startsWith('image/'))
+        if (!mime) continue
+        const blob = (await entry.getType(mime)) as Blob
+        const buffer = Buffer.from(await blob.arrayBuffer())
+        const ext =
+          mime === 'image/jpeg'
+            ? 'jpg'
+            : mime === 'image/png'
+              ? 'png'
+              : mime === 'image/webp'
+                ? 'webp'
+                : mime === 'image/tiff'
+                  ? 'tif'
+                  : ''
+        // bmp / gif 这类图库不直接收的格式，统一转成 PNG
+        image = ext ? { data: buffer, ext } : { data: await sharp(buffer).png().toBuffer(), ext: 'png' }
+        break
+      }
+    } catch {
+      image = null
+    }
+    if (!image) return { ok: false, reason: 'empty' as const }
+
+    const dir = join(library, '粘贴图片')
+    mkdirSync(dir, { recursive: true })
+    const now = new Date()
+    const pad = (value: number, length = 2): string => String(value).padStart(length, '0')
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(
+      now.getHours()
+    )}${pad(now.getMinutes())}${pad(now.getSeconds())}-${pad(now.getMilliseconds(), 3)}`
+    const file = join(dir, `截图-${stamp}.${image.ext}`)
+    writeFileSync(file, image.data)
+
+    const win = activeWindow()
+    const result = await importPaths(
+      [file],
+      (progress) => {
+        win?.webContents.send('import:progress', progress)
+      },
+      true,
+      { recursive: false, skipDuplicates: true }
+    )
+    restartWatcher()
+    const row = getDb().prepare('SELECT id FROM items WHERE path = ?').get(file) as
+      | { id: number }
+      | undefined
+    return { ok: true, itemId: row?.id ?? null, added: result.added }
+  })
+
+  /**
+   * 拖图片网址进来：下载到图库「网页图片」目录，再走现有导入流程。
+   * 只接受 http/https 与图片 MIME，失败一律返回 reason，不抛异常。
+   */
+  ipcMain.handle('import:fromUrl', async (_e, raw: string): Promise<ImportUrlResult> => {
+    const library = getLibraryPath()
+    if (!library) return { ok: false, reason: 'no-library' }
+
+    let sourceUrl: URL
+    try {
+      sourceUrl = await assertPublicHttpUrl(String(raw))
+    } catch {
+      return { ok: false, reason: 'invalid-url' }
+    }
+
+    const maxBytes = 30 * 1024 * 1024
+    let buffer: Buffer
+    let mime = ''
+    try {
+      let response: Response | null = null
+      // 手动跟随重定向，每一跳都重新校验，防止 302 跳到内网
+      for (let hop = 0; hop <= 3; hop++) {
+        response = await fetch(sourceUrl, {
+          redirect: 'manual',
+          signal: AbortSignal.timeout(20000)
+        })
+        const location = response.headers.get('location')
+        if ([301, 302, 303, 307, 308].includes(response.status) && location) {
+          void response.body?.cancel()
+          sourceUrl = await assertPublicHttpUrl(new URL(location, sourceUrl).toString())
+          continue
+        }
+        break
+      }
+      if (!response || !response.ok) return { ok: false, reason: 'download-failed' }
+      mime = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase()
+      if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
+        return { ok: false, reason: 'not-image' }
+      }
+      if (Number(response.headers.get('content-length') || 0) > maxBytes) {
+        return { ok: false, reason: 'too-large' }
+      }
+      buffer = Buffer.from(await response.arrayBuffer())
+      if (buffer.length > maxBytes) return { ok: false, reason: 'too-large' }
+    } catch (error) {
+      return {
+        ok: false,
+        reason: error instanceof UnsafeUrlError ? 'invalid-url' : 'download-failed'
+      }
+    }
+
+    // 图库直接收的格式原样落盘；gif / bmp / avif 之类先转 PNG
+    const passthrough: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'image/tiff': 'tif'
+    }
+    let ext = passthrough[mime] ?? ''
+    if (!ext) {
+      try {
+        buffer = await sharp(buffer).png().toBuffer()
+        ext = 'png'
+      } catch {
+        return { ok: false, reason: 'not-image' }
+      }
+    }
+
+    let stem = ''
+    try {
+      stem = decodeURIComponent(basename(sourceUrl.pathname))
+    } catch {
+      stem = basename(sourceUrl.pathname)
+    }
+    stem = stem
+      .replace(/\.[^.]+$/, '')
+      .replace(/[\\/:*?"<>|]/g, '')
+      .trim()
+      .slice(0, 60)
+    if (!stem) stem = '网页图片'
+
+    const now = new Date()
+    const pad = (value: number, length = 2): string => String(value).padStart(length, '0')
+    const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(
+      now.getHours()
+    )}${pad(now.getMinutes())}${pad(now.getSeconds())}-${pad(now.getMilliseconds(), 3)}`
+
+    const dir = join(library, '网页图片')
+    mkdirSync(dir, { recursive: true })
+    const file = join(dir, `${stem}-${stamp}.${ext}`)
+    try {
+      writeFileSync(file, buffer)
+    } catch (error) {
+      void log.warn('import', '网址图片写入失败', { url: sourceUrl.toString(), error: String(error) })
+      return { ok: false, reason: 'download-failed' }
+    }
+
+    const win = activeWindow()
+    const result = await importPaths(
+      [file],
+      (progress) => {
+        win?.webContents.send('import:progress', progress)
+      },
+      true,
+      { recursive: false, skipDuplicates: true }
+    )
+    restartWatcher()
+    getDb().prepare('UPDATE items SET source_url = ? WHERE path = ?').run(sourceUrl.toString(), file)
+    const row = getDb().prepare('SELECT id FROM items WHERE path = ?').get(file) as
+      | { id: number }
+      | undefined
+    return { ok: true, itemId: row?.id ?? null, added: result.added }
+  })
+
+  /** 重试导入失败的记录：只重算已有行，不扫描磁盘、不新增记录 */
+  ipcMain.handle('import:retryFailed', async (): Promise<RetryFailedResult> => {
+    const rows = getDb()
+      .prepare('SELECT path FROM items WHERE error IS NOT NULL AND trashed = 0')
+      .all() as Array<{ path: string }>
+    if (rows.length === 0) return { total: 0, recovered: 0, failed: 0 }
+    const win = activeWindow()
+    const result = await reprocessPaths(rows.map((row) => row.path), (progress) => {
+      win?.webContents.send('import:progress', progress)
+    })
+    restartWatcher()
+    return { total: rows.length, recovered: result.refreshed, failed: result.failed }
   })
 
   ipcMain.handle('import:pause', () => {
@@ -697,7 +1063,7 @@ export function registerIpc(): void {
   ipcMain.handle('library:backup', async () => {
     const choice = await askDialog({
       title: '备份整个图库',
-      detail: '会把索引数据库（标签、评分、备注、文件夹、堆叠）打包成 zip，原图不会被复制。',
+      detail: '会把图库的数据文件（标签、评分、备注、文件夹、堆叠）打包成 zip，原图不会被复制。',
       confirmText: '开始备份',
       checkboxLabel: '同时打包缩略图与预览（体积更大，恢复后无需重新生成）',
       checkboxChecked: true
@@ -747,7 +1113,7 @@ export function registerIpc(): void {
       const confirm = await askDialog({
         kind: 'warning',
         title: '目标文件夹已经有图库',
-        detail: '继续会覆盖其中的 library.db 与缓存文件，请确认没有需要的旧数据。',
+        detail: '继续会覆盖其中的图库数据与缓存文件，请确认没有需要的旧数据。',
         confirmText: '覆盖',
         danger: true
       })
@@ -785,8 +1151,26 @@ export function registerIpc(): void {
   })
 
   ipcMain.handle('shell:showItem', (_e, path: string) => {
+    if (typeof path !== 'string' || !path) return
+    try {
+      // 只允许定位图库里真实登记过的文件，避免渲染层拿任意路径去探测
+      const row = getDb().prepare('SELECT 1 AS ok FROM items WHERE path = ?').get(path)
+      if (!row) return
+    } catch {
+      return
+    }
     shell.showItemInFolder(path)
   })
+
+  // 灯箱全屏：不传参数时按当前状态取反，返回切换后的结果
+  ipcMain.handle('window:setFullScreen', (_e, value?: boolean) => {
+    const win = activeWindow()
+    if (!win) return false
+    const next = typeof value === 'boolean' ? value : !win.isFullScreen()
+    win.setFullScreen(next)
+    return next
+  })
+  ipcMain.handle('window:isFullScreen', () => activeWindow()?.isFullScreen() ?? false)
 
   // Alt + 拖拽卡片：交给系统原生拖拽，可直接拖到资源管理器 / 其它应用
   ipcMain.on('shell:startDrag', (event, itemId: number) => {
@@ -809,12 +1193,17 @@ export function registerIpc(): void {
     })
     if (picked.canceled || !picked.filePaths[0]) return null
     const dir = picked.filePaths[0]
+    rememberPickedPath(dir)
     const plan = await buildRelocatePlan(dir)
     rememberRelocateDir(dir)
     return plan
   })
 
-  ipcMain.handle('relocate:apply', (_e, pairs: RelocatePair[]) => applyRelocate(pairs ?? []))
+  ipcMain.handle('relocate:apply', (_e, pairs: RelocatePair[]) => {
+    const result = applyRelocate(pairs ?? [])
+    invalidateItemTotals()
+    return result
+  })
 
   ipcMain.handle('gear:list', () => listGear())
   ipcMain.handle('gear:save', (_e, item: GearSpec & { id?: string }) => saveGear(item))
@@ -851,6 +1240,74 @@ export function registerIpc(): void {
     const next = saveSkin(id)
     applySkinNative(next)
     return next
+  })
+
+  ipcMain.handle('settings:useCase:get', () => getUseCase())
+
+  ipcMain.handle('settings:useCase:save', (_e, value: AppUseCase) => saveUseCase(value))
+
+  ipcMain.handle('settings:grownFeatures:get', () => getGrownFeatures())
+
+  ipcMain.handle('settings:grownFeatures:save', (_e, features: GrownFeature[]) =>
+    saveGrownFeatures(features)
+  )
+
+  ipcMain.handle('app:info', () => {
+    const userData = app.getPath('userData')
+    return {
+      version: app.getVersion(),
+      userData,
+      modelsDir: join(userData, 'models')
+    }
+  })
+
+  ipcMain.handle('update:status', () => updateStatus())
+  ipcMain.handle('update:check', () => checkForUpdates())
+  ipcMain.handle('update:install', () => quitAndInstall())
+  // 状态变化（检查中 / 下载进度 / 下载完成）主动推给设置页
+  onUpdateStatus((next) => {
+    activeWindow()?.webContents.send('update:status', next)
+  })
+
+  ipcMain.handle('settings:export', async () => {
+    const picked = await dialog.showSaveDialog({
+      title: '导出配置',
+      defaultPath: join(app.getPath('documents'), 'lunaris-settings.json'),
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (picked.canceled || !picked.filePath) return null
+    return exportSettings(picked.filePath)
+  })
+
+  ipcMain.handle('settings:import', async () => {
+    const picked = await dialog.showOpenDialog({
+      title: '导入配置',
+      properties: ['openFile'],
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (picked.canceled || !picked.filePaths[0]) return null
+    return importSettings(picked.filePaths[0])
+  })
+
+  ipcMain.handle('shell:openPath', async (_e, path: string) => {
+    if (typeof path !== 'string' || !path || !existsSync(path)) {
+      throw new Error('路径不可用')
+    }
+    const library = getLibraryPath()
+    const index = getIndexPath()
+    const roots = [
+      app.getPath('userData'),
+      join(app.getPath('userData'), 'models'),
+      library,
+      index,
+      library ? dirname(library) : ''
+    ].filter(Boolean)
+    if (!roots.some((root) => isInside(root, path))) {
+      throw new Error('只能打开应用自己的数据目录')
+    }
+    if (isBlockedExecutable(path)) throw new Error('不能打开可执行文件')
+    const error = await shell.openPath(path)
+    if (error) throw new Error(error)
   })
 
   ipcMain.handle('settings:layout:get', () => getLayout())
@@ -922,12 +1379,14 @@ export function registerIpc(): void {
     cancelClipIndex()
   })
 
-  ipcMain.handle('clip:searchText', (_e, query: string, filter: FilterState, limit?: number) =>
-    searchByText(query, filter ?? {}, limit ?? 200)
+  ipcMain.handle(
+    'clip:searchText',
+    (_e, query: string, filter: FilterState, limit?: number, offset?: number) =>
+      searchByText(query, filter ?? {}, limit ?? 200, offset ?? 0)
   )
 
-  ipcMain.handle('clip:similar', (_e, itemId: number, limit?: number) =>
-    searchSimilar(itemId, limit ?? 200)
+  ipcMain.handle('clip:similar', (_e, itemId: number, limit?: number, offset?: number) =>
+    searchSimilar(itemId, limit ?? 200, offset ?? 0)
   )
 
   ipcMain.handle('clip:download', async (_e, modelId?: EmbeddingModelId) => {
@@ -973,10 +1432,16 @@ export function registerIpc(): void {
 
   // 大模型：渲染层只碰状态与能力调用，密钥始终留在主进程
   ipcMain.handle('llm:status', () => getLlmStatus())
-  ipcMain.handle('llm:config:save', (_e, patch: Partial<LlmConfig>) => updateLlmConfig(patch ?? {}))
-  ipcMain.handle('llm:key:save', (_e, key: string) => saveApiKey(String(key ?? '')))
-  ipcMain.handle('llm:key:clear', () => removeApiKey())
-  ipcMain.handle('llm:test', () => testConnection())
+  ipcMain.handle('llm:settings:save', (_e, patch: Partial<LlmSettings>) =>
+    updateLlmConfig(patch ?? {})
+  )
+  ipcMain.handle('llm:key:save', (_e, modelId: string, key: string) =>
+    saveApiKey(String(modelId ?? ''), String(key ?? ''))
+  )
+  ipcMain.handle('llm:key:clear', (_e, modelId: string) => removeApiKey(String(modelId ?? '')))
+  ipcMain.handle('llm:test', (_e, modelId?: string) =>
+    testConnection(modelId ? String(modelId) : undefined)
+  )
   // 用信封返回：IPC 抛出的 Error 会丢掉 code，渲染层就没法区分"未配置"和"限流"
   const envelope = async <T>(run: () => Promise<T>): Promise<LlmRunOutcome> => {
     try {

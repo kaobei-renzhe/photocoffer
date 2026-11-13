@@ -4,6 +4,7 @@ import { ArrowLeft, Camera, Folder as FolderIcon, Images, Plus, RefreshCw, Trash
 import type { Facet, FacetValue, Folder, Item, Tag } from '@shared/types'
 import { photoUrl, thumbUrl } from './lib/format'
 import { inAiScope, outOfScopeText, type AiScope } from './lib/aiScope'
+import { modLabel } from './lib/platform'
 import Lightbox from './components/Lightbox'
 import PhotoInspector from './components/inspector/PhotoInspector'
 
@@ -76,7 +77,7 @@ export default function PortraitWorkspace({
   }, [picked, folderId])
 
   useEffect(() => {
-    void loadFacets().catch((error) => setMessage(`读取维度失败：${(error as Error).message}`))
+    void loadFacets().catch((error) => setMessage(`读取分类失败：${(error as Error).message}`))
   }, [loadFacets])
 
   useEffect(() => {
@@ -190,13 +191,13 @@ export default function PortraitWorkspace({
       setCreatingFacet(false)
       await loadFacets()
     } catch (error) {
-      setMessage(`新建维度失败：${(error as Error).message}`)
+      setMessage(`新建分类失败：${(error as Error).message}`)
     }
   }
 
   const removeFacet = async (facet: Facet): Promise<void> => {
     const ok = await window.api.confirm(
-      `删除维度「${facet.name}」？`,
+      `删除分类「${facet.name}」？`,
       '只解除标签归属，照片上的标记与标签本身都会保留，之后可以在标签里继续用。'
     )
     if (!ok) return
@@ -266,7 +267,7 @@ export default function PortraitWorkspace({
         <button
           className="btn h-7 px-2 text-[11.5px]"
           onClick={() => void Promise.all([loadItems(), loadFacets(), loadFolders()])}
-          title="重新读取文件夹、维度与照片"
+          title="重新读取文件夹、分类与照片"
         >
           <RefreshCw size={12} /> 刷新
         </button>
@@ -349,7 +350,7 @@ export default function PortraitWorkspace({
                   <button
                     className="w-5 h-5 rounded grid place-items-center text-[var(--faint)] hover:text-[var(--danger-text)] hover:bg-[var(--panel-2)]"
                     onClick={() => void removeFacet(facet)}
-                    title="删除维度"
+                    title="删除分类"
                   >
                     <Trash2 size={11} />
                   </button>
@@ -408,7 +409,7 @@ export default function PortraitWorkspace({
                 className="input h-6 text-[11px] min-w-0 flex-1"
                 value={facetDraft}
                 autoFocus
-                placeholder="维度名，如 道具"
+                placeholder="分类名，如 道具"
                 onChange={(e) => setFacetDraft(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void addFacet()
@@ -424,7 +425,7 @@ export default function PortraitWorkspace({
               className="btn btn-ghost h-7 px-2 text-[11.5px] w-full justify-center"
               onClick={() => setCreatingFacet(true)}
             >
-              <Plus size={12} /> 新建维度
+              <Plus size={12} /> 新建分类
             </button>
           )}
         </aside>
@@ -438,7 +439,7 @@ export default function PortraitWorkspace({
               <div className="text-center text-[12px] text-[var(--faint)] max-w-[300px] leading-5">
                 当前条件下没有照片。
                 <br />
-                换几个维度取值，或先在图库里导入人像。
+                换几个分类取值，或先在图库里导入人像。
               </div>
             </div>
           ) : (
@@ -498,9 +499,9 @@ export default function PortraitWorkspace({
         <aside className="flex w-[306px] min-h-0 shrink-0 flex-col border-l border-[var(--border)]">
           {!current ? (
             <div className="p-3 text-[11.5px] leading-5 text-[var(--faint)]">
-              点一张照片查看细节，Ctrl / Cmd 点可选多张。
+              点一张照片查看细节，{modLabel} 点可选多张。
               <br />
-              选中后在下方按维度打标，多选时批量生效。
+              选中后在下方按分类打标，多选时批量生效。
             </div>
           ) : (
             <>
@@ -556,6 +557,8 @@ export default function PortraitWorkspace({
             void loadTags()
           }}
           onPushUndo={() => undefined}
+          // 人像工作台有自己的操作区，右键菜单只在主图库 / 灯箱里提供
+          onContextMenu={() => undefined}
           aiReady={aiReady}
           canAsk={canAsk}
           aiScope={aiScope}

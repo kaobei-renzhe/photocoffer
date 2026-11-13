@@ -1,7 +1,8 @@
 import { cpSync, existsSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { BrowserWindow, app, nativeTheme, net, protocol } from 'electron'
+import { cp, mkdir, rename, rm } from 'node:fs/promises'
+import { join, sep } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { BrowserWindow, app, nativeTheme, net, protocol, shell } from 'electron'
 import { registerIpc, stopLibraryWatcher } from './ipc'
 import { getLightboxFile, thumbPathFor } from './repo'
 import { ensureThumb, pruneHighCache, touchHighThumb } from './thumbs'
@@ -10,6 +11,11 @@ import { closeLibrary } from './db'
 import { getSkin, getTheme } from './settings'
 import { log } from './logger'
 import { installCrashGuards } from './crash'
+import { installAppMenu, isMac, platformName } from './platform'
+import { scheduleUpdateCheck } from './updater'
+import { isInside } from './pathGuard'
+import { EMBEDDING_MODELS, modelDirFor, resolveModelDir } from './clip/models'
+import type { EmbeddingModelId } from '../shared/types'
 import { SKINS } from '../shared/skins'
 
 protocol.registerSchemesAsPrivileged([
@@ -28,11 +34,72 @@ installCrashGuards()
 
 function parseId(request: Request): number {
   const url = new URL(request.url)
-  return Number(url.pathname.replace(/^\/+/, ''))
+  const id = Number(url.pathname.replace(/^\/+/, ''))
+  return Number.isInteger(id) && id > 0 ? id : 0
+}
+
+function isAppRendererUrl(target: string): boolean {
+  const devUrl = process.env['ELECTRON_RENDERER_URL']
+  if (devUrl && (target === devUrl || target.startsWith(`${devUrl}/`))) return true
+  if (!target.startsWith('file://')) return false
+  try {
+    return isInside(join(__dirname, '../renderer'), fileURLToPath(new URL(target)))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 渲染层被注入时，最危险的是把主窗导航到外站，或者开新窗口拿到 preload 能力。
+ * 这里统一拦掉：只允许应用自己的页面导航，外链交给系统浏览器。
+ */
+function installNavigationGuards(): void {
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('will-navigate', (event, target) => {
+      if (!isAppRendererUrl(target)) {
+        event.preventDefault()
+        void log.warn('security', '已拦截窗口导航', { target })
+      }
+    })
+    contents.setWindowOpenHandler(({ url }) => {
+      try {
+        const parsed = new URL(url)
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          void shell.openExternal(url)
+        }
+      } catch {
+        /* 不是合法 URL 就什么都不做 */
+      }
+      return { action: 'deny' }
+    })
+  })
 }
 
 function notFound(): Response {
   return new Response('Not found', { status: 404 })
+}
+
+/**
+ * 缩略图/原图路径缓存：一屏几十张卡片会反复请求同一批 id，
+ * 每次都查库 + 三次 existsSync 太浪费；命中后仍会检查文件还在不在。
+ */
+const resolvedPaths = new Map<string, string>()
+const RESOLVED_PATH_MAX = 4000
+
+function recallPath(key: string): string | null {
+  const file = resolvedPaths.get(key)
+  if (!file) return null
+  if (existsSync(file)) return file
+  resolvedPaths.delete(key)
+  return null
+}
+
+function rememberPath(key: string, file: string): void {
+  if (resolvedPaths.size >= RESOLVED_PATH_MAX) {
+    const oldest = resolvedPaths.keys().next().value
+    if (oldest) resolvedPaths.delete(oldest)
+  }
+  resolvedPaths.set(key, file)
 }
 
 function currentSkin() {
@@ -80,7 +147,8 @@ function createWindow(): void {
   }
 }
 
-const debugPort = process.env.IMAGENEST_DEBUG_PORT
+// 调试端口只在未打包时开放：正式版不能被外部环境变量打开 CDP
+const debugPort = app.isPackaged ? undefined : process.env.IMAGENEST_DEBUG_PORT
 if (debugPort) app.commandLine.appendSwitch('remote-debugging-port', debugPort)
 
 const customUserData = process.env.IMAGENEST_USER_DATA ?? process.env.LUNARIS_USER_DATA
@@ -118,6 +186,34 @@ function migrateLegacyUserData(): void {
 if (customUserData) app.setPath('userData', customUserData)
 else migrateLegacyUserData()
 
+/**
+ * 改名时特意没搬 models 目录（183 MB 复制不划算），一直靠 candidates() 的遗留目录回退读。
+ * 旧目录一旦被清理软件当残留扫掉，用户就要重下模型；窗口起来后在后台把它搬到当前数据目录。
+ */
+async function migrateModelDir(): Promise<void> {
+  const appData = app.getPath('appData')
+  const targetRoot = join(app.getPath('userData'), 'models')
+  const legacyRoot = appData + sep
+
+  for (const id of Object.keys(EMBEDDING_MODELS) as EmbeddingModelId[]) {
+    const target = modelDirFor(id)
+    const source = resolveModelDir(id)
+    if (!source || source === target) continue
+    // 只搬旧应用目录里的模型；仓库内开发用模型和 IMAGENEST_* 指定的目录都不动
+    if (!source.startsWith(legacyRoot)) continue
+
+    await mkdir(targetRoot, { recursive: true })
+    try {
+      await rename(source, target)
+    } catch {
+      // 跨盘会抛 EXDEV；目标已有空目录时 rename 也会失败，复制后删除
+      await cp(source, target, { recursive: true, force: true })
+      await rm(source, { recursive: true, force: true })
+    }
+    void log.info('clip', '模型已迁到当前数据目录', { id, from: source, to: target })
+  }
+}
+
 app.whenReady().then(() => {
   void log.info('app', '启动', {
     version: app.getVersion(),
@@ -127,22 +223,35 @@ app.whenReady().then(() => {
   const skin = currentSkin()
   nativeTheme.themeSource = skin.mode === 'auto' ? getTheme() : skin.mode
 
+  // mac 上没有应用菜单，输入框里的 ⌘C / ⌘V / ⌘A / ⌘Z 会全部失效
+  installAppMenu()
+  installNavigationGuards()
+
   protocol.handle('thumb', async (request) => {
     try {
       const id = parseId(request)
+      if (!id) return notFound()
       const raw = new URL(request.url).searchParams.get('q')
       const quality = isThumbQuality(raw) ? raw : 'mid'
+      const cacheKey = `thumb:${quality}:${id}`
+      const touchHigh = (file: string): Promise<Response> => {
+        if (quality === 'high') {
+          touchHighThumb(id)
+          void pruneHighCache()
+        }
+        return net.fetch(pathToFileURL(file).toString())
+      }
+      const cached = recallPath(cacheKey)
+      if (cached) return touchHigh(cached)
       // 三档都按需补：高档是常态，中/低档只在缓存被清理或缺失时才真正生成
       await ensureThumb(id, quality)
       // 高清还没生成好 / 小图缺失时逐级回退，界面不会出现空白
       for (const fallback of [quality, 'mid', 'low'] as const) {
         const file = thumbPathFor(id, fallback)
         if (existsSync(file)) {
-          if (fallback === 'high') {
-            touchHighThumb(id)
-            void pruneHighCache()
-          }
-          return net.fetch(pathToFileURL(file).toString())
+          // 只在命中请求档位时缓存：回退档位缓存住会导致高清新生成后还一直用旧图
+          if (fallback === quality) rememberPath(cacheKey, file)
+          return touchHigh(file)
         }
       }
       return notFound()
@@ -154,8 +263,15 @@ app.whenReady().then(() => {
   protocol.handle('photo', async (request) => {
     try {
       const id = parseId(request)
+      if (!id) return notFound()
+      const cacheKey = `photo:${id}`
+      const cached = recallPath(cacheKey)
+      if (cached) return net.fetch(pathToFileURL(cached).toString())
       const file = getLightboxFile(id)
-      if (file && existsSync(file)) return net.fetch(pathToFileURL(file).toString())
+      if (file && existsSync(file)) {
+        rememberPath(cacheKey, file)
+        return net.fetch(pathToFileURL(file).toString())
+      }
       const fallback = thumbPathFor(id)
       if (existsSync(fallback)) return net.fetch(pathToFileURL(fallback).toString())
       return notFound()
@@ -166,6 +282,15 @@ app.whenReady().then(() => {
 
   registerIpc()
   createWindow()
+  // 配了更新地址才在启动 10 秒后静默检查；留空完全不联网
+  scheduleUpdateCheck()
+
+  // 模型可能有几百 MB：放到窗口创建之后异步搬，失败也不影响正常使用
+  if (!customUserData) {
+    void migrateModelDir().catch((error) => {
+      void log.warn('clip', '模型迁移失败，继续使用旧目录', { error: String(error) })
+    })
+  }
 
   // 上次退出时可能留下超限的高清缓存，等图库打开后收一次
   setTimeout(() => void pruneHighCache(true), 20000)
@@ -182,9 +307,9 @@ app.on('before-quit', () => {
 })
 
 app.on('window-all-closed', () => {
-  void log.info('app', '窗口全部关闭', { platform: process.platform })
+  void log.info('app', '窗口全部关闭', { platform: platformName })
   stopLibraryWatcher()
   closeLibrary()
   // macOS 的习惯是关掉窗口不退出应用，点 Dock 图标再打开
-  if (process.platform !== 'darwin') app.quit()
+  if (!isMac) app.quit()
 })

@@ -21,7 +21,7 @@ export const smartFilterCapability: LlmCapability<
   description: '用一句话描述想挑什么图，AI 帮你从一批里选出来，并说明理由',
   maxItems: 30,
   async run(ctx, input) {
-    const rule = String(input?.rule ?? '').trim()
+    const rule = String(input?.rule ?? '').trim().slice(0, 2000)
     if (!rule) throw new LlmError('bad_request', '请先写下筛选规则')
     const ids = [...new Set((input.itemIds ?? []).filter((id) => Number.isInteger(id)))]
     if (ids.length === 0) throw new LlmError('bad_request', '没有可筛选的照片')

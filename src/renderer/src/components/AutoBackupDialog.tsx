@@ -152,7 +152,7 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
           </div>
 
           <div className="text-[11px] text-[var(--faint)] leading-4">
-            自动备份只打包索引数据库（标签、评分、备注、文件夹、堆叠），不包含原图与缩略图，体积很小。
+            自动备份只打包图库的数据文件（标签、评分、备注、文件夹、堆叠），不包含原图与缩略图，体积很小。
           </div>
         </div>
 

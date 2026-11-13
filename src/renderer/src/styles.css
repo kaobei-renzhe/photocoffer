@@ -1,16 +1,21 @@
 @import 'tailwindcss';
 
+@theme {
+  /* 圆角只留两档：控件 8px（rounded-lg），面板与卡片 10px（rounded-xl） */
+  --radius-xl: 10px;
+}
+
 :root {
   color-scheme: dark;
   --bg: #0b0d11;
-  --panel: #101319;
-  --panel-2: #151922;
-  --panel-3: #1c212b;
+  --panel: #161a22;
+  --panel-2: #1a1f28;
+  --panel-3: #202631;
   --border: #232936;
   --border-strong: #2f3746;
   --text: #e7ebf2;
   --muted: #8b94a7;
-  --faint: #5b6474;
+  --faint: #798497;
   --accent: #7aa2f7;
   --accent-2: #9dbcff;
   --accent-soft: #182338;
@@ -37,7 +42,7 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg: #f5f6f9;
+  --bg: #eff1f5;
   --panel: #ffffff;
   --panel-2: #f2f4f8;
   --panel-3: #e9edf4;
@@ -45,7 +50,7 @@
   --border-strong: #cfd6e0;
   --text: #1b2029;
   --muted: #5f6a7d;
-  --faint: #8d96a6;
+  --faint: #6b7689;
   --accent: #3f6fd8;
   --accent-2: #2f5fc4;
   --accent-soft: #e8effc;
@@ -62,7 +67,7 @@
   --warn: #96631a;
   --warn-soft: #fdf3e0;
   --warn-border: #e7d3ac;
-  --star: #d99a2b;
+  --star: #be8622;
   --stage: #eceff4;
   --scroll-thumb: #c4ccd8;
   --scroll-thumb-hover: #a8b3c3;
@@ -76,14 +81,14 @@
 :root[data-skin='eclipse'] {
   color-scheme: dark;
   --bg: #09070f;
-  --panel: #0d0a15;
-  --panel-2: #13101d;
-  --panel-3: #1a1626;
+  --panel: #1a1429;
+  --panel-2: #211a33;
+  --panel-3: #282040;
   --border: #201b2d;
   --border-strong: #2b243d;
   --text: #eceaf5;
   --muted: #958fae;
-  --faint: #655e7d;
+  --faint: #857d9f;
   --accent: #a78bfa;
   --accent-2: #c4b5fd;
   --accent-soft: #191333;
@@ -120,14 +125,14 @@
   color-scheme: dark;
   --bg: #05080f;
   /* 面板底色保持不透明，否则弹窗叠在遮罩上会透成一片 */
-  --panel: #0a1018;
+  --panel: #0f1824;
   --panel-2: rgba(255, 255, 255, 0.072);
   --panel-3: rgba(255, 255, 255, 0.1);
   --border: rgba(255, 255, 255, 0.09);
   --border-strong: rgba(255, 255, 255, 0.16);
   --text: #eaf0ff;
   --muted: #9aa7c4;
-  --faint: #64728f;
+  --faint: #74829f;
   --accent: #5eead4;
   --accent-2: #7dd3fc;
   --accent-soft: rgba(94, 234, 212, 0.12);
@@ -163,9 +168,6 @@
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
-:root[data-skin='aurora'] .card-thumb.selected {
-  box-shadow: 0 0 0 1.5px rgba(94, 234, 212, 0.8), 0 0 24px rgba(94, 234, 212, 0.18);
-}
 :root[data-skin='aurora'] .btn,
 :root[data-skin='aurora'] .input,
 :root[data-skin='aurora'] .side-item {
@@ -175,15 +177,15 @@
 /* 墨岩：中性深灰、低饱和 */
 :root[data-skin='graphite'] {
   color-scheme: dark;
-  --bg: #0f1113;
+  --bg: #07080a;
   --panel: #141619;
-  --panel-2: #191c20;
-  --panel-3: #1f2328;
+  --panel-2: #1b1f24;
+  --panel-3: #23282e;
   --border: #23272d;
   --border-strong: #2e343c;
   --text: #e6e9ee;
   --muted: #8d949f;
-  --faint: #5d6570;
+  --faint: #76808e;
   --accent: #9aa7b8;
   --accent-2: #c3ccda;
   --accent-soft: #1d2228;
@@ -218,7 +220,7 @@
 /* 柔光：暖白纸感 + 陶土棕 */
 :root[data-skin='paper'] {
   color-scheme: light;
-  --bg: #f6f4f0;
+  --bg: #f0ece6;
   --panel: #fbfaf8;
   --panel-2: #f1ede6;
   --panel-3: #e9e3d9;
@@ -226,7 +228,7 @@
   --border-strong: #d8d0c2;
   --text: #26231f;
   --muted: #6f6a61;
-  --faint: #a39c90;
+  --faint: #787063;
   --accent: #b4764a;
   --accent-2: #9a5f39;
   --accent-soft: #f2e7dc;
@@ -243,7 +245,7 @@
   --warn: #96631a;
   --warn-soft: #fdf3e0;
   --warn-border: #e7d3ac;
-  --star: #d99a2b;
+  --star: #ba8321;
   --stage: #eee9e1;
   --scroll-thumb: #d6cdc0;
   --scroll-thumb-hover: #c4b8a8;
@@ -254,9 +256,6 @@
   border-radius: 4px;
   box-shadow: 0 6px 18px rgba(60, 45, 30, 0.07);
 }
-:root[data-skin='paper'] .card-thumb.selected {
-  box-shadow: 0 0 0 2px var(--accent), 0 10px 26px rgba(60, 45, 30, 0.12);
-}
 :root[data-skin='paper'] .btn,
 :root[data-skin='paper'] .input {
   border-radius: 8px;
@@ -265,7 +264,7 @@
 /* 雾蓝：冷调浅色、清透 */
 :root[data-skin='mist'] {
   color-scheme: light;
-  --bg: #f2f6fb;
+  --bg: #ebf2f9;
   --panel: #ffffff;
   --panel-2: #eef3f9;
   --panel-3: #e4ebf4;
@@ -273,7 +272,7 @@
   --border-strong: #c8d5e4;
   --text: #1c2633;
   --muted: #5f7085;
-  --faint: #93a3b6;
+  --faint: #637892;
   --accent: #4f7fd4;
   --accent-2: #3d6cc0;
   --accent-soft: #e8effb;
@@ -290,7 +289,7 @@
   --warn: #96631a;
   --warn-soft: #fdf3e0;
   --warn-border: #e7d3ac;
-  --star: #d99a2b;
+  --star: #be8622;
   --stage: #e9eff7;
   --scroll-thumb: #c4d1e0;
   --scroll-thumb-hover: #aabcd2;
@@ -430,7 +429,7 @@ select.input {
   gap: 8px;
   height: 30px;
   padding: 0 8px;
-  border-radius: 7px;
+  border-radius: 8px;
   color: var(--muted);
   cursor: pointer;
   font-size: 12.5px;
@@ -454,19 +453,13 @@ select.input {
 .section-title {
   display: flex;
   align-items: center;
-  height: 26px;
+  height: 28px;
   padding: 0 8px;
   font-size: 11px;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   color: var(--faint);
   text-transform: uppercase;
-}
-
-.tag-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  flex: none;
 }
 
 .card-thumb {
@@ -474,7 +467,12 @@ select.input {
   overflow: hidden;
   background: var(--panel-2);
   position: relative;
-  transition: box-shadow 0.15s ease;
+  box-shadow: 0 1px 2px color-mix(in srgb, #000 12%, transparent);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.card-thumb:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px color-mix(in srgb, #000 20%, transparent);
 }
 .card-thumb img {
   width: 100%;
@@ -482,8 +480,10 @@ select.input {
   object-fit: contain;
   display: block;
 }
-.card-thumb.selected {
-  box-shadow: 0 0 0 2px var(--accent);
+:root[data-skin='aurora'] .card-thumb:hover,
+:root[data-skin='paper'] .card-thumb:hover,
+:root[data-skin='mist'] .card-thumb:hover {
+  box-shadow: 0 10px 26px color-mix(in srgb, #000 24%, transparent);
 }
 
 .stars {

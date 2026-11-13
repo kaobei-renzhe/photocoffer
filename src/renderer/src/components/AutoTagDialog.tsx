@@ -118,7 +118,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="text-[11.5px] text-[var(--muted)] leading-5">
-            用本地语义模型判断图片属于哪一类，结果会写成普通标签，可以照常筛选、改名、删除。
+            用本地识图模型给照片分类，结果就是普通标签，能照常筛选和删除。
             目前{' '}
             {status
               ? `使用 ${status.modelLabel} · 已索引 ${status.indexed}/${status.total} 张，已自动分类 ${status.tagged} 张`
@@ -127,7 +127,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
 
           {status && status.indexed < status.total && (
             <div className="rounded-lg border border-[var(--warn-border)] bg-[var(--warn-soft)] px-2.5 py-2 text-[11.5px] text-[var(--warn)]">
-              还有 {status.total - status.indexed} 张图片没有语义索引，它们不会参与分类。先在侧栏点「语义索引」补齐。
+              还有 {status.total - status.indexed} 张没识图，不会参与分类。先在侧栏点「语义索引」补齐。
             </div>
           )}
 
@@ -240,7 +240,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
           )}
 
           <div className="text-[11px] text-[var(--faint)] leading-4">
-            每张图只会归到一个最相似的类目；只对已建立语义索引的图片生效，重复运行会按新阈值重新归类，不会重复打标签。
+            每张照片只归到一个最像的分类。可重复运行，不会重复打标签。
           </div>
         </div>
 

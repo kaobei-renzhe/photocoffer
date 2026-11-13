@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BookOpen, ChevronRight, Copy, FolderPlus, Plus, ScanSearch, Star, X } from 'lucide-react'
 import type { Folder, Item, Tag } from '@shared/types'
 import { formatBytes, formatDate, thumbUrl } from '../../lib/format'
+import { altLabel, modLabel } from '../../lib/platform'
 import { Row, Section, type PushUndo } from './ui'
 
 export interface InfoTabProps {
@@ -248,7 +249,6 @@ export default function InfoTab({
               key={tag.id}
               className="inline-flex h-[22px] items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--panel-2)] pl-1.5 pr-1 text-[11.5px]"
             >
-              <span className="tag-dot" style={{ background: tag.color }} />
               {tag.name}
               <button
                 className="text-[var(--faint)] hover:text-[var(--danger)]"
@@ -393,7 +393,7 @@ export default function InfoTab({
       <Section title="备注 · 用途" compact={compact}>
         <textarea
           className="input h-[64px] w-full resize-none py-1.5 leading-5"
-          placeholder="客户要求、这张给谁用、拍摄备忘…"
+          placeholder="对方要求、这张给谁用、拍摄备忘…"
           value={note}
           onChange={(event) => setNote(event.target.value)}
           onBlur={() => void saveNote()}
@@ -406,7 +406,7 @@ export default function InfoTab({
           <button
             className="btn h-7 px-2 text-[11.5px]"
             onClick={() => void window.api.copyImage(item.id)}
-            title="把图片复制到剪贴板（Ctrl+C）"
+            title={`把图片复制到剪贴板（${modLabel}+C）`}
           >
             <Copy size={12} /> 复制图片
           </button>
@@ -418,7 +418,7 @@ export default function InfoTab({
           </button>
         </div>
         <div className="mt-1.5 text-[10.5px] leading-4 text-[var(--faint)]">
-          提示：按住 Alt 拖拽卡片，可以直接拖到资源管理器或其它应用
+          提示：按住 {altLabel} 拖拽卡片，可以直接拖到资源管理器或其它应用
         </div>
       </Section>
 

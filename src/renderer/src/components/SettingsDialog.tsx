@@ -1,28 +1,45 @@
 import { useEffect, useState } from 'react'
 import {
+  Camera,
   Check,
   Cpu,
+  Download,
   FileText,
+  FolderOpen,
   HardDrive,
   Image as ImageIcon,
+  Info,
   Monitor,
   Moon,
   Palette,
+  RefreshCw,
   Settings as SettingsIcon,
   Sparkles,
   Sun,
+  Upload,
   X
 } from 'lucide-react'
 import type {
+  AppInfo,
+  AppUseCase,
   EmbeddingModelId,
   EmbeddingModelInfo,
   Folder,
   LibraryStorage,
   ThemeMode,
+  UpdateStatus,
   XmpProgress,
   XmpSettings
 } from '@shared/types'
-import type { LlmConfig, LlmStatus, LlmTestResult } from '@shared/llm'
+import type {
+  LlmCapabilityId,
+  LlmModelEntry,
+  LlmProviderId,
+  LlmSettings,
+  LlmStatus,
+  LlmTestResult
+} from '@shared/llm'
+import { LLM_CAPABILITY_IDS, LLM_MODEL_PRESETS } from '@shared/llm'
 import { findSkin, SKINS, type SkinId } from '@shared/skins'
 import {
   THUMB_CACHE_LIMIT_DEFAULT,
@@ -34,13 +51,16 @@ import {
 import { formatBytes } from '../lib/format'
 
 /** 设置面板的左侧分类 */
-export type SettingsTab = 'appearance' | 'llm' | 'semantic' | 'storage'
+export type SettingsTab = 'appearance' | 'llm' | 'semantic' | 'storage' | 'about'
 
 interface SettingsDialogProps {
   theme: ThemeMode
   onChange: (mode: ThemeMode) => void
   skin: SkinId
   onSkin: (id: SkinId) => void
+  /** 使用方式：整理照片 / 拍片接单 */
+  useCase: AppUseCase
+  onUseCase: (value: AppUseCase) => void
   /** 瀑布流缩略图清晰度，改完立即生效 */
   thumbQuality: ThumbQualityPref
   onThumbQuality: (pref: ThumbQualityPref) => void
@@ -54,8 +74,9 @@ interface SettingsDialogProps {
 const TABS: Array<{ id: SettingsTab; label: string; hint: string; Icon: typeof Monitor }> = [
   { id: 'appearance', label: '外观', hint: '主题与界面风格', Icon: Palette },
   { id: 'llm', label: '大模型', hint: '服务商、密钥、能力开关', Icon: Sparkles },
-  { id: 'semantic', label: '语义索引', hint: '闲着时自动给照片建索引，方便搜图', Icon: Cpu },
-  { id: 'storage', label: '存储位置', hint: '索引与缓存放在哪', Icon: HardDrive }
+  { id: 'semantic', label: '语义索引', hint: '识图模型与自动识图', Icon: Cpu },
+  { id: 'storage', label: '存储位置', hint: '索引与缓存放在哪', Icon: HardDrive },
+  { id: 'about', label: '关于', hint: '版本与数据位置', Icon: Info }
 ]
 
 const THEME_OPTIONS: Array<{
@@ -69,11 +90,125 @@ const THEME_OPTIONS: Array<{
   { value: 'light', label: '浅色模式', hint: '亮色背景，白天看着更清爽', Icon: Sun }
 ]
 
+const USE_CASE_OPTIONS: Array<{
+  value: AppUseCase
+  label: string
+  hint: string
+  Icon: typeof Monitor
+}> = [
+  { value: 'manage', label: '整理照片', hint: '导入、搜索、打标签；摄影工作台先收进「更多」', Icon: ImageIcon },
+  { value: 'pro', label: '拍片接单', hint: '人像工作台、选片交付、客户反馈都放出来', Icon: Camera }
+]
+
+function PathRow({
+  label,
+  path,
+  emptyHint = '暂不可用',
+  onOpen
+}: {
+  label: string
+  path: string | null
+  emptyHint?: string
+  onOpen: (path: string) => void
+}) {
+  return (
+    <div className="flex items-start gap-2 px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="text-[10.5px] text-[var(--faint)]">{label}</div>
+        <div className="break-all text-[11px] leading-4 text-[var(--text)]">
+          {path ?? emptyHint}
+        </div>
+      </div>
+      {path && (
+        <button
+          className="btn btn-ghost h-6 px-1.5 shrink-0"
+          title="打开这个目录"
+          onClick={() => onOpen(path)}
+        >
+          <FolderOpen size={12} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+interface LlmModelDraft {
+  id: string | null
+  name: string
+  vendor: string
+  provider: LlmProviderId
+  baseUrl: string
+  model: string
+  vision: boolean
+  jsonMode: boolean
+  temperature: string
+  maxOutputTokens: string
+  timeoutSeconds: string
+}
+
+function emptyLlmDraft(presetId = 'openai'): LlmModelDraft {
+  const preset = LLM_MODEL_PRESETS.find((entry) => entry.id === presetId) ?? LLM_MODEL_PRESETS[0]
+  return {
+    id: null,
+    name: preset.label,
+    vendor: preset.vendor,
+    provider: preset.provider,
+    baseUrl: preset.baseUrl,
+    model: preset.model,
+    vision: preset.vision,
+    jsonMode: preset.jsonMode,
+    temperature: '',
+    maxOutputTokens: '',
+    timeoutSeconds: '60'
+  }
+}
+
+function draftFromModel(model: LlmModelEntry): LlmModelDraft {
+  return {
+    id: model.id,
+    name: model.name,
+    vendor: model.vendor,
+    provider: model.provider,
+    baseUrl: model.baseUrl,
+    model: model.model,
+    vision: model.vision,
+    jsonMode: model.jsonMode,
+    temperature: model.temperature === null ? '' : String(model.temperature),
+    maxOutputTokens: model.maxOutputTokens === null ? '' : String(model.maxOutputTokens),
+    timeoutSeconds: String(Math.round(model.timeoutMs / 1000))
+  }
+}
+
+/** 关于页的更新状态文案；null 表示这次不用提示 */
+function updateHintText(status: UpdateStatus | null): string | null {
+  if (!status) return null
+  switch (status.state) {
+    case 'idle':
+      return null
+    case 'disabled':
+      return status.message ?? '没有配置更新地址'
+    case 'checking':
+      return '正在检查更新…'
+    case 'available':
+      return `发现新版本 ${status.version ?? ''}，开始下载…`
+    case 'downloading':
+      return `正在下载新版本 ${status.percent ?? 0}%`
+    case 'downloaded':
+      return `新版本 ${status.version ?? ''} 已下载，重启后生效`
+    case 'latest':
+      return '已是最新版本'
+    case 'error':
+      return '检查更新失败，稍后再试'
+  }
+}
+
 export default function SettingsDialog({
   theme,
   onChange,
   skin,
   onSkin,
+  useCase,
+  onUseCase,
   thumbQuality,
   onThumbQuality,
   folders,
@@ -93,12 +228,27 @@ export default function SettingsDialog({
   const [scopeFolders, setScopeFolders] = useState<number[] | null>(null)
   const [scoreBusy, setScoreBusy] = useState(false)
   const [llm, setLlm] = useState<LlmStatus | null>(null)
-  const [llmDraft, setLlmDraft] = useState({ baseUrl: '', model: '' })
-  const [keyDraft, setKeyDraft] = useState('')
-  const [keyBusy, setKeyBusy] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<LlmTestResult | null>(null)
+  /** 正在编辑的模型 id；'new' 表示添加表单 */
+  const [llmEditing, setLlmEditing] = useState<string | 'new' | null>(null)
+  const [llmForm, setLlmForm] = useState<LlmModelDraft>(() => emptyLlmDraft())
+  const [llmMsg, setLlmMsg] = useState<string | null>(null)
+  const [keyDrafts, setKeyDrafts] = useState<Record<string, string>>({})
+  const [keyBusyId, setKeyBusyId] = useState<string | null>(null)
+  const [testingId, setTestingId] = useState<string | null>(null)
+  const [llmTests, setLlmTests] = useState<Record<string, LlmTestResult | undefined>>({})
   const [storage, setStorage] = useState<LibraryStorage | null>(null)
+  /** 关于页：版本与数据位置 */
+  const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
+  /** 关于页：自动更新状态（没配更新地址时是 disabled） */
+  const [update, setUpdate] = useState<UpdateStatus | null>(null)
+  /** 打开目录失败的那一行显示原因 */
+  const [openError, setOpenError] = useState<string | null>(null)
+  /** 配置导出/导入的状态提示 */
+  const [transferMsg, setTransferMsg] = useState<string | null>(null)
+  const [transferError, setTransferError] = useState(false)
+  const [transferBusy, setTransferBusy] = useState<'export' | 'import' | null>(null)
+  /** 导入后需要重新载入界面才能应用主题与布局 */
+  const [needReload, setNeedReload] = useState(false)
   const [indexBusy, setIndexBusy] = useState(false)
   const [indexMsg, setIndexMsg] = useState<string | null>(null)
   const [thumbStats, setThumbStats] = useState<ThumbCacheStats | null>(null)
@@ -152,7 +302,92 @@ export default function SettingsDialog({
       .getXmpSettings()
       .then(setXmp)
       .catch(() => setXmp({ enabled: false, ignoreExternal: false }))
+    void window.api
+      .appInfo()
+      .then(setAppInfo)
+      .catch(() => setAppInfo(null))
+    void window.api
+      .updateStatus()
+      .then(setUpdate)
+      .catch(() => setUpdate(null))
   }, [])
+
+  // 下载进度由主进程推送，设置页打开时保持同步
+  useEffect(() => window.api.onUpdateStatus(setUpdate), [])
+
+  /** 关于页：手动检查更新；留空地址时主进程会回 disabled */
+  const checkUpdate = async (): Promise<void> => {
+    try {
+      setUpdate(await window.api.updateCheck())
+    } catch {
+      setUpdate({ state: 'error' })
+    }
+  }
+
+  /** 关于页：打开数据目录，失败就在面板里说明原因 */
+  const openDir = async (path: string): Promise<void> => {
+    setOpenError(null)
+    try {
+      await window.api.openPath(path)
+    } catch (error) {
+      setOpenError(
+        `打不开 ${path}：${String((error as Error).message).replace(
+          /^Error invoking remote method '[^']+': /,
+          ''
+        )}`
+      )
+    }
+  }
+
+  const errorText = (error: unknown): string =>
+    String((error as Error).message).replace(/^Error invoking remote method '[^']+': /, '')
+
+  /** 导出偏好设置（不含 API Key 与图库路径） */
+  const exportConfig = async (): Promise<void> => {
+    if (transferBusy) return
+    setTransferBusy('export')
+    setTransferMsg(null)
+    setTransferError(false)
+    setNeedReload(false)
+    try {
+      const result = await window.api.exportSettings()
+      if (!result) return
+      setTransferMsg(`已导出全部偏好与 ${result.gear} 台设备：${result.path}`)
+    } catch (error) {
+      setTransferError(true)
+      setTransferMsg(`导出失败：${errorText(error)}`)
+    } finally {
+      setTransferBusy(null)
+    }
+  }
+
+  /** 导入偏好设置：逐字段合并，不碰图库路径 */
+  const importConfig = async (): Promise<void> => {
+    if (transferBusy) return
+    setTransferBusy('import')
+    setTransferMsg(null)
+    setTransferError(false)
+    setNeedReload(false)
+    try {
+      const result = await window.api.importSettings()
+      if (!result) return
+      const skipped = result.skipped.length
+        ? `；跳过 ${result.skipped.length} 项（图库路径或无效设备）`
+        : ''
+      const key = result.needsKey
+        ? '。API Key 不随配置导出，请到「大模型」里重新填写'
+        : ''
+      setTransferMsg(
+        `已导入 ${result.imported} 项偏好、${result.gear} 台设备${skipped}${key}。主题与布局需要重新载入界面后生效。`
+      )
+      setNeedReload(true)
+    } catch (error) {
+      setTransferError(true)
+      setTransferMsg(`导入失败：${errorText(error)}`)
+    } finally {
+      setTransferBusy(null)
+    }
+  }
 
   useEffect(() => window.api.onXmpProgress(setXmpProgress), [])
 
@@ -224,9 +459,9 @@ export default function SettingsDialog({
       setXmp(next)
       setXmpMsg(
         patch.enabled === false
-          ? '已关闭 XMP 侧车，已有 .xmp 文件不会删除'
+          ? '已关闭，已有 .xmp 文件不会删除'
           : patch.enabled === true
-            ? '已开启 XMP 侧车，之后改星级/旗标/标签会自动写入'
+            ? '已开启，之后改星级/旗标/标签会自动写入'
             : '设置已保存'
       )
     } catch {
@@ -237,7 +472,7 @@ export default function SettingsDialog({
   const exportAllXmp = async (): Promise<void> => {
     if (xmpBusy) return
     const ok = await window.api.confirm(
-      '为所有照片写 XMP 侧车？',
+      '为所有照片写入 .xmp 文件？',
       '会在原图旁边生成 .xmp 文件，不改原图；RAW + JPEG 配对只写 RAW。图库很大时需要等一会儿。'
     )
     if (!ok) return
@@ -359,48 +594,278 @@ export default function SettingsDialog({
     }
   }
 
-  useEffect(() => {
+  const saveLlm = async (patch: Partial<LlmSettings>): Promise<void> => {
+    setLlm(await window.api.llmSaveSettings(patch))
+  }
+
+  const startAddModel = (): void => {
+    setLlmForm(emptyLlmDraft())
+    setLlmEditing('new')
+    setLlmMsg(null)
+  }
+
+  const startEditModel = (model: LlmModelEntry): void => {
+    setLlmForm(draftFromModel(model))
+    setLlmEditing(model.id)
+    setLlmMsg(null)
+  }
+
+  const patchForm = (patch: Partial<LlmModelDraft>): void =>
+    setLlmForm((prev) => ({ ...prev, ...patch }))
+
+  const commitModel = async (): Promise<void> => {
+    if (!llm || !llmEditing) return
+    const model = llmForm.model.trim()
+    if (!model) {
+      setLlmMsg('模型名称不能为空')
+      return
+    }
+    const id = llmForm.id ?? `m_${Date.now().toString(36)}`
+    const entry: LlmModelEntry = {
+      id,
+      name: llmForm.name.trim() || model,
+      vendor: llmForm.vendor.trim() || '自定义',
+      provider: llmForm.provider,
+      baseUrl: llmForm.baseUrl.trim(),
+      model,
+      vision: llmForm.vision,
+      jsonMode: llmForm.jsonMode,
+      temperature: llmForm.temperature.trim() === '' ? null : Number(llmForm.temperature),
+      maxOutputTokens:
+        llmForm.maxOutputTokens.trim() === '' ? null : Number(llmForm.maxOutputTokens),
+      contextTokens: null,
+      maxRetries: 2,
+      timeoutMs: Math.max(5, Number(llmForm.timeoutSeconds) || 60) * 1000
+    }
+    const exists = llm.settings.models.some((item) => item.id === id)
+    const models = exists
+      ? llm.settings.models.map((item) => (item.id === id ? entry : item))
+      : [...llm.settings.models, entry]
+    const currentDefault = llm.settings.models.find((item) => item.id === llm.settings.defaultModelId)
+    const defaultModelId =
+      !currentDefault || !currentDefault.model.trim() ? id : llm.settings.defaultModelId
+    await saveLlm({ models, defaultModelId })
+    setLlmEditing(null)
+    setLlmMsg(exists ? '模型已更新' : '模型已添加')
+  }
+
+  const removeModel = async (model: LlmModelEntry): Promise<void> => {
     if (!llm) return
-    setLlmDraft({ baseUrl: llm.config.baseUrl, model: llm.config.model })
-  }, [llm?.config.baseUrl, llm?.config.model])
-
-  const patchLlm = async (patch: Partial<LlmConfig>): Promise<void> => {
-    const next = await window.api.llmSaveConfig(patch)
-    setLlm(next)
+    const usedBy = llm.capabilities.filter((entry) => entry.modelId === model.id).map((entry) => entry.title)
+    if (usedBy.length > 0) {
+      const ok = await window.api.confirm(
+        `删除模型「${model.name}」？`,
+        `这些功能正在使用它：${usedBy.join('、')}。删除后会回退到默认模型。`
+      )
+      if (!ok) return
+    }
+    const models = llm.settings.models.filter((item) => item.id !== model.id)
+    const routing = { ...llm.settings.routing }
+    for (const id of LLM_CAPABILITY_IDS) {
+      if (routing[id] === model.id) delete routing[id]
+    }
+    const defaultModelId =
+      llm.settings.defaultModelId === model.id ? models[0]?.id ?? '' : llm.settings.defaultModelId
+    await saveLlm({ models, routing, defaultModelId })
+    if (llmEditing === model.id) setLlmEditing(null)
+    setLlmMsg('已删除模型')
   }
 
-  const saveLlmKey = async (): Promise<void> => {
-    if (!keyDraft.trim() || keyBusy) return
-    setKeyBusy(true)
+  const setDefaultModel = async (modelId: string): Promise<void> => {
+    await saveLlm({ defaultModelId: modelId })
+    setLlmMsg('已设为默认模型')
+  }
+
+  const saveModelKey = async (modelId: string): Promise<void> => {
+    const value = (keyDrafts[modelId] ?? '').trim()
+    if (!value || keyBusyId) return
+    setKeyBusyId(modelId)
     try {
-      setLlm(await window.api.llmSaveKey(keyDraft.trim()))
-      setKeyDraft('')
-      setTestResult(null)
+      setLlm(await window.api.llmSaveKey(modelId, value))
+      setKeyDrafts((prev) => ({ ...prev, [modelId]: '' }))
+      setLlmMsg('API Key 已保存')
     } finally {
-      setKeyBusy(false)
+      setKeyBusyId(null)
     }
   }
 
-  const clearLlmKey = async (): Promise<void> => {
-    setKeyBusy(true)
+  const clearModelKey = async (modelId: string): Promise<void> => {
+    setKeyBusyId(modelId)
     try {
-      setLlm(await window.api.llmClearKey())
-      setTestResult(null)
+      setLlm(await window.api.llmClearKey(modelId))
+      setLlmMsg('已清除 API Key')
     } finally {
-      setKeyBusy(false)
+      setKeyBusyId(null)
     }
   }
 
-  const runLlmTest = async (): Promise<void> => {
-    if (testing) return
-    setTesting(true)
+  const testModel = async (modelId: string): Promise<void> => {
+    if (testingId) return
+    setTestingId(modelId)
     try {
-      setTestResult(await window.api.llmTest())
+      const result = await window.api.llmTest(modelId)
+      setLlmTests((prev) => ({ ...prev, [modelId]: result }))
       setLlm(await window.api.llmStatus())
     } finally {
-      setTesting(false)
+      setTestingId(null)
     }
   }
+
+  const setRouting = async (capability: LlmCapabilityId, modelId: string): Promise<void> => {
+    if (!llm) return
+    const routing = { ...llm.settings.routing }
+    if (modelId) routing[capability] = modelId
+    else delete routing[capability]
+    await saveLlm({ routing })
+  }
+
+  const toggleCapability = async (capability: LlmCapabilityId): Promise<void> => {
+    if (!llm) return
+    await saveLlm({
+      capabilities: {
+        ...llm.settings.capabilities,
+        [capability]: !llm.settings.capabilities[capability]
+      }
+    })
+  }
+
+  /** 添加 / 编辑模型的表单；预设只在新增时出现 */
+  const renderModelForm = () => (
+    <div className="space-y-2">
+      {llmEditing === 'new' && (
+        <label className="block">
+          <span className="text-[10.5px] text-[var(--faint)]">厂商预设</span>
+          <select
+            className="input h-7 text-[11.5px] w-full mt-1"
+            value={LLM_MODEL_PRESETS.find((preset) => preset.baseUrl === llmForm.baseUrl)?.id ?? ''}
+            onChange={(event) => {
+              const preset = LLM_MODEL_PRESETS.find((entry) => entry.id === event.target.value)
+              if (!preset) return
+              setLlmForm((prev) => ({
+                ...prev,
+                name: preset.label,
+                vendor: preset.vendor,
+                provider: preset.provider,
+                baseUrl: preset.baseUrl,
+                model: preset.model,
+                vision: preset.vision,
+                jsonMode: preset.jsonMode
+              }))
+            }}
+          >
+            <option value="">自定义</option>
+            {LLM_MODEL_PRESETS.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="text-[10.5px] text-[var(--faint)]">显示名称</span>
+          <input
+            className="input h-7 text-[11.5px] w-full mt-1"
+            value={llmForm.name}
+            onChange={(event) => patchForm({ name: event.target.value })}
+            placeholder="例如 DeepSeek V3"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10.5px] text-[var(--faint)]">模型名</span>
+          <input
+            className="input h-7 text-[11.5px] w-full mt-1"
+            value={llmForm.model}
+            onChange={(event) => patchForm({ model: event.target.value })}
+            placeholder="例如 gpt-4o-mini / qwen-vl-max"
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-[1fr_90px] gap-2">
+        <label className="block">
+          <span className="text-[10.5px] text-[var(--faint)]">接口地址</span>
+          <input
+            className="input h-7 text-[11.5px] w-full mt-1"
+            value={llmForm.baseUrl}
+            onChange={(event) => patchForm({ baseUrl: event.target.value })}
+            placeholder="https://api.example.com/v1"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10.5px] text-[var(--faint)]">超时（秒）</span>
+          <input
+            type="number"
+            min={5}
+            max={300}
+            className="input h-7 text-[11.5px] w-full mt-1"
+            value={llmForm.timeoutSeconds}
+            onChange={(event) => patchForm({ timeoutSeconds: event.target.value })}
+          />
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="text-[10.5px] text-[var(--faint)]">温度（留空用推荐值）</span>
+          <input
+            type="number"
+            min={0}
+            max={2}
+            step={0.05}
+            className="input h-7 text-[11.5px] w-full mt-1"
+            value={llmForm.temperature}
+            onChange={(event) => patchForm({ temperature: event.target.value })}
+            placeholder="评分 0.2 / 研读 0.65"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10.5px] text-[var(--faint)]">单次回复长度（留空用推荐值）</span>
+          <input
+            type="number"
+            min={16}
+            max={32000}
+            step={64}
+            className="input h-7 text-[11.5px] w-full mt-1"
+            value={llmForm.maxOutputTokens}
+            onChange={(event) => patchForm({ maxOutputTokens: event.target.value })}
+            placeholder="评分 400 / 建议 800"
+          />
+        </label>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="flex cursor-pointer items-center gap-1.5">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+            checked={llmForm.vision}
+            onChange={(event) => patchForm({ vision: event.target.checked })}
+          />
+          <span className="text-[11px]">能看图</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-1.5">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-[var(--accent)]"
+            checked={llmForm.jsonMode}
+            onChange={(event) => patchForm({ jsonMode: event.target.checked })}
+          />
+          <span className="text-[11px]">支持 JSON 模式</span>
+        </label>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button className="btn btn-ghost h-7 px-2 text-[11.5px]" onClick={() => setLlmEditing(null)}>
+            取消
+          </button>
+          <button className="btn h-7 px-2.5 text-[11.5px]" onClick={() => void commitModel()}>
+            保存模型
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 
   const toggleAutoClip = async (): Promise<void> => {
     if (autoClip === null) return
@@ -648,6 +1113,39 @@ export default function SettingsDialog({
                     缩略图拉大或竖构图自动上高清；切换后立刻重新加载，偏好自动记住。
                   </div>
                 </div>
+
+                <div>
+                  <div className="text-[12.5px] mb-2">使用方式</div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {USE_CASE_OPTIONS.map(({ value, label, hint, Icon }) => {
+                      const active = useCase === value
+                      return (
+                        <button
+                          key={value}
+                          className={`rounded-lg border px-2.5 py-2.5 text-left transition-colors ${
+                            active
+                              ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                              : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
+                          }`}
+                          onClick={() => onUseCase(value)}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Icon size={14} color={active ? 'var(--accent-2)' : 'var(--muted)'} />
+                            <span
+                              className={`text-[12px] ${active ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'}`}
+                            >
+                              {label}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-[10.5px] leading-4 text-[var(--faint)]">{hint}</div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <div className="mt-2 text-[11px] leading-4 text-[var(--faint)]">
+                    「整理照片」只是把摄影入口收进侧栏的「更多」，用过一次后自动回到导航，功能不会少。
+                  </div>
+                </div>
               </>
             )}
 
@@ -665,167 +1163,33 @@ export default function SettingsDialog({
                 {!llm ? (
                   <div className="text-[11px] text-[var(--faint)]">读取配置中…</div>
                 ) : (
-                  <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2.5">
-                    <div className="flex items-start gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[12.5px]">启用大模型能力</div>
-                        <div className="text-[10.5px] leading-4 text-[var(--faint)] mt-0.5">
-                          默认关闭。关闭时相册里不会出现任何 AI 按钮，也不会发出网络请求；开启后也不会自己跑，
-                          只有你在相册里点 AI 按钮时才会调用，每次调用都会消耗你账户里的 token。
+                  <>
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3">
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0">
+                          <div className="text-[12.5px]">启用大模型能力</div>
+                          <div className="text-[10.5px] leading-4 text-[var(--faint)] mt-0.5">
+                            默认关闭。关闭后相册里不会出现 AI
+                            按钮，也不会联网；开启后只有你点 AI 按钮才会调用。
+                          </div>
                         </div>
-                      </div>
-                      <button
-                        className={`ml-auto mt-0.5 w-[38px] h-[21px] rounded-full relative shrink-0 transition-colors ${
-                          llm.config.enabled ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
-                        }`}
-                        onClick={() => void patchLlm({ enabled: !llm.config.enabled })}
-                        aria-pressed={llm.config.enabled}
-                        title={llm.config.enabled ? '关闭大模型能力' : '开启大模型能力'}
-                      >
-                        <span
-                          className={`absolute top-[2px] w-[17px] h-[17px] rounded-full bg-white transition-all ${
-                            llm.config.enabled ? 'left-[19px]' : 'left-[2px]'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="block">
-                        <span className="text-[10.5px] text-[var(--faint)]">服务商</span>
-                        <select
-                          className="input h-7 text-[11.5px] w-full mt-1"
-                          value={llm.config.provider}
-                          onChange={(event) =>
-                            void patchLlm({ provider: event.target.value as LlmConfig['provider'] })
-                          }
-                        >
-                          <option value="openai-compatible">OpenAI 兼容</option>
-                          <option value="anthropic">Anthropic</option>
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="text-[10.5px] text-[var(--faint)]">接口地址</span>
-                        <input
-                          className="input h-7 text-[11.5px] w-full mt-1"
-                          value={llmDraft.baseUrl}
-                          placeholder="https://api.example.com/v1"
-                          onChange={(event) => setLlmDraft({ ...llmDraft, baseUrl: event.target.value })}
-                          onBlur={() => {
-                            if (llmDraft.baseUrl.trim() !== llm.config.baseUrl) {
-                              void patchLlm({ baseUrl: llmDraft.baseUrl.trim() })
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="block">
-                        <span className="text-[10.5px] text-[var(--faint)]">模型名称</span>
-                        <input
-                          className="input h-7 text-[11.5px] w-full mt-1"
-                          value={llmDraft.model}
-                          placeholder="例如 gpt-4o-mini / qwen-vl-max"
-                          onChange={(event) => setLlmDraft({ ...llmDraft, model: event.target.value })}
-                          onBlur={() => {
-                            if (llmDraft.model.trim() !== llm.config.model) {
-                              void patchLlm({ model: llmDraft.model.trim() })
-                            }
-                          }}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="text-[10.5px] text-[var(--faint)]">超时（秒）</span>
-                        <input
-                          type="number"
-                          min={5}
-                          max={300}
-                          className="input h-7 text-[11.5px] w-full mt-1"
-                          defaultValue={Math.round(llm.config.timeoutMs / 1000)}
-                          onBlur={(event) => {
-                            const seconds = Number(event.target.value)
-                            if (Number.isFinite(seconds)) {
-                              void patchLlm({ timeoutMs: Math.round(seconds * 1000) })
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2">
-                      <label className="block">
-                        <span className="text-[10.5px] text-[var(--faint)]">温度</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={2}
-                          step={0.1}
-                          className="input h-7 text-[11.5px] w-full mt-1"
-                          defaultValue={llm.config.temperature}
-                          onBlur={(event) => {
-                            const value = Number(event.target.value)
-                            if (Number.isFinite(value)) void patchLlm({ temperature: value })
-                          }}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="text-[10.5px] text-[var(--faint)]">最大输出 tokens</span>
-                        <input
-                          type="number"
-                          min={16}
-                          max={32000}
-                          step={64}
-                          className="input h-7 text-[11.5px] w-full mt-1"
-                          defaultValue={llm.config.maxTokens}
-                          onBlur={(event) => {
-                            const value = Number(event.target.value)
-                            if (Number.isFinite(value)) void patchLlm({ maxTokens: value })
-                          }}
-                        />
-                      </label>
-                      <label className="block">
-                        <span className="text-[10.5px] text-[var(--faint)]">失败重试</span>
-                        <select
-                          className="input h-7 text-[11.5px] w-full mt-1"
-                          value={llm.config.maxRetries}
-                          onChange={(event) => void patchLlm({ maxRetries: Number(event.target.value) })}
-                        >
-                          <option value={0}>不重试</option>
-                          <option value={1}>1 次</option>
-                          <option value={2}>2 次</option>
-                          <option value={3}>3 次</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="password"
-                        className="input h-7 text-[11.5px] flex-1"
-                        placeholder={llm.hasKey ? `已保存 ${llm.keyHint ?? ''}` : '粘贴 API Key'}
-                        value={keyDraft}
-                        onChange={(event) => setKeyDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') void saveLlmKey()
-                        }}
-                      />
-                      <button
-                        className="btn h-7 px-2 text-[11.5px]"
-                        disabled={!keyDraft.trim() || keyBusy || llm.encryption === 'unavailable'}
-                        onClick={() => void saveLlmKey()}
-                      >
-                        保存
-                      </button>
-                      {llm.hasKey && (
                         <button
-                          className="btn btn-ghost h-7 px-2 text-[11.5px]"
-                          disabled={keyBusy}
-                          onClick={() => void clearLlmKey()}
+                          className={`ml-auto mt-0.5 w-[38px] h-[21px] rounded-full relative shrink-0 transition-colors ${
+                            llm.settings.enabled
+                              ? 'bg-[var(--accent)]'
+                              : 'bg-[var(--border-strong)]'
+                          }`}
+                          onClick={() => void saveLlm({ enabled: !llm.settings.enabled })}
+                          aria-pressed={llm.settings.enabled}
+                          title={llm.settings.enabled ? '关闭大模型能力' : '开启大模型能力'}
                         >
-                          清除
+                          <span
+                            className={`absolute top-[2px] w-[17px] h-[17px] rounded-full bg-white transition-all ${
+                              llm.settings.enabled ? 'left-[19px]' : 'left-[2px]'
+                            }`}
+                          />
                         </button>
-                      )}
+                      </div>
                     </div>
 
                     {llm.encryption === 'unavailable' && (
@@ -834,82 +1198,223 @@ export default function SettingsDialog({
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        className="btn h-7 px-2 text-[11.5px]"
-                        disabled={testing || !llm.config.enabled || !llm.hasKey || !llm.config.model}
-                        onClick={() => void runLlmTest()}
-                      >
-                        {testing ? '测试中…' : '测试连接'}
-                      </button>
-                      {testResult && (
-                        <span
-                          className={`text-[10.5px] leading-4 ${
-                            testResult.ok ? 'text-[var(--success)]' : 'text-[var(--danger-text)]'
-                          }`}
-                        >
-                          {testResult.message}（{testResult.latencyMs} ms）
-                        </span>
+                    <div className="space-y-2">
+                      {llm.settings.models.length === 0 && (
+                        <div className="text-[11px] text-[var(--faint)]">
+                          还没有模型，点下面的「添加模型」加一个。
+                        </div>
                       )}
-                      {!testResult && llm.lastCall && (
-                        <span className="ml-auto text-[10.5px] text-[var(--faint)]">
-                          上次：{llm.lastCall.ok ? '成功' : '失败'} · {llm.lastCall.latencyMs} ms
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="pt-1.5 border-t border-[var(--border)]">
-                      <div className="text-[10.5px] text-[var(--faint)] mb-1.5">
-                        单独开关（关掉后相册里的入口会隐藏，也不会发请求）
-                      </div>
-                      <div className="space-y-2">
-                        {llm.capabilities.map((capability) => (
-                          <div key={capability.id} className="flex items-start gap-2">
-                            <div className="min-w-0">
-                              <div className="text-[11.5px] text-[var(--text)]">
-                                {capability.title}
-                                {capability.maxItems ? (
-                                  <span className="text-[10px] text-[var(--faint)]">
-                                    {' '}
-                                    · 一次最多 {capability.maxItems} 张
-                                  </span>
-                                ) : null}
-                              </div>
-                              <div className="text-[10px] leading-4 text-[var(--faint)]">
-                                {capability.description}
+                      {llm.settings.models.map((model) => {
+                        const hint = llm.keyHints[model.id]
+                        const test = llmTests[model.id]
+                        const isDefault = llm.settings.defaultModelId === model.id
+                        return (
+                          <div
+                            key={model.id}
+                            className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2"
+                          >
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-[12.5px] text-[var(--text)]">{model.name}</span>
+                              {isDefault && (
+                                <span className="rounded border border-[var(--accent-border)] bg-[var(--accent-soft)] px-1.5 py-[1px] text-[9.5px] text-[var(--accent-text)]">
+                                  默认
+                                </span>
+                              )}
+                              <span
+                                className={`rounded border px-1.5 py-[1px] text-[9.5px] ${
+                                  model.vision
+                                    ? 'border-[var(--success)]/40 text-[var(--success)]'
+                                    : 'border-[var(--warn)]/40 text-[var(--warn)]'
+                                }`}
+                              >
+                                {model.vision ? '视觉 ✓' : '视觉不可用'}
+                              </span>
+                              <span className="rounded border border-[var(--border)] px-1.5 py-[1px] text-[9.5px] text-[var(--faint)]">
+                                {hint ? '已存 Key' : '未存 Key'}
+                              </span>
+                              <div className="ml-auto flex items-center gap-1">
+                                <button
+                                  className="btn btn-ghost h-6 px-2 text-[11px]"
+                                  disabled={testingId !== null || !hint}
+                                  onClick={() => void testModel(model.id)}
+                                  title="先测文本，再发一张 32×32 图片确认能不能看图"
+                                >
+                                  {testingId === model.id ? '测试中…' : '测试'}
+                                </button>
+                                {!isDefault && (
+                                  <button
+                                    className="btn btn-ghost h-6 px-2 text-[11px]"
+                                    onClick={() => void setDefaultModel(model.id)}
+                                  >
+                                    设为默认
+                                  </button>
+                                )}
+                                <button
+                                  className="btn btn-ghost h-6 px-2 text-[11px]"
+                                  onClick={() => startEditModel(model)}
+                                >
+                                  编辑
+                                </button>
+                                <button
+                                  className="btn btn-ghost btn-danger h-6 px-2 text-[11px]"
+                                  onClick={() => void removeModel(model)}
+                                >
+                                  删除
+                                </button>
                               </div>
                             </div>
-                            <button
-                              className={`ml-auto mt-0.5 w-[34px] h-[19px] rounded-full relative shrink-0 transition-colors ${
-                                capability.enabled ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
-                              }`}
-                              onClick={() =>
-                                void patchLlm({
-                                  capabilities: {
-                                    ...llm.config.capabilities,
-                                    [capability.id]: !capability.enabled
-                                  }
-                                })
-                              }
-                              aria-pressed={capability.enabled}
-                              title={capability.enabled ? '关闭这个能力' : '开启这个能力'}
-                            >
-                              <span
-                                className={`absolute top-[2px] w-[15px] h-[15px] rounded-full bg-white transition-all ${
-                                  capability.enabled ? 'left-[17px]' : 'left-[2px]'
+
+                            <div className="break-all text-[10px] leading-4 text-[var(--faint)]">
+                              {model.vendor} ·{' '}
+                              {model.provider === 'anthropic' ? 'Anthropic' : 'OpenAI 兼容'} ·{' '}
+                              {model.model || '未填模型名'}
+                            </div>
+                            <div className="break-all text-[10px] leading-4 text-[var(--faint)]">
+                              {model.baseUrl}
+                            </div>
+
+                            {test && (
+                              <div
+                                className={`text-[10.5px] leading-4 ${
+                                  test.ok ? 'text-[var(--success)]' : 'text-[var(--danger-text)]'
                                 }`}
+                              >
+                                {test.message}（{test.latencyMs} ms）
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="password"
+                                className="input h-7 flex-1 text-[11.5px]"
+                                placeholder={hint ? `已保存 ${hint}` : '粘贴 API Key'}
+                                value={keyDrafts[model.id] ?? ''}
+                                onChange={(event) =>
+                                  setKeyDrafts((prev) => ({
+                                    ...prev,
+                                    [model.id]: event.target.value
+                                  }))
+                                }
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter') void saveModelKey(model.id)
+                                }}
                               />
-                            </button>
+                              <button
+                                className="btn h-7 px-2 text-[11.5px]"
+                                disabled={
+                                  !(keyDrafts[model.id] ?? '').trim() ||
+                                  keyBusyId !== null ||
+                                  llm.encryption === 'unavailable'
+                                }
+                                onClick={() => void saveModelKey(model.id)}
+                              >
+                                保存
+                              </button>
+                              {hint && (
+                                <button
+                                  className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                                  disabled={keyBusyId !== null}
+                                  onClick={() => void clearModelKey(model.id)}
+                                >
+                                  清除
+                                </button>
+                              )}
+                            </div>
+
+                            {llmEditing === model.id && renderModelForm()}
                           </div>
-                        ))}
-                      </div>
+                        )
+                      })}
                     </div>
-                  </div>
+
+                    {llmEditing === 'new' ? (
+                      <div className="rounded-lg border border-[var(--accent-border)] bg-[var(--panel-2)] p-3">
+                        {renderModelForm()}
+                      </div>
+                    ) : (
+                      <button
+                        className="btn h-7 px-2 text-[11.5px]"
+                        onClick={startAddModel}
+                      >
+                        + 添加模型
+                      </button>
+                    )}
+
+                    {llmMsg && (
+                      <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">
+                        {llmMsg}
+                      </div>
+                    )}
+
+                    <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2">
+                      <div className="text-[11.5px]">功能分配</div>
+                      <div className="text-[10px] leading-4 text-[var(--faint)]">
+                        默认全部跟随默认模型；需要时给单个功能换模型。看不了图的模型会被标出来。
+                      </div>
+                      {llm.capabilities.map((capability) => (
+                        <div key={capability.id} className="flex items-start gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11.5px] text-[var(--text)]">
+                              {capability.title}
+                              {capability.maxItems ? (
+                                <span className="text-[10px] text-[var(--faint)]">
+                                  {' '}
+                                  · 一次最多 {capability.maxItems} 张
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-[10px] leading-4 text-[var(--faint)]">
+                              {capability.description}
+                            </div>
+                            {!capability.vision && capability.modelName && (
+                              <div className="text-[10px] leading-4 text-[var(--warn)]">
+                                「{capability.modelName}」看不了图，这个功能会不可用
+                              </div>
+                            )}
+                          </div>
+                          <select
+                            className="input h-7 w-[150px] shrink-0 text-[11px]"
+                            value={llm.settings.routing[capability.id] ?? ''}
+                            onChange={(event) => void setRouting(capability.id, event.target.value)}
+                          >
+                            <option value="">跟随默认</option>
+                            {llm.settings.models.map((model) => (
+                              <option key={model.id} value={model.id}>
+                                {model.name}
+                                {model.vision ? '' : '（无视觉）'}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            className={`mt-1 w-[34px] h-[19px] rounded-full relative shrink-0 transition-colors ${
+                              capability.enabled
+                                ? 'bg-[var(--accent)]'
+                                : 'bg-[var(--border-strong)]'
+                            }`}
+                            onClick={() => void toggleCapability(capability.id)}
+                            aria-pressed={capability.enabled}
+                            title={capability.enabled ? '关闭这个能力' : '开启这个能力'}
+                          >
+                            <span
+                              className={`absolute top-[2px] w-[15px] h-[15px] rounded-full bg-white transition-all ${
+                                capability.enabled ? 'left-[17px]' : 'left-[2px]'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {llm.lastCall && (
+                      <div className="text-[10.5px] text-[var(--faint)]">
+                        上次调用：{llm.lastCall.ok ? '成功' : '失败'} · {llm.lastCall.latencyMs} ms
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <div className="text-[11px] leading-4 text-[var(--faint)]">
-                  支持 OpenAI 兼容接口（DeepSeek / Kimi / 通义 / 智谱 / Ollama）与 Anthropic。请求在主进程发出，
-                  渲染层拿不到密钥与图片原始数据。
+                  支持 OpenAI 兼容接口与 Anthropic。请求在主进程发出，界面拿不到密钥和原图。
                 </div>
               </>
             )}
@@ -974,18 +1479,15 @@ export default function SettingsDialog({
                   <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">{modelMsg}</div>
                 )}
                 <div className="text-[10.5px] leading-4 text-[var(--faint)]">
-                  切换模型不会删除旧索引，但新模型需要重建语义索引才能搜图与自动分类。
-                  SigLIP 2 的相似度分布和 Chinese-CLIP 不同，阈值要重新试跑；本地实测它的中文类目弱于
-                  Chinese-CLIP，建议先小范围对比再决定。
+                  换模型不会删旧索引，但要重建后才能搜图和分类。SigLIP 2 的中文分类实测更弱，建议先小范围对比。
                 </div>
 
                 <div className="mt-2 text-[12.5px]">语义索引</div>
                 <div className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                   <div className="min-w-0">
-                    <div className="text-[12.5px]">闲时自动建立语义索引</div>
+                    <div className="text-[12.5px]">空闲时自动识图</div>
                     <div className="text-[10.5px] text-[var(--faint)] mt-0.5 leading-4">
-                      电脑「插着电源」且空闲 2 分钟后才会开始，每批 16 张、跑完歇一会，你一操作就停；
-                      索引只占用 2 个 CPU 线程，不会把机器占满。
+                      空闲时自动识图 + 插电且空闲 2 分钟后开始，每批 16 张，你一操作就停；只占 2 个 CPU 线程。
                     </div>
                   </div>
                   <button
@@ -995,7 +1497,7 @@ export default function SettingsDialog({
                     onClick={() => void toggleAutoClip()}
                     aria-pressed={Boolean(autoClip)}
                     disabled={autoClip === null}
-                    title={autoClip ? '关闭闲时自动索引' : '开启闲时自动索引'}
+                    title={autoClip ? '关闭空闲时自动识图' : '开启空闲时自动识图'}
                   >
                     <span
                       className={`absolute top-[2px] w-[17px] h-[17px] rounded-full bg-white transition-all ${
@@ -1005,10 +1507,10 @@ export default function SettingsDialog({
                   </button>
                 </div>
                 <div className="text-[11px] leading-4 text-[var(--faint)]">
-                  手动点侧栏「语义索引」仍会一次性把剩余照片跑完，中断后可以再点一次继续。
+                  手动点侧栏「语义索引」会一次跑完剩余的，随时可以停。
                 </div>
 
-                <div className="mt-2 text-[12.5px]">AI 处理范围</div>
+                <div className="mt-2 text-[12.5px]">AI 作用的照片</div>
                 <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {[{ value: 0, label: '全部照片' }]
@@ -1033,10 +1535,10 @@ export default function SettingsDialog({
                       })}
                   </div>
                   <div className="text-[10.5px] leading-4 text-[var(--faint)]">
-                    AI 只处理达到这个星级的照片，默认 ★★★；没标星的照片算不达标。选「全部照片」就不限星级。
+                    只处理达到这个星级的照片，默认 ★★★；没标星的算不达标。选「全部照片」就不限星级。
                   </div>
                   <div className="text-[10.5px] leading-4 text-[var(--faint)]">
-                    范围内的照片才会出现 AI 评分、AI 后期建议和读片入口；不达标就把按钮藏起来，已有的评分和笔记照常能看。
+                    范围内的照片才会出现 AI 按钮；已有的评分和笔记照常能看。
                   </div>
                   <div className="text-[10.5px] leading-4 text-[var(--faint)]">
                     当前有 {scoreCounts ? `${scoreCounts.matched} / ${scoreCounts.total} 张` : '读取中…'}在范围内
@@ -1102,7 +1604,7 @@ export default function SettingsDialog({
                     </div>
                     <div>
                       <div className="text-[10.5px] text-[var(--faint)]">
-                        索引与缓存（library.db、缩略图、预览）
+                        索引与缓存（图库的数据文件、缩略图、预览）
                       </div>
                       <div className="text-[11px] leading-4 break-all text-[var(--text)]">{storage.indexDir}</div>
                     </div>
@@ -1111,7 +1613,7 @@ export default function SettingsDialog({
                         className="btn h-7 px-2 text-[11.5px]"
                         disabled={indexBusy}
                         onClick={() => void moveIndex(undefined)}
-                        title="把 library.db 与缩略图缓存搬到别的文件夹，原图不动"
+                        title="把图库的数据文件和缩略图缓存搬到别的文件夹，原图不动"
                       >
                         {indexBusy ? '移动中…' : '更改位置…'}
                       </button>
@@ -1126,7 +1628,7 @@ export default function SettingsDialog({
                       )}
                     </div>
                     <div className="text-[10.5px] leading-4 text-[var(--faint)]">
-                      只移动索引与缩略图，原图始终留在图库目录。索引较大时需要等一会儿，期间别关闭程序。
+                      只移动索引和缩略图，原图不动。索引大时要等一会儿，别关程序。
                     </div>
                     {indexMsg && (
                       <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">{indexMsg}</div>
@@ -1191,9 +1693,7 @@ export default function SettingsDialog({
                           </button>
                         </div>
                         <div className="text-[10.5px] leading-4 text-[var(--faint)]">
-                          高清档是「自动」清晰度按需生成的，清掉它最划算；清完后正在看的画面会重新生成。
-                          超过上限时自动淘汰最久没看的高清图，中/低档不动。想长期省磁盘，先把清晰度锁成
-                          「低」或「中」再清。「全部重建」连中/低档一起删，大图库首次滚动会明显变慢。原图始终不动。
+                          高清档按需生成，清掉最划算；超过上限会自动淘汰最久没看的。原图始终不动。
                         </div>
                         {thumbMsg && (
                           <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">{thumbMsg}</div>
@@ -1205,7 +1705,7 @@ export default function SettingsDialog({
 
                 <div className="mt-1">
                   <div className="mb-2 flex items-center gap-1.5 text-[12.5px]">
-                    <FileText size={13} /> XMP 侧车
+                    <FileText size={13} /> 写入照片信息（.xmp）
                   </div>
                   <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                     {!xmp ? (
@@ -1214,7 +1714,7 @@ export default function SettingsDialog({
                       <>
                         <div className="flex items-start gap-2">
                           <div className="min-w-0">
-                            <div className="text-[12px]">启用 XMP 侧车</div>
+                            <div className="text-[12px]">启用写入 .xmp</div>
                             <div className="mt-0.5 text-[10.5px] leading-4 text-[var(--faint)]">
                               把星级、旗标、标签、短备注写到原图旁边的 .xmp；只写人的判断，不写 AI
                               评分。默认关闭。
@@ -1226,7 +1726,7 @@ export default function SettingsDialog({
                             }`}
                             onClick={() => void changeXmp({ enabled: !xmp.enabled })}
                             aria-pressed={xmp.enabled}
-                            title={xmp.enabled ? '关闭 XMP 侧车' : '开启 XMP 侧车'}
+                            title={xmp.enabled ? '停止写入 .xmp' : '开始写入 .xmp'}
                           >
                             <span
                               className={`absolute top-[2px] h-[17px] w-[17px] rounded-full bg-white transition-all ${
@@ -1240,7 +1740,7 @@ export default function SettingsDialog({
                           <div className="min-w-0">
                             <div className="text-[12px]">忽略外部修改</div>
                             <div className="mt-0.5 text-[10.5px] leading-4 text-[var(--faint)]">
-                              Lightroom 等软件改过侧车时不再提示导入，月相保持自己的判断。
+                              Lightroom 等软件改过 .xmp 时不再提示导入，月相保持自己的判断。
                             </div>
                           </div>
                           <button
@@ -1277,7 +1777,7 @@ export default function SettingsDialog({
                             className="btn btn-ghost h-7 px-2 text-[11.5px]"
                             disabled={xmpBusy || !xmp.enabled}
                             onClick={() => void checkXmp()}
-                            title="对比侧车 mtime，导入外部软件的修改"
+                            title="检查照片信息有没有被别的软件改过"
                           >
                             检查外部修改
                           </button>
@@ -1322,6 +1822,131 @@ export default function SettingsDialog({
                           </div>
                         )}
                       </>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {tab === 'about' && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-medium">月相</span>
+                  <span className="text-[11px] text-[var(--faint)]">
+                    {appInfo ? `版本 ${appInfo.version}` : '读取版本中…'}
+                  </span>
+                  {update?.state === 'downloaded' ? (
+                    <button
+                      className="btn ml-auto h-6 px-2 text-[11px]"
+                      onClick={() => void window.api.updateInstall()}
+                    >
+                      <RefreshCw size={11} /> 重启安装
+                    </button>
+                  ) : (
+                    <button
+                      className="btn ml-auto h-6 px-2 text-[11px]"
+                      onClick={() => void checkUpdate()}
+                      disabled={update?.state === 'checking' || update?.state === 'downloading'}
+                      title="检查有没有新版本"
+                    >
+                      <RefreshCw
+                        size={11}
+                        className={update?.state === 'checking' ? 'animate-spin' : ''}
+                      />
+                      {update?.state === 'checking' ? '检查中…' : '检查更新'}
+                    </button>
+                  )}
+                </div>
+
+                {updateHintText(update) && (
+                  <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                    {updateHintText(update)}
+                  </div>
+                )}
+                {update?.state === 'downloading' && (
+                  <div className="h-1 overflow-hidden rounded bg-[var(--border)]">
+                    <div
+                      className="h-full rounded bg-[var(--accent)] transition-[width]"
+                      style={{ width: `${Math.min(100, Math.max(0, update.percent ?? 0))}%` }}
+                    />
+                  </div>
+                )}
+
+                <div className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--panel-2)]">
+                  <PathRow
+                    label="图库目录"
+                    path={storage?.library ?? null}
+                    emptyHint="先打开一个图库"
+                    onOpen={(path) => void openDir(path)}
+                  />
+                  {storage && storage.indexDir !== storage.library && (
+                    <PathRow
+                      label="索引与缩略图"
+                      path={storage.indexDir}
+                      onOpen={(path) => void openDir(path)}
+                    />
+                  )}
+                  <PathRow
+                    label="应用设置"
+                    path={appInfo?.userData ?? null}
+                    emptyHint="读取中…"
+                    onOpen={(path) => void openDir(path)}
+                  />
+                  <PathRow
+                    label="AI 模型"
+                    path={appInfo?.modelsDir ?? null}
+                    emptyHint="读取中…"
+                    onOpen={(path) => void openDir(path)}
+                  />
+                </div>
+
+                {openError && (
+                  <div className="text-[10.5px] leading-4 text-[var(--danger-text)]">{openError}</div>
+                )}
+
+                <div className="text-[11px] leading-5 text-[var(--faint)]">
+                  卸载月相不会删除以上任何文件。整理成果（标签、分类、笔记、评分）保存在图库索引里，备份图库目录就等于备份了全部整理结果。
+                </div>
+
+                <div>
+                  <div className="text-[12.5px] mb-2">配置备份</div>
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
+                    <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                      备份主题、布局、缩略图偏好、AI 能力开关与设备清单。API Key、图库路径和照片不会写进文件。
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button
+                        className="btn h-7 px-2 text-[11.5px]"
+                        onClick={() => void exportConfig()}
+                        disabled={transferBusy !== null}
+                      >
+                        <Download size={12} /> {transferBusy === 'export' ? '导出中…' : '导出配置'}
+                      </button>
+                      <button
+                        className="btn h-7 px-2 text-[11.5px]"
+                        onClick={() => void importConfig()}
+                        disabled={transferBusy !== null}
+                      >
+                        <Upload size={12} /> {transferBusy === 'import' ? '导入中…' : '导入配置'}
+                      </button>
+                      {needReload && (
+                        <button
+                          className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                          onClick={() => window.location.reload()}
+                        >
+                          重新载入界面
+                        </button>
+                      )}
+                    </div>
+                    {transferMsg && (
+                      <div
+                        className="break-all text-[10.5px] leading-4"
+                        style={{
+                          color: transferError ? 'var(--danger-text)' : 'var(--accent-text)'
+                        }}
+                      >
+                        {transferMsg}
+                      </div>
                     )}
                   </div>
                 </div>

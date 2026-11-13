@@ -1,5 +1,5 @@
 import { dirname, join } from 'node:path'
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, unlinkSync } from 'node:fs'
 import Database from 'better-sqlite3'
 import { log } from './logger'
 import { getIndexDirFor } from './settings'
@@ -8,10 +8,15 @@ let db: Database.Database | null = null
 let libraryPath = ''
 let indexPath = ''
 
-const SCHEMA = /* sql */ `
-PRAGMA journal_mode = WAL;
-PRAGMA synchronous = NORMAL;
+/**
+ * 结构化 schema 版本，存在 SQLite 的 `PRAGMA user_version` 里。
+ * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次。
+ * 以后每次加表 / 加列都必须 +1 并在 MIGRATION_STEPS 里补一步。
+ */
+export const CURRENT_SCHEMA = 3
 
+/** 迁移步骤必须幂等：老库可能从任意版本开始，补齐缺失的表与列即可收敛 */
+const SCHEMA = /* sql */ `
 CREATE TABLE IF NOT EXISTS items (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   path TEXT UNIQUE NOT NULL,
@@ -54,7 +59,11 @@ CREATE INDEX IF NOT EXISTS idx_item_tags_tag ON item_tags(tag_id);
 CREATE TABLE IF NOT EXISTS folders (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  parent_id INTEGER,
+  sort INTEGER NOT NULL DEFAULT 0,
+  cover_item_id INTEGER,
+  note TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS item_folders (
@@ -116,7 +125,20 @@ function ensureColumn(
   }
 }
 
-function migrate(db: Database.Database): void {
+/** v1：基础表与索引 */
+function migrationV1(db: Database.Database): void {
+  db.exec(SCHEMA)
+  // 老库里的行从没进过 FTS 索引；后面的 UPDATE 会触发 FTS 的 delete，
+  // 找不到索引行时 SQLite 会报 database disk image is malformed，所以先按内容表重建一次
+  try {
+    db.prepare("INSERT INTO items_fts(items_fts) VALUES('rebuild')").run()
+  } catch (error) {
+    throw new Error(`FTS 索引重建失败：${(error as Error).message}`)
+  }
+}
+
+/** v2：数据安全、配对/连拍/堆叠、语义索引、自动分类与 AI 评分 */
+function migrationV2(db: Database.Database): void {
   ensureColumn(db, 'items', 'trashed', 'trashed INTEGER NOT NULL DEFAULT 0')
   ensureColumn(db, 'sources', 'recursive', 'recursive INTEGER NOT NULL DEFAULT 1')
   ensureColumn(db, 'items', 'flag', 'flag INTEGER NOT NULL DEFAULT 0')
@@ -132,14 +154,6 @@ function migrate(db: Database.Database): void {
   ensureColumn(db, 'items', 'error', 'error TEXT')
   // 文件本身的修改时间（mtime 列存的是拍摄时间），用于「刷新图库」识别被覆盖修改的照片
   ensureColumn(db, 'items', 'file_mtime', 'file_mtime INTEGER NOT NULL DEFAULT 0')
-  // 人像维度的标签归属；NULL 表示普通标签，老数据零迁移
-  ensureColumn(db, 'tags', 'facet_id', 'facet_id TEXT')
-  // 标签的多级树：NULL 表示顶层标签
-  ensureColumn(db, 'tags', 'parent_id', 'parent_id INTEGER')
-  // 参考片标记：1 = 收藏的参考作品（走研读流程），0 = 自己拍的（走复盘流程）
-  ensureColumn(db, 'items', 'reference', 'reference INTEGER NOT NULL DEFAULT 0')
-  // 上次写入/读取 XMP 侧车时记录的 mtime，用来发现外部软件改过
-  ensureColumn(db, 'items', 'xmp_mtime', 'xmp_mtime INTEGER NOT NULL DEFAULT 0')
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS stacks (
@@ -180,7 +194,43 @@ function migrate(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_items_stack ON items(stack_id);
     CREATE INDEX IF NOT EXISTS idx_items_dir ON items(dir);
     CREATE INDEX IF NOT EXISTS idx_items_size ON items(size);
+  `)
+}
 
+/** 迁移步骤内的分段执行：报错时能指出是哪一段，方便定位坏库 */
+function subStep(name: string, run: () => void): void {
+  try {
+    run()
+  } catch (error) {
+    throw new Error(`${name}：${(error as Error).message}`)
+  }
+}
+
+/** v3：文件夹层级、人像维度、研读笔记、选片会话 */
+function migrationV3(db: Database.Database): void {
+  subStep('补标签/文件夹列', () => {
+    // 人像维度的标签归属；NULL 表示普通标签，老数据零迁移
+    ensureColumn(db, 'tags', 'facet_id', 'facet_id TEXT')
+    // 标签的多级树：NULL 表示顶层标签
+    ensureColumn(db, 'tags', 'parent_id', 'parent_id INTEGER')
+    // 文件夹层级：父子关系、同级排序、封面与备注
+    ensureColumn(db, 'folders', 'parent_id', 'parent_id INTEGER')
+    ensureColumn(db, 'folders', 'sort', 'sort INTEGER NOT NULL DEFAULT 0')
+    ensureColumn(db, 'folders', 'cover_item_id', 'cover_item_id INTEGER')
+    ensureColumn(db, 'folders', 'note', "note TEXT NOT NULL DEFAULT ''")
+  })
+
+  subStep('补 items 的研读/侧车列', () => {
+    // 参考片标记：1 = 收藏的参考作品（走研读流程），0 = 自己拍的（走复盘流程）
+    ensureColumn(db, 'items', 'reference', 'reference INTEGER NOT NULL DEFAULT 0')
+    // 上次写入/读取 XMP 侧车时记录的 mtime，用来发现外部软件改过
+    ensureColumn(db, 'items', 'xmp_mtime', 'xmp_mtime INTEGER NOT NULL DEFAULT 0')
+    // 从网址拖进来的照片记下来源，方便以后追溯；普通导入为 NULL
+    ensureColumn(db, 'items', 'source_url', 'source_url TEXT')
+  })
+
+  subStep('建人像/研读/选片表', () => {
+    db.exec(`
     -- 人像工作台的维度定义：加维度不用改代码
     CREATE TABLE IF NOT EXISTS facets (
       id          TEXT PRIMARY KEY,
@@ -222,6 +272,7 @@ function migrate(db: Database.Database): void {
       client_note  TEXT NOT NULL DEFAULT '',
       reply_count  INTEGER NOT NULL DEFAULT 0,
       created_at   INTEGER NOT NULL,
+      updated_at   INTEGER NOT NULL DEFAULT 0,
       sent_at      INTEGER,
       received_at  INTEGER
     );
@@ -236,15 +287,54 @@ function migrate(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_pick_items_item ON pick_items(item_id);
     CREATE INDEX IF NOT EXISTS idx_pick_sessions_received ON pick_sessions(received_at);
   `)
+  })
 
-  // 选片会话导出的 HTML 路径：老会话没有记录，历史里只是不能打开文件夹
-  ensureColumn(db, 'pick_sessions', 'file_path', 'file_path TEXT')
-  ensureColumn(db, 'pick_sessions', 'client_note', "client_note TEXT NOT NULL DEFAULT ''")
-  ensureColumn(db, 'pick_sessions', 'reply_count', 'reply_count INTEGER NOT NULL DEFAULT 0')
+  subStep('补选片会话列', () => {
+    // 选片会话导出的 HTML 路径：老会话没有记录，历史里只是不能打开文件夹
+    ensureColumn(db, 'pick_sessions', 'file_path', 'file_path TEXT')
+    ensureColumn(db, 'pick_sessions', 'client_note', "client_note TEXT NOT NULL DEFAULT ''")
+    ensureColumn(db, 'pick_sessions', 'reply_count', 'reply_count INTEGER NOT NULL DEFAULT 0')
+    // 草稿最后改动时间：用来让刚编辑过的草稿排在待交付最前面
+    ensureColumn(db, 'pick_sessions', 'updated_at', 'updated_at INTEGER NOT NULL DEFAULT 0')
+    db.prepare(
+      `UPDATE pick_sessions
+       SET updated_at = COALESCE(received_at, sent_at, created_at)
+       WHERE updated_at = 0`
+    ).run()
+  })
 
-  seedFacets(db)
-  backfillDirs(db)
-  migrateEmbeddings(db)
+  subStep('种入人像维度', () => seedFacets(db))
+  subStep('回填照片目录', () => backfillDirs(db))
+  subStep('升级向量表主键', () => migrateEmbeddings(db))
+}
+
+interface MigrationStep {
+  version: number
+  up: (db: Database.Database) => void
+}
+
+const MIGRATION_STEPS: MigrationStep[] = [
+  { version: 1, up: migrationV1 },
+  { version: 2, up: migrationV2 },
+  { version: 3, up: migrationV3 }
+]
+
+/** 按 user_version 逐级升级；每一步独立事务，版本号跟着步骤走 */
+function migrate(db: Database.Database, fromVersion: number): number {
+  let version = fromVersion
+  for (const step of MIGRATION_STEPS) {
+    if (step.version <= version) continue
+    try {
+      db.transaction(() => {
+        step.up(db)
+        db.pragma(`user_version = ${step.version}`)
+      })()
+    } catch (error) {
+      throw new Error(`第 ${step.version} 步迁移失败：${(error as Error).message}`)
+    }
+    version = step.version
+  }
+  return version
 }
 
 /**
@@ -360,19 +450,140 @@ function libraryKeyOf(path: string): string {
   return path.replace(/[\\/]+$/, '').replace(/\//g, '\\').toLowerCase()
 }
 
+/**
+ * 迁移前的整库快照；同版本已有备份就直接复用。
+ * VACUUM INTO 会生成一份一致副本，WAL 里已提交的内容也会带上。
+ * 备份失败必须中止升级：没有回滚点的结构变更不能硬上。
+ */
+function backupBeforeMigrate(
+  handle: Database.Database,
+  indexDir: string,
+  version: number
+): string {
+  const file = join(indexDir, `library.db.bak-v${version}`)
+  if (existsSync(file)) return file
+  try {
+    handle.exec(`VACUUM INTO '${file.replace(/'/g, "''")}'`)
+    return file
+  } catch (error) {
+    void log.error('db', '迁移前备份失败，已中止升级', {
+      file,
+      error: (error as Error).message
+    })
+    throw new Error(`升级前备份失败，请先手动备份图库：${(error as Error).message}`)
+  }
+}
+
+/** 删掉数据库文件的附属文件（journal / wal / shm），失败不影响主流程 */
+function removeSidecars(file: string): void {
+  for (const suffix of ['-journal', '-wal', '-shm']) {
+    try {
+      rmSync(`${file}${suffix}`, { force: true })
+    } catch {
+      /* 清理失败忽略 */
+    }
+  }
+}
+
+/** 只保留最近两份备份，别让 .bak 越积越多 */
+function pruneBackups(indexDir: string): void {
+  try {
+    const backups = readdirSync(indexDir)
+      .filter((name) => /^library\.db\.bak-v\d+$/.test(name))
+      .map((name) => ({ name, at: statSync(join(indexDir, name)).mtimeMs }))
+      .sort((a, b) => a.at - b.at)
+    for (const entry of backups.slice(0, Math.max(0, backups.length - 2))) {
+      const file = join(indexDir, entry.name)
+      unlinkSync(file)
+      removeSidecars(file)
+    }
+  } catch {
+    /* 清理失败不影响主流程 */
+  }
+}
+
+/** 迁移失败：把快照换回主库，保证用户还能用旧版打开 */
+function restoreBackup(indexDir: string, backup: string): void {
+  for (const suffix of ['', '-wal', '-shm', '-journal']) {
+    try {
+      rmSync(join(indexDir, `library.db${suffix}`), { force: true })
+    } catch {
+      /* 删不掉就让 rename 去报错 */
+    }
+  }
+  renameSync(backup, join(indexDir, 'library.db'))
+  removeSidecars(backup)
+}
+
+/**
+ * 老库升级后补一次 FTS 重建：老版本没有 FTS 表或内容不完整时，
+ * 三字以上的搜索会静默漏结果。只做一次，失败下次打开再试。
+ */
+function rebuildFtsIfNeeded(handle: Database.Database): void {
+  try {
+    const done = handle
+      .prepare("SELECT value FROM meta WHERE key = 'fts-rebuild-v3'")
+      .get() as { value: string } | undefined
+    if (done) return
+    handle.prepare("INSERT INTO items_fts(items_fts) VALUES('rebuild')").run()
+    handle
+      .prepare(
+        "INSERT INTO meta(key, value) VALUES('fts-rebuild-v3', '1') ON CONFLICT(key) DO UPDATE SET value = '1'"
+      )
+      .run()
+  } catch (error) {
+    void log.warn('db', 'FTS 索引重建失败，下次打开再试', {
+      error: (error as Error).message
+    })
+  }
+}
+
 export function openLibrary(dir: string): void {
   if (db) closeLibrary()
   const indexDir = resolveIndexDir(dir)
   mkdirSync(join(indexDir, 'thumbnails'), { recursive: true })
   const file = join(indexDir, 'library.db')
+  const isNewLibrary = !existsSync(file)
   for (let attempt = 0; ; attempt++) {
     let step = 'open'
     try {
-      db = new Database(file)
+      const handle = new Database(file)
+      db = handle
       step = 'schema'
-      db.exec(SCHEMA)
+      // PRAGMA 不能放进事务，先于迁移步骤执行
+      handle.pragma('journal_mode = WAL')
+      handle.pragma('synchronous = NORMAL')
       step = 'migrate'
-      migrate(db)
+      const version = Number(handle.pragma('user_version', { simple: true }) ?? 0)
+      if (version < CURRENT_SCHEMA) {
+        // 新库没有历史数据，不必备份；老库升级前先留一份快照
+        const backup = isNewLibrary ? null : backupBeforeMigrate(handle, indexDir, version)
+        try {
+          migrate(handle, version)
+        } catch (error) {
+          if (backup) {
+            try {
+              handle.close()
+            } catch {
+              /* 已经坏掉的连接关不掉也无所谓 */
+            }
+            db = null
+            restoreBackup(indexDir, backup)
+          }
+          throw new Error(
+            `图库升级失败${backup ? '，已自动还原' : ''}：${(error as Error).message}`
+          )
+        }
+        void log.info('db', '图库结构已升级', {
+          from: version,
+          to: CURRENT_SCHEMA,
+          backup: backup ?? null
+        })
+        if (backup) removeSidecars(backup)
+        pruneBackups(indexDir)
+      }
+      // 老库可能没有 FTS 内容：补一次重建，只做一次
+      rebuildFtsIfNeeded(handle)
       // 上次异常退出可能留下较大的 WAL，打开时顺手收干净
       checkpoint()
       break
@@ -383,8 +594,9 @@ export function openLibrary(dir: string): void {
         /* 打不开的连接本身可能就是坏的，关不掉无所谓 */
       }
       db = null
-      // 进程刚被强杀、或文件正被杀毒软件扫描时，库文件会短暂不可用，稍等再试一次
-      if (attempt === 0) {
+      // 进程刚被强杀、或文件正被杀毒软件扫描时，库文件会短暂不可用，稍等再试一次；
+      // 迁移失败是确定性的，重试只会重复报错，不再重试
+      if (attempt === 0 && step === 'open') {
         void log.warn('db', '打开图库失败，稍后重试', {
           dir,
           indexDir,

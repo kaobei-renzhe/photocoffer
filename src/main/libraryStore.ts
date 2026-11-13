@@ -63,7 +63,7 @@ export function moveIndexTo(target: string | null): MoveIndexResult {
   }
   // 自定义目标必须是干净的；搬回图库目录时允许覆盖上次没清掉的残留
   if (!samePath(to, library) && existsSync(join(to, 'library.db'))) {
-    throw new Error('目标文件夹里已经有 library.db，请换一个空文件夹')
+    throw new Error('目标文件夹里已经有图库的数据文件，请换一个空文件夹')
   }
 
   mkdirSync(to, { recursive: true })

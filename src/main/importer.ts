@@ -12,6 +12,7 @@ import {
 import type { Dirent } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { basename, dirname, extname, join } from 'node:path'
+import type Database from 'better-sqlite3'
 import { nativeImage } from 'electron'
 import sharp from 'sharp'
 import exifr from 'exifr'
@@ -229,11 +230,24 @@ async function collectFiles(
   return scan
 }
 
-async function makeThumb(source: string | Buffer, target: string, quality: ThumbQuality): Promise<void> {
+/**
+ * 统一解码一次到长边 960：导入阶段只生成 720 / 260 两档缩略图，960 对 720 仍留 1.33 倍余量。
+ * 底图再大就得多解码 4 倍像素（libvips 对 JPEG 的缩图解码只支持 1/8 档），导入明显变慢。
+ * 1440 高清档走按需生成，不经过这里。
+ */
+const BASE_EDGE = 960
+
+async function prepareBase(source: string | Buffer): Promise<Buffer> {
+  return sharp(source, { failOn: 'none', sequentialRead: true })
+    .rotate()
+    .resize(BASE_EDGE, BASE_EDGE, { fit: 'inside', withoutEnlargement: true })
+    .toBuffer()
+}
+
+async function makeThumb(base: Buffer, target: string, quality: ThumbQuality): Promise<void> {
   const size = THUMB_SIZES[quality]
   mkdirSync(dirname(target), { recursive: true })
-  await sharp(source, { failOn: 'none', sequentialRead: true })
-    .rotate()
+  await sharp(base, { failOn: 'none' })
     .resize(size, size, { fit: 'inside', withoutEnlargement: true })
     .webp({ quality: THUMB_WEBP_QUALITY[quality] })
     .toFile(target)
@@ -245,8 +259,8 @@ interface ColorInfo {
   palette: string[]
 }
 
-async function analyzeColor(source: string | Buffer): Promise<ColorInfo> {
-  const { data } = await sharp(source, { failOn: 'none' })
+async function analyzeColor(base: Buffer): Promise<ColorInfo> {
+  const { data } = await sharp(base, { failOn: 'none' })
     .resize(24, 24, { fit: 'inside' })
     .removeAlpha()
     .raw()
@@ -375,8 +389,59 @@ function makeHeifPreview(filePath: string, target: string): void {
   writeFileSync(target, scaled.toJPEG(90))
 }
 
-async function processItem(id: number, filePath: string): Promise<void> {
-  const db = getDb()
+interface ItemPatch {
+  id: number
+  width: number
+  height: number
+  hash: string
+  dominant: string
+  colorFamily: string
+  palette: string
+  exif: string
+  takenAt: number
+  size: number
+  fileMtime: number
+}
+
+const ITEM_UPDATE_SQL = `UPDATE items SET width = ?, height = ?, hash = ?, dominant = ?, color_family = ?,
+  palette = ?, exif = ?, mtime = ?, size = ?, file_mtime = ?, error = NULL WHERE id = ?`
+
+/** 每个库复用一个 prepared statement，避免每张图都重新编译 */
+const updateStmtCache = new WeakMap<Database.Database, Database.Statement>()
+
+function itemUpdateStmt(handle: Database.Database): Database.Statement {
+  let stmt = updateStmtCache.get(handle)
+  if (!stmt) {
+    stmt = handle.prepare(ITEM_UPDATE_SQL)
+    updateStmtCache.set(handle, stmt)
+  }
+  return stmt
+}
+
+/** 一批图片的元数据一次事务写完；每 50 条调用一次 */
+function writeItemPatches(handle: Database.Database, patches: ItemPatch[]): void {
+  if (patches.length === 0) return
+  const stmt = itemUpdateStmt(handle)
+  handle.transaction((list: ItemPatch[]) => {
+    for (const patch of list) {
+      stmt.run(
+        patch.width,
+        patch.height,
+        patch.hash,
+        patch.dominant,
+        patch.colorFamily,
+        patch.palette,
+        patch.exif,
+        patch.takenAt,
+        patch.size,
+        patch.fileMtime,
+        patch.id
+      )
+    }
+  })(patches)
+}
+
+async function processItem(id: number, filePath: string): Promise<ItemPatch> {
   const ext = extname(filePath).toLowerCase()
   const isRaw = RAW_EXT.has(ext)
   let source: string | Buffer = filePath
@@ -404,43 +469,48 @@ async function processItem(id: number, filePath: string): Promise<void> {
     source = previewTarget
   }
 
-  const meta = await sharp(source, { failOn: 'none' }).metadata()
+  const stat = statSync(filePath)
+  const large = thumbPathFor(id, 'mid')
+  const small = thumbPathFor(id, 'low')
+  // 读尺寸、读 EXIF、解码底图、解码原图算 dHash 互不依赖，一起发出去。
+  // 缩略图与主色都基于这份 1280 的底图（只解码一次），
+  // dHash 必须从原图算才能和旧库指纹一致，让它和底图并行而不是排在其后
+  const [meta, exifInfo, base, hash] = await Promise.all([
+    sharp(source, { failOn: 'none' }).metadata(),
+    readExif(filePath, stat.mtimeMs),
+    prepareBase(source),
+    computeDHash(source)
+  ])
+
   const swap = meta.orientation !== undefined && meta.orientation >= 5 && meta.orientation <= 8
   let width = swap ? meta.height ?? 0 : meta.width ?? 0
   let height = swap ? meta.width ?? 0 : meta.height ?? 0
-
-  const stat = statSync(filePath)
-  const { exif, takenAt, width: exifWidth, height: exifHeight } = await readExif(filePath, stat.mtimeMs)
+  const { exif, takenAt, width: exifWidth, height: exifHeight } = exifInfo
   // RAW 的原始像素尺寸往往比内嵌预览大，用 EXIF 里的真实尺寸
   if (exifWidth && exifHeight && exifWidth * exifHeight > width * height) {
     width = swap ? exifHeight : exifWidth
     height = swap ? exifWidth : exifHeight
   }
 
-  const large = thumbPathFor(id, 'mid')
-  const small = thumbPathFor(id, 'low')
-  await makeThumb(source, large, 'mid')
-  await makeThumb(source, small, 'low')
+  const [, , color] = await Promise.all([
+    makeThumb(base, large, 'mid'),
+    makeThumb(base, small, 'low'),
+    analyzeColor(base)
+  ])
 
-  const color = await analyzeColor(source)
-  const hash = await computeDHash(source)
-
-  db.prepare(
-    `UPDATE items SET width = ?, height = ?, hash = ?, dominant = ?, color_family = ?,
-       palette = ?, exif = ?, mtime = ?, size = ?, file_mtime = ?, error = NULL WHERE id = ?`
-  ).run(
+  return {
+    id,
     width,
     height,
     hash,
-    color.dominant,
-    color.family,
-    JSON.stringify(color.palette),
-    JSON.stringify(exif),
-    Math.round(takenAt),
-    stat.size,
-    Math.round(stat.mtimeMs),
-    id
-  )
+    dominant: color.dominant,
+    colorFamily: color.family,
+    palette: JSON.stringify(color.palette),
+    exif: JSON.stringify(exif),
+    takenAt: Math.round(takenAt),
+    size: stat.size,
+    fileMtime: Math.round(stat.mtimeMs)
+  }
 }
 
 /**
@@ -505,8 +575,9 @@ export async function rebuildThumbs(
         }
         source = preview
       }
-      await makeThumb(source, thumbPathFor(row.id, 'mid'), 'mid')
-      await makeThumb(source, thumbPathFor(row.id, 'low'), 'low')
+      const base = await prepareBase(source)
+      await makeThumb(base, thumbPathFor(row.id, 'mid'), 'mid')
+      await makeThumb(base, thumbPathFor(row.id, 'low'), 'low')
       rebuilt++
     } catch {
       failed++
@@ -601,9 +672,17 @@ export async function importPaths(
     let done = 0
     persistPending(0, total)
 
-    const report = (current: string): void => {
+    let lastEmitAt = 0
+    let lastPaused = false
+    /** 进度最多 100ms 一条；暂停态变化、结束与取消时强制发 */
+    const report = (current: string, force = false): void => {
+      const now = Date.now()
+      const pausedNow = state.paused
+      if (!force && pausedNow === lastPaused && now - lastEmitAt < 100) return
+      lastEmitAt = now
+      lastPaused = pausedNow
       emit(onProgress, {
-        phase: state.paused ? 'paused' : 'importing',
+        phase: pausedNow ? 'paused' : 'importing',
         total,
         done,
         remaining: Math.max(0, total - done),
@@ -611,16 +690,15 @@ export async function importPaths(
         skipped,
         failed,
         current,
-        paused: state.paused
+        paused: pausedNow
       })
       // 断点进度最多每秒写一次，避免每张照片都写库
-      const now = Date.now()
       if (now - persistedAt > 1000) {
         persistedAt = now
         persistPending(done, total)
       }
     }
-    report('')
+    report('', true)
 
     const insert = db.prepare(
       `INSERT OR IGNORE INTO items(path, name, ext, size, mtime, added_at, dir)
@@ -630,16 +708,30 @@ export async function importPaths(
 
     let cursor = 0
     const worker = async (): Promise<void> => {
+      const pending: ItemPatch[] = []
+      const flush = (): void => {
+        if (pending.length === 0) return
+        writeItemPatches(db, pending.splice(0, pending.length))
+      }
       for (;;) {
-        if (state.cancelled) return
+        if (state.cancelled) {
+          flush()
+          return
+        }
         while (state.paused && !state.cancelled) {
           await sleep(150)
         }
-        if (state.cancelled) return
+        if (state.cancelled) {
+          flush()
+          return
+        }
         // 暂停会让出事件循环，期间别的 worker 可能已经把队列取空，
         // 所以必须在这里重新确认索引，不能沿用循环开头的判断
         const index = cursor
-        if (index >= files.length) return
+        if (index >= files.length) {
+          flush()
+          return
+        }
         cursor = index + 1
         const filePath = files[index]
         let id = 0
@@ -722,7 +814,8 @@ export async function importPaths(
           if (bucket) bucket.push(filePath)
           else runImported.set(size, [filePath])
 
-          await processItem(id, filePath)
+          pending.push(await processItem(id, filePath))
+          if (pending.length >= 50) flush()
           if (readXmp) {
             try {
               await importSidecarForItem(id, filePath)
@@ -758,6 +851,8 @@ export async function importPaths(
       () => worker()
     )
     await Promise.all(workers)
+    // 收尾帧强制发一次，保证界面拿到最终数量
+    report('', true)
 
     // 取消后仍然要收尾：已导入的部分要参与分组，目录要纳入监听
     if (registerSources && paths.length > 0) {
@@ -843,9 +938,16 @@ export async function reprocessPaths(
   let refreshed = 0
   let failed = 0
 
-  const report = (current: string): void => {
+  let lastEmitAt = 0
+  let lastPaused = false
+  const report = (current: string, force = false): void => {
+    const now = Date.now()
+    const pausedNow = state.paused
+    if (!force && pausedNow === lastPaused && now - lastEmitAt < 100) return
+    lastEmitAt = now
+    lastPaused = pausedNow
     emit(onProgress, {
-      phase: state.paused ? 'paused' : 'importing',
+      phase: pausedNow ? 'paused' : 'importing',
       total,
       done,
       remaining: Math.max(0, total - done),
@@ -853,10 +955,16 @@ export async function reprocessPaths(
       skipped: 0,
       failed,
       current,
-      paused: state.paused
+      paused: pausedNow
     })
   }
-  report('')
+  report('', true)
+
+  const pending: ItemPatch[] = []
+  const flush = (): void => {
+    if (pending.length === 0) return
+    writeItemPatches(db, pending.splice(0, pending.length))
+  }
 
   try {
     for (const filePath of paths) {
@@ -887,7 +995,8 @@ export async function reprocessPaths(
             /* 删不掉就让 processItem 覆盖写 */
           }
         }
-        await processItem(row.id, filePath)
+        pending.push(await processItem(row.id, filePath))
+        if (pending.length >= 50) flush()
         refreshed++
       } catch (error) {
         failed++
@@ -897,6 +1006,8 @@ export async function reprocessPaths(
       report(basename(filePath))
     }
   } finally {
+    flush()
+    report('', true)
     state.running = false
     state.paused = false
     state.cancelled = false

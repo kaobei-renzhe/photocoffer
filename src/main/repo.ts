@@ -1,5 +1,6 @@
 import { basename, dirname, join, sep } from 'node:path'
 import { existsSync, unlinkSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import type { Database } from 'better-sqlite3'
 import { getDb, getIndexPath, getLibraryPath } from './db'
 import { RAW_EXT } from '../shared/formats'
@@ -228,21 +229,23 @@ function loadGroupCounts(
     for (const row of found) burstCounts.set(row.burst_key, row.c)
   }
 
-  for (const stackId of stackIds) {
+  for (const part of chunk(stackIds, 400)) {
     const found = db
       .prepare(
-        `SELECT COUNT(*) AS c FROM items
-         WHERE trashed = 0 AND missing = 0 AND stack_id = ?`
+        `SELECT stack_id, COUNT(*) AS c FROM items
+         WHERE trashed = 0 AND missing = 0
+           AND stack_id IN (${part.map(() => '?').join(',')})
+         GROUP BY stack_id`
       )
-      .get(stackId) as { c: number }
-    stackCounts.set(stackId, found.c)
+      .all(...part) as Array<{ stack_id: number; c: number }>
+    for (const row of found) stackCounts.set(row.stack_id, row.c)
   }
 
   return { pairCounts, burstCounts, stackCounts }
 }
 
 function buildWhere(filter: FilterState, params: Array<string | number>): string[] {
-  const where: string[] = ['i.trashed = 0']
+  const where: string[] = [filter.trashed ? 'i.trashed = 1' : 'i.trashed = 0']
   const expandedGroups = filter.expandedGroups ?? []
   const expandedBursts = expandedGroups.filter((key) => key.startsWith('b'))
   const expandedStacks = expandedGroups
@@ -250,7 +253,9 @@ function buildWhere(filter: FilterState, params: Array<string | number>): string
     .map((key) => Number(key.slice(1)))
     .filter((value) => Number.isFinite(value))
 
-  if (filter.errors) {
+  if (filter.trashed) {
+    // 回收站逐张展示，不按连拍/堆叠折叠，否则删掉的封面会把同组照片藏起来
+  } else if (filter.errors) {
     // 异常视图：把导入失败的文件集中列出来，方便重新处理
     where.push('i.error IS NOT NULL')
   } else {
@@ -405,6 +410,14 @@ function buildWhere(filter: FilterState, params: Array<string | number>): string
   return where
 }
 
+/** 列表总数缓存：翻页时不必每页重跑一次 COUNT；写操作会主动清空 */
+const totalCache = new Map<string, { value: number; at: number }>()
+const TOTAL_TTL_MS = 2000
+
+export function invalidateItemTotals(): void {
+  totalCache.clear()
+}
+
 export function listItems(
   filter: FilterState,
   offset = 0,
@@ -414,6 +427,7 @@ export function listItems(
   const params: Array<string | number> = []
   const where = buildWhere(filter, params)
   const whereSql = `WHERE ${where.join(' AND ')}`
+  const sort = filter.sort ?? 'added'
   const orderMap: Record<string, string> = {
     added: 'i.added_at DESC, i.id DESC',
     name: 'i.name COLLATE NOCASE ASC',
@@ -421,16 +435,26 @@ export function listItems(
     rating: 'i.rating DESC, i.added_at DESC',
     size: 'i.size DESC',
     // 没评过分的排在最后，避免空值把高分图挤下去
-    ai: 'coalesce((SELECT qs.overall FROM quality_scores qs WHERE qs.item_id = i.id), -1) DESC, i.added_at DESC'
+    ai: 'coalesce(qs.overall, -1) DESC, i.added_at DESC'
   }
-  const order = orderMap[filter.sort ?? 'added'] ?? orderMap.added
+  const order = orderMap[sort] ?? orderMap.added
 
-  const total = (db.prepare(`SELECT COUNT(*) AS c FROM items i ${whereSql}`).get(...params) as {
-    c: number
-  }).c
+  const cacheKey = `${getLibraryPath()}|${JSON.stringify(filter)}`
+  const cached = totalCache.get(cacheKey)
+  let total: number
+  if (offset > 0 && cached && Date.now() - cached.at < TOTAL_TTL_MS) {
+    total = cached.value
+  } else {
+    total = (db.prepare(`SELECT COUNT(*) AS c FROM items i ${whereSql}`).get(...params) as {
+      c: number
+    }).c
+    totalCache.set(cacheKey, { value: total, at: Date.now() })
+  }
 
+  // ai 排序用 LEFT JOIN 一次带出分数，避免对每一行跑相关子查询
+  const from = sort === 'ai' ? 'items i LEFT JOIN quality_scores qs ON qs.item_id = i.id' : 'items i'
   const rows = db
-    .prepare(`SELECT i.* FROM items i ${whereSql} ORDER BY ${order} LIMIT ? OFFSET ?`)
+    .prepare(`SELECT i.* FROM ${from} ${whereSql} ORDER BY ${order} LIMIT ? OFFSET ?`)
     .all(...params, limit, offset) as ItemRow[]
 
   return { items: mapItems(rows), total }
@@ -525,6 +549,59 @@ export function updateItem(
   if (sets.length === 0) return
   params.push(id)
   getDb().prepare(`UPDATE items SET ${sets.join(', ')} WHERE id = ?`).run(...params)
+}
+
+/**
+ * 批量更新：选中几千张时也只走一次 IPC。
+ * 每 400 个 id 一批，批内用事务，按实际出现的字段拼 SET。
+ */
+export function bulkUpdate(
+  ids: number[],
+  patch: { rating?: number; note?: string; noteAppend?: boolean; url?: string; flag?: number }
+): number {
+  const clean = [...new Set(ids.filter((id) => Number.isFinite(id)))]
+  if (clean.length === 0) return 0
+
+  const sets: string[] = []
+  const values: Array<string | number> = []
+  if (patch.rating !== undefined) {
+    sets.push('rating = ?')
+    values.push(patch.rating)
+  }
+  if (patch.flag !== undefined) {
+    sets.push('flag = ?')
+    values.push(patch.flag)
+  }
+  if (patch.note !== undefined) {
+    if (patch.noteAppend) {
+      // 追加模式在库里用一条 SQL 完成：空备注直接写，否则换行接在后面
+      sets.push("note = CASE WHEN trim(note) = '' THEN ? ELSE note || char(10) || ? END")
+      values.push(patch.note, patch.note)
+    } else {
+      sets.push('note = ?')
+      values.push(patch.note)
+    }
+  }
+  if (patch.url !== undefined) {
+    sets.push('url = ?')
+    values.push(patch.url)
+  }
+  if (sets.length === 0) return 0
+
+  const db = getDb()
+  let updated = 0
+  const tx = db.transaction((list: number[]) => {
+    const placeholders = list.map(() => '?').join(',')
+    db.prepare(`UPDATE items SET ${sets.join(', ')} WHERE id IN (${placeholders})`).run(
+      ...values,
+      ...list
+    )
+  })
+  for (const part of chunk(clean, 400)) {
+    tx(part)
+    updated += part.length
+  }
+  return updated
 }
 
 /**
@@ -677,6 +754,18 @@ export function purgeItems(ids: number[]): void {
   tx(ids)
 }
 
+/** 清空回收站：分批彻底删除，返回删掉的条数 */
+export function purgeAllTrashed(): number {
+  const rows = getDb().prepare('SELECT id FROM items WHERE trashed = 1').all() as Array<{
+    id: number
+  }>
+  const ids = rows.map((row) => row.id)
+  for (let start = 0; start < ids.length; start += 400) {
+    purgeItems(ids.slice(start, start + 400))
+  }
+  return ids.length
+}
+
 /**
  * 损坏/无法识别的文件不删记录，只打上错误标记，
  * 这样导入不会中断，事后还能在「导入异常」里看到它们。
@@ -798,29 +887,47 @@ export function relinkItem(id: number, path: string, name: string, ext: string):
   }
 }
 
-export function rescan(): { missing: number; restored: number } {
+/**
+ * 刷新图库：分批异步 stat，按 64 并发让出事件循环。
+ * 3 万张时同步逐条 existsSync 会把主进程冻住好几秒。
+ */
+export async function rescan(): Promise<{ missing: number; restored: number }> {
   const db = getDb()
   const rows = db.prepare('SELECT id, path, missing FROM items WHERE trashed = 0').all() as Array<{
     id: number
     path: string
     missing: number
   }>
-  const upd = db.prepare('UPDATE items SET missing = ? WHERE id = ?')
-  let missing = 0
-  let restored = 0
-  const tx = db.transaction(() => {
-    for (const row of rows) {
-      const gone = existsSync(row.path) ? 0 : 1
-      if (gone !== row.missing) {
-        upd.run(gone, row.id)
-        if (gone) missing++
-        else restored++
-      } else if (gone) {
-        missing++
+  const results = new Array<number>(rows.length).fill(0)
+  let cursor = 0
+  const worker = async (): Promise<void> => {
+    while (cursor < rows.length) {
+      const index = cursor++
+      const row = rows[index]
+      try {
+        await stat(row.path)
+      } catch {
+        results[index] = 1
       }
     }
+  }
+  await Promise.all(Array.from({ length: Math.min(64, rows.length) }, worker))
+
+  let missing = 0
+  let restored = 0
+  const changed: Array<{ id: number; gone: number }> = []
+  rows.forEach((row, index) => {
+    const gone = results[index] ? 1 : 0
+    if (gone) missing++
+    else if (row.missing) restored++
+    if (gone !== row.missing) changed.push({ id: row.id, gone })
   })
-  tx()
+  if (changed.length) {
+    const upd = db.prepare('UPDATE items SET missing = ? WHERE id = ?')
+    db.transaction(() => {
+      for (const entry of changed) upd.run(entry.gone, entry.id)
+    })()
+  }
   return { missing, restored }
 }
 
@@ -851,6 +958,9 @@ export function stats(): Stats {
   ).c
   const tags = (db.prepare('SELECT COUNT(*) AS c FROM tags').get() as { c: number }).c
   const folders = (db.prepare('SELECT COUNT(*) AS c FROM folders').get() as { c: number }).c
+  const trashed = (
+    db.prepare('SELECT COUNT(*) AS c FROM items WHERE trashed = 1').get() as { c: number }
+  ).c
   // 「客户已选」入口用：最近一单里客户要的 + 要修的
   const clientPicked = (
     db
@@ -864,7 +974,7 @@ export function stats(): Stats {
       )
       .get() as { c: number }
   ).c
-  return { total: row.total, missing, bytes: row.bytes, tags, folders, errors, clientPicked }
+  return { total: row.total, missing, bytes: row.bytes, tags, folders, errors, clientPicked, trashed }
 }
 
 interface DirBucket {
@@ -1073,6 +1183,10 @@ export function deleteTag(id: number): void {
 
 export function setTag(itemIds: number[], tagId: number, add: boolean): void {
   const db = getDb()
+  // 目标可能在拖拽途中被删掉，明确报错好让界面提示，而不是静默成功
+  if (add && !db.prepare('SELECT 1 FROM tags WHERE id = ?').get(tagId)) {
+    throw new Error('目标标签已不存在，刷新后再试')
+  }
   const stmt = add
     ? db.prepare('INSERT OR IGNORE INTO item_tags(item_id, tag_id) VALUES(?, ?)')
     : db.prepare('DELETE FROM item_tags WHERE item_id = ? AND tag_id = ?')
@@ -1082,44 +1196,175 @@ export function setTag(itemIds: number[], tagId: number, add: boolean): void {
   tx()
 }
 
+/**
+ * 文件夹列表：扁平返回，带上父级与同级排序，由渲染层组树。
+ * 封面优先用户指定的那张，失效时回退到文件夹里最新加入的一张。
+ */
 export function listFolders(): Folder[] {
-  return getDb()
+  const db = getDb()
+  const rows = db
     .prepare(
-      `SELECT f.id, f.name,
+      `SELECT f.id, f.name, f.parent_id AS parentId, f.sort, f.cover_item_id AS coverItemId,
+              coalesce(f.note, '') AS note,
               coalesce(SUM(CASE WHEN i.id IS NULL THEN 0 ELSE 1 END), 0) AS count
        FROM folders f
        LEFT JOIN item_folders fi ON fi.folder_id = f.id
        LEFT JOIN items i ON i.id = fi.item_id AND i.trashed = 0 AND i.missing = 0
-       GROUP BY f.id ORDER BY f.name COLLATE NOCASE`
+       GROUP BY f.id
+       ORDER BY f.sort, f.name COLLATE NOCASE`
     )
-    .all() as Folder[]
+    .all() as Array<{
+    id: number
+    name: string
+    parentId: number | null
+    sort: number
+    coverItemId: number | null
+    note: string
+    count: number
+  }>
+
+  const fallback = new Map<number, number>()
+  const candidates = db
+    .prepare(
+      `SELECT fi.folder_id AS folderId, i.id
+       FROM item_folders fi
+       JOIN items i ON i.id = fi.item_id
+       WHERE i.trashed = 0 AND i.missing = 0
+       ORDER BY i.added_at DESC, i.id DESC`
+    )
+    .all() as Array<{ folderId: number; id: number }>
+  for (const row of candidates) {
+    if (!fallback.has(row.folderId)) fallback.set(row.folderId, row.id)
+  }
+  const usable = db.prepare('SELECT 1 FROM items WHERE id = ? AND trashed = 0 AND missing = 0')
+
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    count: row.count,
+    parentId: row.parentId ?? null,
+    sort: row.sort,
+    coverItemId:
+      (row.coverItemId && usable.get(row.coverItemId) ? row.coverItemId : null) ??
+      fallback.get(row.id) ??
+      null,
+    note: row.note
+  }))
 }
 
-export function createFolder(name: string): Folder {
+export function createFolder(name: string, parentId: number | null = null): Folder {
   const db = getDb()
   const clean = name.trim()
   if (!clean) throw new Error('文件夹名不能为空')
-  const existing = db
-    .prepare('SELECT id, name FROM folders WHERE name = ?')
-    .get(clean) as { id: number; name: string } | undefined
+  if (parentId !== null && !db.prepare('SELECT 1 FROM folders WHERE id = ?').get(parentId)) {
+    throw new Error('上级文件夹已不存在，刷新后再试')
+  }
+  const existing = db.prepare('SELECT id FROM folders WHERE name = ?').get(clean)
   if (existing) throw new Error('已经有同名文件夹了')
+  const next = db
+    .prepare(
+      'SELECT coalesce(MAX(sort), -1) + 1 AS sort FROM folders WHERE coalesce(parent_id, 0) = coalesce(?, 0)'
+    )
+    .get(parentId) as { sort: number }
   const info = db
-    .prepare('INSERT INTO folders(name, created_at) VALUES(?, ?)')
-    .run(clean, Date.now())
-  return { id: Number(info.lastInsertRowid), name: clean, count: 0 }
+    .prepare('INSERT INTO folders(name, created_at, parent_id, sort) VALUES(?, ?, ?, ?)')
+    .run(clean, Date.now(), parentId, next.sort)
+  return {
+    id: Number(info.lastInsertRowid),
+    name: clean,
+    count: 0,
+    parentId,
+    sort: next.sort,
+    coverItemId: null,
+    note: ''
+  }
 }
 
+export function renameFolder(id: number, name: string): void {
+  const db = getDb()
+  const clean = name.trim()
+  if (!clean) throw new Error('文件夹名不能为空')
+  if (!db.prepare('SELECT 1 FROM folders WHERE id = ?').get(id)) {
+    throw new Error('文件夹已不存在')
+  }
+  const dup = db.prepare('SELECT id FROM folders WHERE name = ? AND id <> ?').get(clean, id)
+  if (dup) throw new Error('已经有同名文件夹了')
+  db.prepare('UPDATE folders SET name = ? WHERE id = ?').run(clean, id)
+}
+
+/** 移动文件夹：可以换父级，也可以在目标同级里插到指定位置 */
+export function moveFolder(id: number, parentId: number | null, index: number): void {
+  const db = getDb()
+  const self = db.prepare('SELECT id FROM folders WHERE id = ?').get(id)
+  if (!self) throw new Error('文件夹已不存在')
+  if (parentId !== null) {
+    if (!db.prepare('SELECT 1 FROM folders WHERE id = ?').get(parentId)) {
+      throw new Error('目标文件夹已不存在，刷新后再试')
+    }
+    // 不能把文件夹挂到自己或自己的子孙下面
+    let cursor: number | null = parentId
+    const seen = new Set<number>()
+    while (cursor !== null) {
+      if (cursor === id) throw new Error('不能把文件夹移到它自己的子文件夹里')
+      if (seen.has(cursor)) break
+      seen.add(cursor)
+      const row = db.prepare('SELECT parent_id AS parentId FROM folders WHERE id = ?').get(cursor) as
+        | { parentId: number | null }
+        | undefined
+      cursor = row?.parentId ?? null
+    }
+  }
+
+  const siblings = db
+    .prepare(
+      `SELECT id FROM folders
+       WHERE id <> ? AND coalesce(parent_id, 0) = coalesce(?, 0)
+       ORDER BY sort, name COLLATE NOCASE`
+    )
+    .all(id, parentId) as Array<{ id: number }>
+  const at = Math.max(0, Math.min(Number.isFinite(index) ? index : siblings.length, siblings.length))
+  siblings.splice(at, 0, { id })
+
+  const update = db.prepare('UPDATE folders SET parent_id = ?, sort = ? WHERE id = ?')
+  db.transaction(() => {
+    siblings.forEach((row, position) => update.run(parentId, position, row.id))
+  })()
+}
+
+export function setFolderCover(id: number, itemId: number | null): void {
+  const db = getDb()
+  if (!db.prepare('SELECT 1 FROM folders WHERE id = ?').get(id)) {
+    throw new Error('文件夹已不存在')
+  }
+  if (itemId !== null) {
+    const item = db
+      .prepare('SELECT 1 FROM items WHERE id = ? AND trashed = 0 AND missing = 0')
+      .get(itemId)
+    if (!item) throw new Error('这张照片已经不在图库里了')
+  }
+  db.prepare('UPDATE folders SET cover_item_id = ? WHERE id = ?').run(itemId, id)
+}
+
+/** 删除文件夹：里面的照片只解除归档，子文件夹上提到它的上一级 */
 export function deleteFolder(id: number): void {
   const db = getDb()
-  const tx = db.transaction(() => {
+  const row = db.prepare('SELECT parent_id AS parentId FROM folders WHERE id = ?').get(id) as
+    | { parentId: number | null }
+    | undefined
+  const parentId = row?.parentId ?? null
+  db.transaction(() => {
+    db.prepare('UPDATE folders SET parent_id = ? WHERE parent_id = ?').run(parentId, id)
     db.prepare('DELETE FROM item_folders WHERE folder_id = ?').run(id)
     db.prepare('DELETE FROM folders WHERE id = ?').run(id)
-  })
-  tx()
+  })()
 }
 
 export function addToFolder(itemIds: number[], folderId: number): void {
   const db = getDb()
+  // 目标文件夹可能已被删除：拖拽落点还在，但库里已经没了
+  if (!db.prepare('SELECT 1 FROM folders WHERE id = ?').get(folderId)) {
+    throw new Error('目标文件夹已不存在，刷新后再试')
+  }
   const stmt = db.prepare('INSERT OR IGNORE INTO item_folders(item_id, folder_id) VALUES(?, ?)')
   const tx = db.transaction(() => {
     for (const id of itemIds) stmt.run(id, folderId)

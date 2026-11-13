@@ -1,11 +1,13 @@
-import { existsSync, rmSync } from 'node:fs'
-import { basename, join } from 'node:path'
+import { existsSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { basename, join, parse as parsePath } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import Database from 'better-sqlite3'
 import { getDb, getLibraryPath, getMeta, resolveIndexDir, setMeta } from './db'
 import { getIndexDirFor, libraryKey, readConfig, updateConfig, type AppConfig } from './settings'
 import { log } from './logger'
 import type {
+  CrossLibraryHint,
+  CrossLibraryMatch,
   LibraryEntry,
   LibraryRelocateResult,
   LibraryStatus,
@@ -174,7 +176,14 @@ function toSummary(entry: LibraryEntry): LibrarySummary {
   const dirExists = existsSync(entry.path)
   const indexExists = dirExists && existsSync(join(resolveIndexDir(entry.path), 'library.db'))
   const status: LibraryStatus = !dirExists ? 'missing' : !indexExists ? 'index-missing' : 'ok'
-  return { ...entry, status }
+  // 移动硬盘拔掉时盘符根就没了；和「目录被改名/删掉」给不同文案
+  const driveMissing = status === 'missing' && driveOffline(entry.path)
+  return { ...entry, status, driveMissing }
+}
+
+function driveOffline(path: string): boolean {
+  const root = parsePath(path).root
+  return Boolean(root) && !existsSync(root)
 }
 
 export function listLibraries(): LibrarySummary[] {
@@ -288,7 +297,7 @@ export function relocateLibrary(id: string, dir: string): LibraryRelocateResult 
   const externalInfo =
     !directInfo && externalIndex ? readDbInfo(join(externalIndex, 'library.db')) : null
   const info = directInfo ?? externalInfo
-  if (!info) return { ok: false, message: '这个文件夹里没有图库（找不到 library.db）' }
+  if (!info) return { ok: false, message: '这个文件夹里没有图库（找不到数据文件）' }
   if (info.id && info.id !== id) {
     return { ok: false, message: `这个目录属于另一个图库，不是「${entry.name}」` }
   }
@@ -310,4 +319,152 @@ export function relocateLibrary(id: string, dir: string): LibraryRelocateResult 
   updateConfig(patch)
 
   return { ok: true, entry: toSummary(updated) }
+}
+
+/* ─────────────── 库封面 ─────────────── */
+
+const COVER_CACHE_LIMIT = 32
+/** 封面 base64 按「库 id」缓存，用缩略图文件与 mtime 判断是否过期 */
+const coverCache = new Map<string, { file: string; stamp: number; data: string }>()
+
+/** 代表图候选：未删除、未丢失，优先高星，其次拍摄时间新的 */
+function readCoverCandidates(file: string): number[] {
+  let db: Database.Database | null = null
+  try {
+    db = new Database(file, { readonly: true })
+    const rows = db
+      .prepare(
+        `SELECT id FROM items
+         WHERE trashed = 0 AND missing = 0
+         ORDER BY rating DESC, mtime DESC, id DESC
+         LIMIT 12`
+      )
+      .all() as Array<{ id: number }>
+    return rows.map((row) => row.id)
+  } catch (error) {
+    void log.warn('library', '读取封面候选失败', { file, error: (error as Error).message })
+    return []
+  } finally {
+    db?.close()
+  }
+}
+
+/**
+ * 取某个库的代表缩略图。用这个库自己的索引目录拼路径，
+ * 不依赖当前打开的库；取不到返回 null，界面回退成色块。
+ */
+export function libraryCover(id: string): string | null {
+  const entry = ensureLibraryRegistry().find((item) => item.id === id)
+  if (!entry || !existsSync(entry.path)) return null
+  const indexDir = resolveIndexDir(entry.path)
+  const dbFile = join(indexDir, 'library.db')
+  if (!existsSync(dbFile)) return null
+
+  for (const itemId of readCoverCandidates(dbFile)) {
+    const bucket = String(itemId % 100).padStart(2, '0')
+    const file = join(indexDir, 'thumbnails', bucket, `${itemId}.webp`)
+    if (!existsSync(file)) continue
+    let stamp = 0
+    try {
+      stamp = statSync(file).mtimeMs
+    } catch {
+      continue
+    }
+    const cached = coverCache.get(id)
+    if (cached && cached.file === file && cached.stamp === stamp) return cached.data
+    try {
+      const data = `data:image/webp;base64,${readFileSync(file).toString('base64')}`
+      if (coverCache.size >= COVER_CACHE_LIMIT) {
+        const oldest = coverCache.keys().next().value
+        if (oldest !== undefined) coverCache.delete(oldest)
+      }
+      coverCache.set(id, { file, stamp, data })
+      return data
+    } catch (error) {
+      void log.warn('library', '读取封面缩略图失败', { file, error: (error as Error).message })
+      return null
+    }
+  }
+  coverCache.delete(id)
+  return null
+}
+
+/* ─────────────── 跨库搜索 ─────────────── */
+
+/**
+ * better-sqlite3 是同步 API，单条查询无法真正中断；
+ * 这里用「一个库超过 2 秒就不再继续扫后面的库」控制最坏耗时。
+ */
+const SEARCH_BUDGET_MS = 2000
+
+function countMatches(file: string, query: string): number {
+  let db: Database.Database | null = null
+  try {
+    db = new Database(file, { readonly: true })
+    const like = `%${query.replace(/[%_\\]/g, (item) => `\\${item}`)}%`
+    if (query.length >= 3) {
+      try {
+        const row = db
+          .prepare(
+            `SELECT COUNT(*) AS c FROM items i
+             WHERE i.trashed = 0 AND (
+               i.id IN (SELECT rowid FROM items_fts WHERE items_fts MATCH ?)
+               OR i.name LIKE ? ESCAPE '\\'
+               OR i.note LIKE ? ESCAPE '\\'
+               OR coalesce(i.url, '') LIKE ? ESCAPE '\\'
+             )`
+          )
+          .get(`"${query.replace(/"/g, '""')}"`, like, like, like) as { c: number }
+        return row.c
+      } catch {
+        /* 老库没有 FTS 表，退回 LIKE */
+      }
+    }
+    const row = db
+      .prepare(
+        `SELECT COUNT(*) AS c FROM items i
+         WHERE i.trashed = 0 AND (
+           i.name LIKE ? ESCAPE '\\' OR i.note LIKE ? ESCAPE '\\'
+           OR coalesce(i.url, '') LIKE ? ESCAPE '\\'
+         )`
+      )
+      .get(like, like, like) as { c: number }
+    return row.c
+  } catch (error) {
+    void log.warn('library', '跨库搜索跳过这个库', { file, error: (error as Error).message })
+    return 0
+  } finally {
+    db?.close()
+  }
+}
+
+/** 只读扫其他库，统计查询词可能命中的条数；当前库由调用方自己算 */
+export function searchOtherLibraries(query: string): CrossLibraryHint {
+  const text = String(query ?? '').trim()
+  if (!text) return { libraries: 0, total: 0, matches: [] }
+  const current = getLibraryPath()
+  const matches: CrossLibraryMatch[] = []
+
+  for (const entry of listLibraries()) {
+    if (entry.status !== 'ok') continue
+    if (current && samePath(current, entry.path)) continue
+    const started = Date.now()
+    const count = countMatches(join(resolveIndexDir(entry.path), 'library.db'), text)
+    if (count > 0) {
+      matches.push({ id: entry.id, name: entry.name, path: entry.path, count })
+    }
+    if (Date.now() - started > SEARCH_BUDGET_MS) {
+      void log.warn('library', '跨库搜索单库超时，停止扫描剩余库', {
+        path: entry.path,
+        elapsed: Date.now() - started
+      })
+      break
+    }
+  }
+
+  return {
+    libraries: matches.length,
+    total: matches.reduce((sum, item) => sum + item.count, 0),
+    matches
+  }
 }

@@ -45,6 +45,7 @@ function initial(name: string): string {
 
 export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeProps) {
   const [libraries, setLibraries] = useState<LibrarySummary[] | null>(null)
+  const [covers, setCovers] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [menuId, setMenuId] = useState<string | null>(null)
@@ -63,6 +64,34 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  // 库封面：取不到真缩略图时保留哈希色块
+  useEffect(() => {
+    if (!libraries) return
+    const targets = libraries.filter((entry) => entry.status === 'ok')
+    if (targets.length === 0) {
+      setCovers({})
+      return
+    }
+    let cancelled = false
+    void Promise.all(
+      targets.map(async (entry) => {
+        try {
+          return [entry.id, await window.api.libraryCover(entry.id)] as const
+        } catch {
+          return [entry.id, null] as const
+        }
+      })
+    ).then((rows) => {
+      if (cancelled) return
+      const next: Record<string, string> = {}
+      for (const [id, data] of rows) if (data) next[id] = data
+      setCovers(next)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [libraries])
 
   // 点菜单外面收起
   useEffect(() => {
@@ -140,7 +169,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
     const ok = await window.api.confirm(
       alsoDeleteData ? `删除「${entry.name}」的索引数据？` : `从列表移除「${entry.name}」？`,
       alsoDeleteData
-        ? '会删除 library.db、缩略图和预览缓存。原图文件一张都不会动。'
+        ? '会删除索引、缩略图和预览缓存，原图一张都不会动。'
         : '只从列表移除，磁盘上的图库、原图和标签都保持不变。'
     )
     if (!ok) return
@@ -182,7 +211,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
 
   const noticeBlock = notice ? (
     <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 text-left text-[11.5px] leading-5 text-[var(--danger-text)]">
-      上次的索引目录里找不到 library.db：
+      找不到这个图库的数据文件：
       <span className="break-all">{notice}</span>
       <div className="mt-1 text-[var(--muted)]">
         索引可能被移动或删除了。原图都还在图库里——打开图库后点「刷新图库」就能重建索引，但标签、评分等元数据无法恢复。
@@ -246,7 +275,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
           <p className="mt-8 text-[11.5px] text-[var(--faint)] leading-5">
             图库就是一个普通文件夹
             <br />
-            里面保存索引数据库与缩略图缓存，原图仍留在原位置
+            里面保存图库的数据文件与缩略图缓存，原图仍留在原位置
           </p>
         </div>
       </div>
@@ -279,10 +308,25 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
                 }`}
                 onClick={() => void openEntry(entry)}
               >
-                <div className="relative h-[92px]" style={coverStyle(entry.id)}>
-                  <span className="absolute bottom-2 left-3 text-[26px] font-semibold text-white/90">
-                    {initial(entry.name)}
-                  </span>
+                <div
+                  className="relative h-[92px]"
+                  style={covers[entry.id] ? undefined : coverStyle(entry.id)}
+                >
+                  {covers[entry.id] ? (
+                    <>
+                      <img
+                        src={covers[entry.id]}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        draggable={false}
+                      />
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20" />
+                    </>
+                  ) : (
+                    <span className="absolute bottom-2 left-3 text-[26px] font-semibold text-white/90">
+                      {initial(entry.name)}
+                    </span>
+                  )}
                   {entry.status !== 'ok' && (
                     <span className="absolute right-2 top-2 rounded bg-black/35 px-1.5 py-0.5 text-[10px] text-white/90">
                       !
@@ -298,7 +342,8 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
                   </div>
                   {entry.status === 'missing' && (
                     <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--danger-text)]">
-                      <AlertTriangle size={10} /> 目录不见了
+                      <AlertTriangle size={10} />{' '}
+                      {entry.driveMissing ? '所在磁盘未连接，接上后重试' : '目录不见了'}
                     </div>
                   )}
                   {entry.status === 'index-missing' && (
@@ -421,7 +466,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
         {errorBlock}
 
         <p className="mt-8 text-[11.5px] leading-5 text-[var(--faint)]">
-          图库就是一个普通文件夹，里面保存索引数据库与缩略图缓存，原图仍留在原位置。
+          图库就是一个普通文件夹，里面保存图库的数据文件与缩略图缓存，原图仍留在原位置。
         </p>
       </div>
     </div>

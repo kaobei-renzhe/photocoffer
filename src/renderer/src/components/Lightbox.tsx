@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
-import { ChevronLeft, ChevronRight, Info, Minus, Plus, RotateCcw, RotateCw, X } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  Info,
+  Maximize,
+  Minimize,
+  Minus,
+  Pause,
+  Play,
+  Plus,
+  RotateCcw,
+  RotateCw,
+  X
+} from 'lucide-react'
 import type { Folder, Item, NoteRegion, NoteThread, PhotoNote, Tag } from '@shared/types'
 import { photoUrl } from '../lib/format'
 import PhotoInspector, {
@@ -9,6 +23,7 @@ import PhotoInspector, {
 } from './inspector/PhotoInspector'
 import type { PushUndo } from './inspector/ui'
 import { inAiScope, outOfScopeText, type AiScope } from '../lib/aiScope'
+import { useIdle } from '../hooks/useIdle'
 
 interface LightboxProps {
   items: Item[]
@@ -19,6 +34,8 @@ interface LightboxProps {
   folders: Folder[]
   onRefresh: () => void
   onPushUndo: PushUndo
+  /** 右键：先在 App 里选中这张，再在鼠标位置弹菜单 */
+  onContextMenu: (id: number, x: number, y: number) => void
   aiReady: boolean
   canAsk: boolean
   /** AI 处理范围：超出范围的单张不显示 AI 操作 */
@@ -40,12 +57,26 @@ export default function Lightbox({
   folders,
   onRefresh,
   onPushUndo,
+  onContextMenu,
   aiReady,
   canAsk,
   aiScope
 }: LightboxProps) {
   const item = items[index]
   const itemId = item?.id ?? 0
+
+  // 预加载前后各一张，翻页时少一次空白
+  useEffect(() => {
+    const neighbours = [items[index - 1], items[index + 1]].filter(Boolean)
+    const loaders = neighbours.map((entry) => {
+      const image = new Image()
+      image.src = photoUrl(entry.id)
+      return image
+    })
+    return () => {
+      for (const image of loaders) image.src = ''
+    }
+  }, [items, index])
   // 超出 AI 处理范围时，研读里的 AI 入口一并隐藏
   const scopeBlocked = Boolean(item && aiScope && !inAiScope(item, aiScope))
   const scopeHint = scopeBlocked && item && aiScope ? outOfScopeText(item, aiScope) : ''
@@ -80,6 +111,20 @@ export default function Lightbox({
   const draftRef = useRef<NoteRegion | null>(null)
   const drawStartRef = useRef<{ x: number; y: number } | null>(null)
   const [hint, setHint] = useState('')
+  const [helpOpen, setHelpOpen] = useState(false)
+  /** 全屏状态：Esc 先退全屏再关灯箱 */
+  const [fullscreen, setFullscreen] = useState(false)
+  /** 幻灯片是否在放；间隔只有 3 秒 / 5 秒两档 */
+  const [slideshow, setSlideshow] = useState(false)
+  const [slideDelay, setSlideDelay] = useState<3000 | 5000>(3000)
+  /** 任何键鼠操作都让计时重新开始 */
+  const [slideTick, setSlideTick] = useState(0)
+  /** 只有本灯箱自己进的全屏才负责退出，别动用户原本就有的全屏 */
+  const ownFullscreenRef = useRef(false)
+  /** 框选 / 看快捷键时不淡出，免得用户以为界面出错了 */
+  const idleRaw = useIdle(2000)
+  const idle = idleRaw && !drawing && !helpOpen
+  const chrome = `transition-opacity duration-300 ${idle ? 'opacity-0 pointer-events-none' : 'opacity-100'}`
 
   /** 旋转 90/270 度后，图像的横向和纵向尺寸互换 */
   const upright = rotation % 180 === 0
@@ -111,6 +156,57 @@ export default function Lightbox({
     query.addEventListener('change', onChange)
     return () => query.removeEventListener('change', onChange)
   }, [dpr])
+
+  useEffect(() => {
+    void window.api.isFullScreen().then((value) => {
+      setFullscreen(value)
+      // 用户本来就开着全屏时，关灯箱不该顺手把人家的全屏退掉
+      ownFullscreenRef.current = false
+    })
+  }, [])
+
+  const toggleFullscreen = useCallback(async (): Promise<void> => {
+    const next = await window.api.setFullScreen()
+    ownFullscreenRef.current = next
+    setFullscreen(next)
+  }, [])
+
+  const exitFullscreen = useCallback(async (): Promise<void> => {
+    ownFullscreenRef.current = false
+    setFullscreen(await window.api.setFullScreen(false))
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (!ownFullscreenRef.current) return
+      ownFullscreenRef.current = false
+      void window.api.setFullScreen(false)
+    }
+  }, [])
+
+  // 幻灯片：到末张就停住，别在最后一张上反复空转
+  useEffect(() => {
+    if (!slideshow) return
+    if (index >= items.length - 1) {
+      setSlideshow(false)
+      setHint('已经是最后一张')
+      return
+    }
+    const timer = setTimeout(() => onNavigate(index + 1), slideDelay)
+    return () => clearTimeout(timer)
+  }, [slideshow, slideDelay, slideTick, index, items.length, onNavigate])
+
+  // 任何键鼠操作都把计时器拨回起点（键盘在 onKey 里处理，这里管指针与滚轮）
+  useEffect(() => {
+    if (!slideshow) return
+    const bump = (): void => setSlideTick((value) => value + 1)
+    window.addEventListener('pointerdown', bump, true)
+    window.addEventListener('wheel', bump, true)
+    return () => {
+      window.removeEventListener('pointerdown', bump, true)
+      window.removeEventListener('wheel', bump, true)
+    }
+  }, [slideshow])
 
   const clampPan = useCallback(
     (next: { x: number; y: number }, scale: number) => {
@@ -287,6 +383,8 @@ export default function Lightbox({
     const onKey = (e: KeyboardEvent): void => {
       // 内层（输入框、弹窗）已经处理掉的键不要再抢
       if (e.defaultPrevented) return
+      // 任何按键都算一次操作，把幻灯片的计时拨回起点
+      if (slideshow) setSlideTick((value) => value + 1)
       const target = e.target as HTMLElement | null
       const typing =
         !!target &&
@@ -298,6 +396,13 @@ export default function Lightbox({
           e.preventDefault()
           e.stopPropagation()
           target.blur()
+          return
+        }
+        // 先退全屏，再按一次才关灯箱
+        if (fullscreen) {
+          e.preventDefault()
+          e.stopPropagation()
+          void exitFullscreen()
           return
         }
         if (drawing) {
@@ -317,6 +422,16 @@ export default function Lightbox({
       }
       if (typing) return
 
+      if (e.key === 'F11') {
+        e.preventDefault()
+        void toggleFullscreen()
+        return
+      }
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault()
+        setSlideshow((value) => !value)
+        return
+      }
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
         if (inspectorOpen) setInspectorOpen(false)
@@ -362,6 +477,8 @@ export default function Lightbox({
   }, [
     changeDrawing,
     drawing,
+    exitFullscreen,
+    fullscreen,
     index,
     inspectorOpen,
     inspectorTab,
@@ -370,6 +487,8 @@ export default function Lightbox({
     openInspector,
     resetFit,
     rotateBy,
+    slideshow,
+    toggleFullscreen,
     zoomStep
   ])
 
@@ -500,14 +619,18 @@ export default function Lightbox({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[rgba(5,7,10,0.94)]">
-      <div className="h-[46px] shrink-0 px-4 flex items-center gap-3 text-[12.5px]">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[rgba(4,5,10,0.97)]">
+      <div className={`h-[46px] shrink-0 px-4 flex items-center gap-3 text-[12.5px] ${chrome}`}>
         <span className="truncate text-[var(--text)]">{item.name}</span>
         <span className="text-[var(--faint)] tabular-nums">
           {index + 1} / {items.length}
         </span>
-        <button className="btn btn-ghost ml-auto h-7 px-2" onClick={onClose} title="关闭 (Esc)">
-          <X size={15} />
+        <button
+          className="btn btn-ghost ml-auto h-7 px-2"
+          onClick={() => setHelpOpen((open) => !open)}
+          title="快捷键"
+        >
+          <CircleHelp size={15} />
         </button>
         <button
           className={`btn h-7 px-2 ${
@@ -518,7 +641,35 @@ export default function Lightbox({
         >
           <Info size={14} /> 档案
         </button>
+        <button className="btn btn-ghost h-7 px-2" onClick={onClose} title="关闭 (Esc)">
+          <X size={15} />
+        </button>
       </div>
+
+      {helpOpen && (
+        <div
+          className="absolute right-3 top-12 z-10 w-[240px] rounded-lg border border-white/12 bg-[#14171e] p-3 text-[11.5px] shadow-xl"
+          onMouseLeave={() => setHelpOpen(false)}
+        >
+          {[
+            ['滚轮', '缩放'],
+            ['双击', '100%'],
+            ['0', '适应窗口'],
+            ['R / Shift+R', '旋转'],
+            ['← →', '上一张 / 下一张'],
+            ['S', '幻灯片'],
+            ['F11', '全屏'],
+            ['N', '档案面板'],
+            ['F', '框选'],
+            ['Esc', '关闭']
+          ].map(([key, value]) => (
+            <div key={key} className="flex justify-between py-[3px]">
+              <span className="text-[var(--faint)]">{key}</span>
+              <span className="text-[var(--text)]">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         <div
@@ -528,6 +679,12 @@ export default function Lightbox({
             cursor: drawing ? 'crosshair' : dragging ? 'grabbing' : canPan ? 'grab' : 'default'
           }}
           onDoubleClick={onDoubleClick}
+          onContextMenu={(event) => {
+            event.preventDefault()
+            // 框选时右键可能是想取消，不弹菜单
+            if (drawing) return
+            onContextMenu(item.id, event.clientX, event.clientY)
+          }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
@@ -597,7 +754,9 @@ export default function Lightbox({
 
         {index > 0 && (
           <button
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80"
+            className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-300 ${
+              idle ? 'opacity-15' : 'opacity-100'
+            }`}
             onClick={() => onNavigate(index - 1)}
             title="上一张"
           >
@@ -606,7 +765,9 @@ export default function Lightbox({
         )}
         {index < items.length - 1 && (
           <button
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80"
+            className={`absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-300 ${
+              idle ? 'opacity-15' : 'opacity-100'
+            }`}
             onClick={() => onNavigate(index + 1)}
             title="下一张"
           >
@@ -651,7 +812,9 @@ export default function Lightbox({
         )}
       </div>
 
-      <div className="h-[34px] shrink-0 px-4 flex items-center gap-3 text-[11px] text-[var(--faint)] border-t border-white/8">
+      <div
+        className={`h-[34px] shrink-0 px-4 flex items-center gap-3 text-[11px] text-[var(--faint)] border-t border-white/8 ${chrome}`}
+      >
         <span>
           {item.width} × {item.height}
         </span>
@@ -660,10 +823,33 @@ export default function Lightbox({
         {item.exif?.aperture && <span>{item.exif.aperture}</span>}
         {item.exif?.shutter && <span>{item.exif.shutter}</span>}
         {item.exif?.iso && <span>ISO {item.exif.iso}</span>}
-        <span className="ml-auto truncate">
-          滚轮缩放 · 双击 100% · R 旋转 · ← → 切换 · N 档案 · F 框选 · Esc 关闭
-        </span>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="ml-auto flex items-center gap-1 shrink-0">
+          <button
+            className={`w-6 h-6 rounded grid place-items-center hover:bg-white/12 ${
+              slideshow ? 'text-[var(--accent-2)]' : 'text-white/70'
+            }`}
+            onClick={() => setSlideshow((value) => !value)}
+            title="幻灯片 (S)"
+          >
+            {slideshow ? <Pause size={13} /> : <Play size={13} />}
+          </button>
+          <button
+            className={`h-6 px-1.5 rounded hover:bg-white/12 tabular-nums ${
+              slideshow ? 'text-white/80' : 'text-white/50'
+            }`}
+            onClick={() => setSlideDelay((value) => (value === 3000 ? 5000 : 3000))}
+            title="切换幻灯片间隔"
+          >
+            {slideDelay / 1000} 秒
+          </button>
+          <button
+            className="w-6 h-6 rounded grid place-items-center hover:bg-white/12 text-white/70"
+            onClick={() => void toggleFullscreen()}
+            title="全屏 (F11)"
+          >
+            {fullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
+          </button>
+          <span className="mx-1 h-4 w-px bg-white/12" />
           <button
             className="w-6 h-6 rounded grid place-items-center hover:bg-white/12 text-white/70"
             onClick={() => rotateBy(-90)}

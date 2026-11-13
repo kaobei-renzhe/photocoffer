@@ -1,12 +1,12 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent } from 'react'
-import { ImagePlus, Sparkles, TriangleAlert } from 'lucide-react'
-import type { Item } from '@shared/types'
+import { Check, ImagePlus, Sparkles, TriangleAlert } from 'lucide-react'
+import type { CrossLibraryHint, Item } from '@shared/types'
 import { pickThumbQuality, type ThumbQuality, type ThumbQualityPref } from '@shared/thumbs'
 import { RAW_EXT } from '@shared/formats'
 import { scoreColor, thumbUrl } from '../lib/format'
 
-const GAP = 12
+const GAP = 14
 const PAD = 14
 
 interface GalleryProps {
@@ -24,9 +24,13 @@ interface GalleryProps {
   focusTick: number
   expandedGroups: string[]
   hasFilter: boolean
+  /** 当前库零结果时，其他库的命中概况 */
+  otherHint: CrossLibraryHint | null
+  onOpenOtherLibrary: () => void
   resetKey: string
   onSelect: (id: number, e: ReactMouseEvent) => void
   onOpen: (id: number) => void
+  onContextMenu: (id: number, e: ReactMouseEvent) => void
   onExpandGroup: (key: string) => void
   onLoadMore: () => void
   onImportFiles: () => void
@@ -37,6 +41,24 @@ interface Box {
   y: number
   w: number
   h: number
+  /** 在原列表里的下标，可见区排序用 */
+  index: number
+}
+
+/** 瀑布流布局缓存：只算新增项，换尺寸/宽度时整表重建 */
+interface LayoutCache {
+  key: string
+  thumbSize: number
+  width: number
+  count: number
+  firstId: number
+  lastId: number
+  boxes: Box[]
+  /** 每列的盒子，按 y 递增，可见区二分用 */
+  buckets: Box[][]
+  heights: number[]
+  columns: number
+  totalHeight: number
 }
 
 const Card = memo(function Card({
@@ -47,6 +69,7 @@ const Card = memo(function Card({
   expanded,
   onSelect,
   onOpen,
+  onContextMenu,
   onDragStart,
   onExpandGroup
 }: {
@@ -57,6 +80,7 @@ const Card = memo(function Card({
   expanded: boolean
   onSelect: (id: number, e: ReactMouseEvent) => void
   onOpen: (id: number) => void
+  onContextMenu: (id: number, e: ReactMouseEvent) => void
   onDragStart: (id: number, e: ReactDragEvent) => void
   onExpandGroup: (key: string) => void
 }) {
@@ -77,18 +101,30 @@ const Card = memo(function Card({
       cancelled = true
       loader.onload = null
       loader.onerror = null
+      loader.src = ''
     }
   }, [src, shown])
 
   return (
     <div
       className={`card-thumb group ${selected ? 'selected' : ''}`}
-      style={{ position: 'absolute', left: box.x, top: box.y, width: box.w, height: box.h }}
+      style={{
+        position: 'absolute',
+        left: box.x,
+        top: box.y,
+        width: box.w,
+        height: box.h,
+        zIndex: selected ? 2 : 1
+      }}
       data-gallery-id={item.id}
       draggable
       onDragStart={(e) => onDragStart(item.id, e)}
       onClick={(e) => onSelect(item.id, e)}
       onDoubleClick={() => onOpen(item.id)}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onContextMenu(item.id, e)
+      }}
     >
       {item.error ? (
         <div className="absolute inset-0 grid place-items-center bg-[var(--panel-2)] px-2 text-center">
@@ -124,10 +160,16 @@ const Card = memo(function Card({
           {item.quality.overall}
         </span>
       )}
+      {selected && (
+        <span className="absolute right-1.5 top-1.5 z-10 grid h-[17px] w-[17px] place-items-center rounded-full bg-[var(--accent)] text-[var(--on-accent)] shadow">
+          <Check size={11} strokeWidth={3} />
+        </span>
+      )}
       {item.flag !== 0 && (
         <span
-          className="absolute top-1.5 right-2 text-[11px] font-semibold px-1 rounded"
+          className="absolute top-1.5 text-[11px] font-semibold px-1 rounded"
           style={{
+            right: selected ? 26 : 8,
             color: item.flag > 0 ? '#8be9a8' : '#ff9aa2',
             background: 'rgba(0,0,0,0.45)'
           }}
@@ -137,8 +179,8 @@ const Card = memo(function Card({
       )}
       {item.rating > 0 && (
         <div
-          className="absolute right-2 text-[10.5px] text-amber-300 drop-shadow"
-          style={{ top: item.flag !== 0 ? 26 : 6 }}
+          className="absolute text-[10.5px] text-amber-300 drop-shadow"
+          style={{ top: item.flag !== 0 ? 26 : 6, right: selected ? 26 : 8 }}
         >
           {'★'.repeat(item.rating)}
         </div>
@@ -190,9 +232,12 @@ export default function Gallery({
   focusTick,
   expandedGroups,
   hasFilter,
+  otherHint,
+  onOpenOtherLibrary,
   resetKey,
   onSelect,
   onOpen,
+  onContextMenu,
   onExpandGroup,
   onLoadMore,
   onImportFiles
@@ -235,45 +280,113 @@ export default function Gallery({
     setScrollTop(0)
   }, [resetKey])
 
-  const { boxes, totalHeight } = useMemo(() => {
+  const layoutRef = useRef<LayoutCache | null>(null)
+  const rafRef = useRef(0)
+
+  const { boxes, buckets, totalHeight } = useMemo(() => {
     const usable = Math.max(120, viewport.width - PAD * 2)
     const columns = Math.max(1, Math.floor((usable + GAP) / (thumbSize + GAP)))
     const colWidth = (usable - GAP * (columns - 1)) / columns
-    const heights = new Array<number>(columns).fill(0)
-    const result: Box[] = []
+    const firstId = items[0]?.id ?? 0
+    const lastId = items[items.length - 1]?.id ?? 0
+    const key = `${thumbSize}|${viewport.width}|${items.length}|${firstId}|${lastId}|${resetKey}`
+    const cache = layoutRef.current
+    if (cache && cache.key === key) {
+      return { boxes: cache.boxes, buckets: cache.buckets, totalHeight: cache.totalHeight }
+    }
 
-    for (const item of items) {
+    // 只追加一页、尺寸没变时，从上次的列高继续算；换尺寸/宽度整表重建
+    const canExtend =
+      !!cache &&
+      cache.thumbSize === thumbSize &&
+      cache.width === viewport.width &&
+      cache.columns === columns &&
+      items.length >= cache.count &&
+      cache.firstId === firstId &&
+      (cache.count === 0 || items[cache.count - 1]?.id === cache.lastId)
+
+    const nextBoxes = canExtend ? cache!.boxes.slice() : []
+    const nextBuckets = canExtend
+      ? cache!.buckets.map((list) => list.slice())
+      : Array.from({ length: columns }, () => [] as Box[])
+    const heights = canExtend ? cache!.heights.slice() : new Array<number>(columns).fill(0)
+
+    for (let index = nextBoxes.length; index < items.length; index++) {
+      const item = items[index]
       let target = 0
       for (let i = 1; i < columns; i++) if (heights[i] < heights[target]) target = i
       const rawRatio = item.width > 0 && item.height > 0 ? item.height / item.width : 1
       const ratio = Math.min(2.4, Math.max(0.4, rawRatio))
       const h = Math.round(colWidth * ratio)
-      result.push({ x: PAD + target * (colWidth + GAP), y: heights[target], w: colWidth, h })
+      const box: Box = {
+        x: PAD + target * (colWidth + GAP),
+        y: heights[target],
+        w: colWidth,
+        h,
+        index
+      }
+      nextBoxes.push(box)
+      nextBuckets[target].push(box)
       heights[target] += h + GAP
     }
-    return { boxes: result, totalHeight: Math.max(0, ...heights) }
-  }, [items, thumbSize, viewport.width])
+
+    const nextTotal = Math.max(0, ...heights)
+    layoutRef.current = {
+      key,
+      thumbSize,
+      width: viewport.width,
+      count: items.length,
+      firstId,
+      lastId,
+      boxes: nextBoxes,
+      buckets: nextBuckets,
+      heights,
+      columns,
+      totalHeight: nextTotal
+    }
+    return { boxes: nextBoxes, buckets: nextBuckets, totalHeight: nextTotal }
+  }, [items, thumbSize, viewport.width, resetKey])
 
   const visible = useMemo(() => {
-    const top = scrollTop - 700
-    const bottom = scrollTop + (viewport.height || 800) + 700
-    const out: Array<{ item: Item; box: Box }> = []
-    for (let i = 0; i < items.length; i++) {
-      const box = boxes[i]
-      if (!box) continue
-      if (box.y + box.h >= top && box.y <= bottom) out.push({ item: items[i], box })
+    // 过扫描只留半屏多点：700px 在 230px 卡片下会多渲染三四倍
+    const top = scrollTop - 350
+    const bottom = scrollTop + (viewport.height || 800) + 350
+    const picked: Box[] = []
+    for (const column of buckets) {
+      // 每列按 y 递增，二分找第一个可能进入视口的盒子
+      let low = 0
+      let high = column.length
+      while (low < high) {
+        const mid = (low + high) >> 1
+        if (column[mid].y + column[mid].h < top) low = mid + 1
+        else high = mid
+      }
+      for (let i = low; i < column.length && column[i].y <= bottom; i++) {
+        picked.push(column[i])
+      }
     }
-    return out
-  }, [items, boxes, scrollTop, viewport.height])
+    picked.sort((a, b) => a.index - b.index)
+    return picked.map((box) => ({ item: items[box.index], box }))
+  }, [items, buckets, scrollTop, viewport.height])
 
   const onScroll = (): void => {
-    const el = containerRef.current
-    if (!el) return
-    setScrollTop(el.scrollTop)
-    if (hasMore && !loadingMore && el.scrollTop + el.clientHeight > totalHeight - 700) {
-      onLoadMore()
-    }
+    if (rafRef.current) return
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0
+      const el = containerRef.current
+      if (!el) return
+      setScrollTop(el.scrollTop)
+      if (hasMore && !loadingMore && el.scrollTop + el.clientHeight > totalHeight - 700) {
+        onLoadMore()
+      }
+    })
   }
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [])
 
   // 触底加载：用哨兵元素 + IntersectionObserver，后台窗口也可靠
   useEffect(() => {
@@ -292,10 +405,15 @@ export default function Gallery({
   }, [hasMore, loadingMore, onLoadMore, items.length])
 
   // 键盘 J/K 切换时把当前项滚进视野；从大图退出时靠 focusTick 强制重新定位
+  // items/boxes 用 ref 读：换筛选或加载更多时不该把视图拽回焦点项
+  const itemsRef = useRef(items)
+  itemsRef.current = items
+  const boxesRef = useRef(boxes)
+  boxesRef.current = boxes
   useEffect(() => {
     if (!focusId) return
-    const index = items.findIndex((i) => i.id === focusId)
-    const box = boxes[index]
+    const index = itemsRef.current.findIndex((i) => i.id === focusId)
+    const box = boxesRef.current[index]
     const el = containerRef.current
     if (!box || !el) return
     const top = box.y
@@ -303,7 +421,7 @@ export default function Gallery({
     if (top < el.scrollTop + 40 || bottom > el.scrollTop + el.clientHeight - 40) {
       el.scrollTo({ top: Math.max(0, top - el.clientHeight / 2 + box.h / 2), behavior: 'smooth' })
     }
-  }, [focusId, focusTick, items, boxes])
+  }, [focusId, focusTick])
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds])
 
@@ -319,17 +437,20 @@ export default function Gallery({
     return pickThumbQuality(Math.max(shownW, shownH) * dpr)
   }
 
-  const handleDragStart = (id: number, e: ReactDragEvent): void => {
-    // Alt + 拖拽交给系统原生拖拽，可以直接拖进资源管理器或其它应用
-    if (e.altKey) {
-      e.preventDefault()
-      window.api.startDrag(id)
-      return
-    }
-    const ids = selectedSet.has(id) ? selectedIds : [id]
-    e.dataTransfer.setData('application/x-imagenest-items', JSON.stringify(ids))
-    e.dataTransfer.effectAllowed = 'copyMove'
-  }
+  const handleDragStart = useCallback(
+    (id: number, e: ReactDragEvent): void => {
+      // Alt + 拖拽交给系统原生拖拽，可以直接拖进资源管理器或其它应用
+      if (e.altKey) {
+        e.preventDefault()
+        window.api.startDrag(id)
+        return
+      }
+      const ids = selectedSet.has(id) ? selectedIds : [id]
+      e.dataTransfer.setData('application/x-imagenest-items', JSON.stringify(ids))
+      e.dataTransfer.effectAllowed = 'copyMove'
+    },
+    [selectedSet, selectedIds]
+  )
 
   if (items.length === 0 && !loading) {
     return (
@@ -348,6 +469,14 @@ export default function Gallery({
           <div className="text-[12px] text-[var(--muted)] mt-1.5 leading-5">
             {hasFilter ? '换个关键词，或清空筛选再找找看' : '把图片或文件夹拖进窗口，也可以点击下面的按钮'}
           </div>
+          {hasFilter && otherHint && otherHint.total > 0 && (
+            <button
+              className="mt-3 text-[11.5px] text-[var(--accent-2)] hover:underline"
+              onClick={onOpenOtherLibrary}
+            >
+              其他 {otherHint.libraries} 个库里可能还有 {otherHint.total} 条 →
+            </button>
+          )}
           {!hasFilter && (
             <button className="btn btn-primary mt-5" onClick={onImportFiles}>
               选择图片导入
@@ -371,6 +500,7 @@ export default function Gallery({
             expanded={!!item.groupKey && expandedGroups.includes(item.groupKey)}
             onSelect={onSelect}
             onOpen={onOpen}
+            onContextMenu={onContextMenu}
             onDragStart={handleDragStart}
             onExpandGroup={onExpandGroup}
           />

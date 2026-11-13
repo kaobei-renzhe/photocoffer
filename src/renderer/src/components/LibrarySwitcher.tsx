@@ -220,7 +220,8 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
                       )}
                       {entry.status === 'missing' && (
                         <span className="flex items-center gap-0.5 text-[9.5px] text-[var(--danger-text)]">
-                          <AlertTriangle size={9} /> 目录不见了
+                          <AlertTriangle size={9} />{' '}
+                          {entry.driveMissing ? '磁盘未连接' : '目录不见了'}
                         </span>
                       )}
                       {entry.status === 'index-missing' && (

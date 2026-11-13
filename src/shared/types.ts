@@ -7,7 +7,7 @@ import type {
   ThumbCacheTarget,
   ThumbQualityPref
 } from './thumbs'
-import type { LlmConfig, LlmRunOutcome, LlmStatus, LlmTestResult, PhotoQualitySaved } from './llm'
+import type { LlmRunOutcome, LlmSettings, LlmStatus, LlmTestResult, PhotoQualitySaved } from './llm'
 
 export interface ExifData {
   camera?: string
@@ -52,6 +52,13 @@ export interface Folder {
   id: number
   name: string
   count: number
+  /** 父文件夹；null 表示顶层 */
+  parentId: number | null
+  /** 同级排序，小的在前 */
+  sort: number
+  /** 用户指定的封面；null 表示用文件夹里的第一张图兜底 */
+  coverItemId: number | null
+  note: string
 }
 
 export type ColorFamily =
@@ -102,6 +109,8 @@ export interface FilterState {
   unscored?: boolean
   /** 只保留这些 id（AI 智能筛选的结果），空数组等于不限制 */
   onlyIds?: number[]
+  /** 只看回收站里软删除的照片 */
+  trashed?: boolean
   /** 客户选片：只看客户「要的」「要修的」或两者都看（默认最近一次已回传结果的会话） */
   pickAction?: 'keep' | 'fix' | 'any'
   /** 指定选片会话；不填表示最近一次已回传结果的会话 */
@@ -279,6 +288,45 @@ export interface LibraryStorage {
   indexDir: string
 }
 
+/** 配置导出结果；path = 实际写入位置 */
+export interface SettingsExportResult {
+  path: string
+  bytes: number
+  gear: number
+}
+
+/** 配置导入结果；skipped 是没跟着走的字段或设备 */
+export interface SettingsImportResult {
+  imported: number
+  gear: number
+  skipped: string[]
+  needsKey: boolean
+}
+
+/** 首启使用方式：整理照片 / 拍片接单 */
+export type AppUseCase = 'manage' | 'pro'
+
+/** 摄影功能用过一次后常驻主导航 */
+export type GrownFeature = 'portrait' | 'delivery' | 'clientPicked' | 'facets'
+
+/** 关于页需要的数据位置 */
+export interface AppInfo {
+  version: string
+  userData: string
+  modelsDir: string
+}
+
+/** 自动更新的状态；disabled = 没配地址或开发模式，完全静默 */
+export interface UpdateStatus {
+  state: 'idle' | 'disabled' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'latest' | 'error'
+  /** 发现的新版本号 */
+  version?: string
+  /** 下载进度 0-100 */
+  percent?: number
+  /** 给界面看的说明（disabled 时说明原因） */
+  message?: string
+}
+
 /** 移动索引位置的结果（失败不抛异常，走 message） */
 export interface IndexMoveResult {
   ok: boolean
@@ -331,6 +379,8 @@ export interface PickSession {
   photoCount: number
   watermark: string
   createdAt: number
+  /** 草稿最后编辑时间；已发出的单等于发出时间 */
+  updatedAt: number
   /** 导出时间 */
   sentAt: number | null
   /** 导入客户结果的时间 */
@@ -365,6 +415,19 @@ export interface PickExportInput {
   /** 长边像素，800 / 1200 / 1600 */
   maxEdge: number
   watermarkStyle: PickWatermarkStyle
+}
+
+/** 存成「待交付」：只记照片和标题，还没生成选片页、也没发出去 */
+export interface PickDraftInput {
+  itemIds: number[]
+  title: string
+  client?: string
+}
+
+/** 草稿单可改的字段；已发出的单不允许再改 */
+export interface PickSessionPatch {
+  title?: string
+  client?: string
 }
 
 export interface PickExportFailure {
@@ -421,17 +484,19 @@ export interface PickDefaults {
 
 /* ─────────────── 导出成品 ─────────────── */
 
-/** jpeg = 缩放/转码成 JPEG（可烘水印）；copy = 原样复制原件 */
-export type FinalsExportMode = 'jpeg' | 'copy'
+/** jpeg/png/webp = 缩放转码（可烘水印）；copy = 原样复制原件 */
+export type FinalsExportMode = 'jpeg' | 'png' | 'webp' | 'copy'
 /** original = 沿用原文件名；prefix = 前缀 + 三位序号 */
 export type FinalsNaming = 'original' | 'prefix'
+/** 同名处理：rename = 自动加序号；skip = 直接跳过 */
+export type FinalsCollision = 'rename' | 'skip'
 
 export interface FinalsExportInput {
   itemIds: number[]
   mode: FinalsExportMode
-  /** 长边像素；null 表示不缩放，仅 jpeg 模式有效 */
+  /** 长边像素；null 表示不缩放，仅重新编码模式有效 */
   maxEdge: number | null
-  /** JPEG 质量 60-95 */
+  /** 有损格式的质量 60-95；PNG 忽略 */
   quality: number
   naming: FinalsNaming
   /** naming = prefix 时用，如「小林-街拍」 */
@@ -439,6 +504,10 @@ export interface FinalsExportInput {
   /** 水印文字；空串表示不加水印 */
   watermark: string
   watermarkStyle: PickWatermarkStyle
+  /** 重新编码时保留 EXIF/GPS；关闭时只留 sRGB 色彩配置。copy 模式始终保留 */
+  keepMetadata: boolean
+  /** 同名文件怎么处理 */
+  collision: FinalsCollision
 }
 
 export interface FinalsExportFailure {
@@ -453,6 +522,8 @@ export interface FinalsExportResult {
   bytes: number
   /** 因重名自动加序号的文件数 */
   renamed: number
+  /** collision = skip 时因重名被跳过的文件数 */
+  skipped: number
   failed: FinalsExportFailure[]
 }
 
@@ -471,6 +542,8 @@ export interface FinalsDefaults {
   prefix: string
   watermark: string
   watermarkStyle: PickWatermarkStyle
+  keepMetadata: boolean
+  collision: FinalsCollision
 }
 
 export interface Stats {
@@ -483,6 +556,8 @@ export interface Stats {
   errors: number
   /** 最近一次已回传结果的选片会话里，客户「要的 + 要修的」张数 */
   clientPicked: number
+  /** 回收站里的条数 */
+  trashed: number
 }
 
 /** 导入配置，会记住上次的选择 */
@@ -521,6 +596,34 @@ export interface ImportResult {
   errors: ImportErrorInfo[]
   /** 本次导入涉及的根目录，用于导入后按原文件夹展示 */
   roots: string[]
+}
+
+/** 粘贴剪贴板图片的结果：empty = 剪贴板里没有图片；no-library = 还没打开图库 */
+export interface PasteImageResult {
+  ok: boolean
+  itemId?: number | null
+  /** 本次真正入库的张数；0 表示图库里已有同一张图 */
+  added?: number
+  reason?: 'no-library' | 'empty'
+}
+
+/** 从网址存图的结果；失败一律走 reason，不抛异常 */
+export interface ImportUrlResult {
+  ok: boolean
+  itemId?: number | null
+  /** 本次真正入库的张数；0 表示图库里已有同一张图 */
+  added?: number
+  reason?: 'no-library' | 'invalid-url' | 'download-failed' | 'not-image' | 'too-large'
+}
+
+/** 重试导入失败文件的结果 */
+export interface RetryFailedResult {
+  /** 待重试的记录数 */
+  total: number
+  /** 这次修好的张数 */
+  recovered: number
+  /** 仍然失败的张数 */
+  failed: number
 }
 
 /** 媒体库里的源目录树节点 */
@@ -585,6 +688,26 @@ export type LibraryStatus = 'ok' | 'missing' | 'index-missing'
 
 export interface LibrarySummary extends LibraryEntry {
   status: LibraryStatus
+  /** status = missing 时，盘符/共享根也不存在 = 移动盘没接上，而不是目录被改名 */
+  driveMissing?: boolean
+}
+
+/** 跨库搜索里命中的一个库 */
+export interface CrossLibraryMatch {
+  id: string
+  name: string
+  path: string
+  count: number
+}
+
+/** 当前库零结果时，其他库的命中概况 */
+export interface CrossLibraryHint {
+  /** 有命中的库数量 */
+  libraries: number
+  /** 所有命中库的条数之和 */
+  total: number
+  /** 按最近打开排序；第一条用于点击切换 */
+  matches: CrossLibraryMatch[]
 }
 
 export interface LibraryRelocateResult {
@@ -643,8 +766,34 @@ export interface Api {
   lastLibrary: () => Promise<LastLibraryResult>
   /** 索引（library.db / 缩略图 / 预览）当前放在哪 */
   getLibraryStorage: () => Promise<LibraryStorage | null>
+  /** 把偏好设置导出成 JSON；返回 null 表示用户取消 */
+  exportSettings: () => Promise<SettingsExportResult | null>
+  /** 从 JSON 导入偏好设置；返回 null 表示用户取消 */
+  importSettings: () => Promise<SettingsImportResult | null>
+  /** 首启使用方式；null = 还没选过 */
+  getUseCase: () => Promise<AppUseCase | null>
+  saveUseCase: (value: AppUseCase) => Promise<AppUseCase>
+  /** 用过即常驻的摄影功能 */
+  getGrownFeatures: () => Promise<GrownFeature[]>
+  saveGrownFeatures: (features: GrownFeature[]) => Promise<GrownFeature[]>
+  /** 关于页：版本与数据目录 */
+  appInfo: () => Promise<AppInfo>
+  /** 自动更新：当前状态；没配更新地址时 state = disabled */
+  updateStatus: () => Promise<UpdateStatus>
+  /** 手动检查更新 */
+  updateCheck: () => Promise<UpdateStatus>
+  /** 已下载完成后重启安装 */
+  updateInstall: () => Promise<void>
+  /** 订阅下载进度与状态变化 */
+  onUpdateStatus: (cb: (status: UpdateStatus) => void) => () => void
+  /** 用系统默认方式打开一个目录 */
+  openPath: (path: string) => Promise<void>
   /** 图库清单（带探活状态） */
   listLibraries: () => Promise<LibrarySummary[]>
+  /** 取图库代表缩略图（data URL）；null = 这个库没有可用缩略图 */
+  libraryCover: (id: string) => Promise<string | null>
+  /** 当前库零结果时，查其他库有没有可能命中的内容 */
+  searchOtherLibraries: (query: string) => Promise<CrossLibraryHint>
   renameLibrary: (id: string, name: string) => Promise<void>
   /** 从清单移除；alsoDeleteData=true 时连索引数据一起删（原图不动） */
   forgetLibrary: (id: string, alsoDeleteData: boolean) => Promise<void>
@@ -687,10 +836,19 @@ export interface Api {
     id: number,
     patch: { rating?: number; note?: string; url?: string; flag?: number }
   ) => Promise<void>
+  /** 批量写评分/旗标/备注：一次 IPC 完成，返回更新条数 */
+  bulkUpdate: (
+    ids: number[],
+    patch: { rating?: number; note?: string; noteAppend?: boolean; url?: string; flag?: number }
+  ) => Promise<number>
   deleteItems: (ids: number[]) => Promise<void>
   /** 清理文件已丢失的记录（软删除，可撤销），返回处理的 id */
   trashMissing: () => Promise<number[]>
   restoreItems: (ids: number[]) => Promise<void>
+  /** 彻底删除记录与缩略图缓存；不动磁盘上的原图 */
+  purgeItems: (ids: number[]) => Promise<void>
+  /** 清空回收站，返回删除的条数 */
+  purgeAllTrashed: () => Promise<number>
   copyImage: (id: number) => Promise<boolean>
   stackItems: (ids: number[]) => Promise<number>
   unstack: (stackId: number) => Promise<void>
@@ -713,7 +871,13 @@ export interface Api {
   /** 照片研读笔记 */
   notes: NotesApi
   listFolders: () => Promise<Folder[]>
-  createFolder: (name: string) => Promise<Folder>
+  /** parentId 为空时建在顶层 */
+  createFolder: (name: string, parentId?: number | null) => Promise<Folder>
+  renameFolder: (id: number, name: string) => Promise<void>
+  /** 移动到 parentId 下；index 是在目标同级里的位置 */
+  moveFolder: (id: number, parentId: number | null, index: number) => Promise<void>
+  /** itemId 为 null 时清掉自定义封面，回到第一张图兜底 */
+  setFolderCover: (id: number, itemId: number | null) => Promise<void>
   deleteFolder: (id: number) => Promise<void>
   addToFolder: (itemIds: number[], folderId: number) => Promise<void>
   removeFromFolder: (itemIds: number[], folderId: number) => Promise<void>
@@ -724,6 +888,14 @@ export interface Api {
   pickDefaults: () => Promise<PickDefaults>
   /** 生成自包含选片页；用户取消保存时返回 null */
   pickExport: (input: PickExportInput) => Promise<PickExportResult | null>
+  /** 把选中照片存成草稿单（待交付） */
+  pickCreateDraft: (input: PickDraftInput) => Promise<PickSessionSummary>
+  /** 给已有的草稿单生成选片页；用户取消保存时返回 null */
+  pickExportSession: (sessionId: number, input: PickExportInput) => Promise<PickExportResult | null>
+  /** 改草稿单的标题 / 客户；已发出的单会拒绝 */
+  pickUpdateSession: (sessionId: number, patch: PickSessionPatch) => Promise<PickSessionSummary>
+  /** 整体替换草稿单的照片集合；已发出的单会拒绝 */
+  pickUpdateDraftItems: (sessionId: number, itemIds: number[]) => Promise<PickSessionSummary>
   listPickSessions: () => Promise<PickSessionSummary[]>
   /** 删除一单选片记录（只删记录，不动照片） */
   deletePickSession: (sessionId: number) => Promise<void>
@@ -743,6 +915,12 @@ export interface Api {
   pickImages: () => Promise<string[]>
   pickFolder: () => Promise<string | null>
   importPaths: (paths: string[], options?: Partial<ImportOptions>) => Promise<ImportResult>
+  /** 把剪贴板里的图片存进图库（Ctrl+V） */
+  pasteImage: () => Promise<PasteImageResult>
+  /** 从 http(s) 网址下载一张图片存进图库（拖网址进来） */
+  importUrl: (url: string) => Promise<ImportUrlResult>
+  /** 重试所有导入失败的文件 */
+  retryFailedImports: () => Promise<RetryFailedResult>
   pauseImport: () => Promise<void>
   resumeImport: () => Promise<void>
   cancelImport: () => Promise<void>
@@ -774,9 +952,14 @@ export interface Api {
   clipSearchText: (
     query: string,
     filter: FilterState,
-    limit?: number
-  ) => Promise<{ items: Item[]; scores: number[] }>
-  clipSimilar: (itemId: number, limit?: number) => Promise<{ items: Item[]; scores: number[] }>
+    limit?: number,
+    offset?: number
+  ) => Promise<{ items: Item[]; scores: number[]; total: number }>
+  clipSimilar: (
+    itemId: number,
+    limit?: number,
+    offset?: number
+  ) => Promise<{ items: Item[]; scores: number[]; total: number }>
   clipDownloadModel: (id?: EmbeddingModelId) => Promise<string>
   onClipIndex: (cb: (progress: ClipProgress) => void) => () => void
   /** 语义索引结束（完成 / 取消 / 出错都会发），用来收起进度卡片 */
@@ -790,6 +973,9 @@ export interface Api {
   clearAutoTags: () => Promise<{ removed: number }>
   onAutoTagProgress: (cb: (progress: AutoTagProgress) => void) => () => void
   showInFolder: (path: string) => Promise<void>
+  /** 切换窗口全屏；不传参数时取反，返回切换后的状态 */
+  setFullScreen: (value?: boolean) => Promise<boolean>
+  isFullScreen: () => Promise<boolean>
   pickRelocateDir: () => Promise<RelocatePlan | null>
   planRelocate: (dir: string) => Promise<RelocatePlan>
   lastRelocateDir: () => Promise<string | null>
@@ -816,10 +1002,11 @@ export interface Api {
   getSkin: () => Promise<SkinId>
   saveSkin: (id: SkinId) => Promise<SkinId>
   llmStatus: () => Promise<LlmStatus>
-  llmSaveConfig: (patch: Partial<LlmConfig>) => Promise<LlmStatus>
-  llmSaveKey: (key: string) => Promise<LlmStatus>
-  llmClearKey: () => Promise<LlmStatus>
-  llmTest: () => Promise<LlmTestResult>
+  llmSaveSettings: (patch: Partial<LlmSettings>) => Promise<LlmStatus>
+  llmSaveKey: (modelId: string, key: string) => Promise<LlmStatus>
+  llmClearKey: (modelId: string) => Promise<LlmStatus>
+  /** 不传 modelId 时测默认模型 */
+  llmTest: (modelId?: string) => Promise<LlmTestResult>
   llmRun: (capabilityId: string, input: unknown) => Promise<LlmRunOutcome>
   /** 评分并落库，返回每张的分数与实际写入条数 */
   llmScore: (itemIds: number[]) => Promise<LlmRunOutcome<PhotoQualitySaved>>

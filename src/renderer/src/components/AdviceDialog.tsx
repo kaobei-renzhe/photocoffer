@@ -108,7 +108,7 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
 
           {phase === 'idle' && (
             <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3 text-[11.5px] leading-5 text-[var(--muted)]">
-              点下面的「生成建议」才会把这张图发给模型，每次请求都会消耗 token；不点就不会产生费用。
+              点了下面的「生成建议」才会把这张图发给模型，不点不产生费用。
             </div>
           )}
 

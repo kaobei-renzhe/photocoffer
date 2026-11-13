@@ -5,6 +5,7 @@ import exifr from 'exifr'
 import { getDb } from './db'
 import { relinkItem } from './repo'
 import { regroup } from './grouping'
+import { isInside, isInsidePickedPath, isSafeImagePath } from './pathGuard'
 import { readConfig, updateConfig } from './settings'
 import { SUPPORTED_EXT } from '../shared/formats'
 import type {
@@ -414,8 +415,24 @@ export async function buildRelocatePlan(dir: string): Promise<RelocatePlan> {
 export function applyRelocate(pairs: RelocatePair[]): RelocateResult {
   let relinked = 0
   let failed = 0
+  const lastDir = getLastRelocateDir()
   for (const pair of pairs) {
+    // 只接受「上次扫描的目录 / 本次弹窗选过的目录」里的图片，避免把库内路径改到任意文件
+    const allowedDir = (lastDir && isInside(lastDir, pair.newPath)) || isInsidePickedPath(pair.newPath)
+    if (!allowedDir || !isSafeImagePath(pair.newPath)) {
+      failed++
+      continue
+    }
     if (!existsSync(pair.newPath)) {
+      failed++
+      continue
+    }
+    try {
+      if (!statSync(pair.newPath).isFile()) {
+        failed++
+        continue
+      }
+    } catch {
       failed++
       continue
     }

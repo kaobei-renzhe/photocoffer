@@ -24,6 +24,6 @@ describe('outOfScopeText', () => {
   it('先说星级，再说文件夹', () => {
     expect(outOfScopeText(lowRating, scope)).toContain('只有 2 星')
     expect(outOfScopeText({ rating: 0, folderIds: [7] }, scope)).toContain('还没标星')
-    expect(outOfScopeText(otherFolder, scope)).toContain('不在「AI 处理范围」选中的文件夹里')
+    expect(outOfScopeText(otherFolder, scope)).toContain('不在「AI 作用范围」选中的文件夹里')
   })
 })

@@ -12,8 +12,8 @@ export function Section({
   compact?: boolean
 }) {
   return (
-    <div className={compact ? 'mt-3' : 'mt-4'}>
-      <div className="mb-1.5 text-[10.5px] uppercase tracking-wider text-[var(--faint)]">
+    <div className={compact ? 'mt-3' : 'mt-[18px]'}>
+      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--faint)]">
         {title}
       </div>
       {children}

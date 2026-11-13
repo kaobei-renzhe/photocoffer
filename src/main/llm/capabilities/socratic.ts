@@ -46,10 +46,16 @@ export const socraticCapability: LlmCapability<SocraticInput, SocraticReply> = {
   async run(ctx, input) {
     const itemId = Number(input?.itemId)
     if (!Number.isInteger(itemId)) throw new LlmError('bad_request', '缺少有效的图片编号')
-    const question = String(input?.question ?? '').trim()
+    const question = String(input?.question ?? '').trim().slice(0, 2000)
     if (!question) throw new LlmError('bad_request', '问题不能为空')
 
-    const history = Array.isArray(input.history) ? input.history.slice(-8) : []
+    // 历史和问题都按字符截断：输入框不限长，请求体和成本不能跟着无限涨
+    const history = Array.isArray(input.history)
+      ? input.history.slice(-8).map((turn) => ({
+          role: turn.role,
+          text: String(turn.text ?? '').slice(0, 2000)
+        }))
+      : []
     const aiTurns = history.filter((turn) => turn.role === 'ai').length
     const mustExplain = Boolean(input.skipSocratic) || aiTurns >= MAX_PROBES
     const mode = input.mode === 'review' ? 'review' : 'study'
@@ -70,13 +76,26 @@ export const socraticCapability: LlmCapability<SocraticInput, SocraticReply> = {
       `学生本轮说：${question}`
     ].join('\n')
 
-    const image = await ctx.image(itemId)
+    // 圈选提问时同时送整图和局部放大图：整图判断关系，局部图判断细节
+    const [whole, regionPart] = await Promise.all([
+      ctx.image(itemId),
+      input.region ? ctx.regionImage(itemId, input.region, 768) : Promise.resolve(null)
+    ])
+    const regionHint = regionPart
+      ? '\n\n本轮附两张图：第一张是整图；第二张是学生圈出的区域放大图。判断局部细节以第二张为准，判断整体关系以第一张为准。'
+      : ''
+    const parts = [{ type: 'text' as const, text: context + regionHint }, whole]
+    if (regionPart) {
+      parts.push({ type: 'text', text: '第二张是圈选区域的放大图。' })
+      parts.push(regionPart)
+    }
+
     const text = await ctx.chat(
       [
         { role: 'system', content: SYSTEM },
-        { role: 'user', content: [{ type: 'text', text: context }, image] }
+        { role: 'user', content: parts }
       ],
-      { json: true, maxTokens: 400, temperature: mustExplain ? 0.35 : 0.65 }
+      { json: true, maxTokens: mustExplain ? 800 : 400, temperature: mustExplain ? 0.35 : 0.65 }
     )
 
     let stage: SocraticReply['stage'] = mustExplain ? 'explain' : 'probe'

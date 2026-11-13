@@ -64,6 +64,14 @@ export function burstKeyOf(firstId: number): string {
  */
 export function buildGroupPlans(rows: GroupRow[]): Map<number, GroupPlan> {
   const plans = new Map<number, GroupPlan>()
+  // 同一张图在配对与连拍判定里会被多次比较，机身只解析一次
+  const cameraCache = new Map<number, string | null>()
+  const cameraFor = (row: GroupRow): string | null => {
+    if (cameraCache.has(row.id)) return cameraCache.get(row.id) ?? null
+    const camera = cameraOf(row.exif)
+    cameraCache.set(row.id, camera)
+    return camera
+  }
   for (const row of rows) {
     plans.set(row.id, {
       isRaw: isRawExt(row.ext) ? 1 : 0,
@@ -110,7 +118,7 @@ export function buildGroupPlans(rows: GroupRow[]): Map<number, GroupPlan> {
 
   const flush = (): void => {
     if (group.length >= BURST_MIN) {
-      const camera = cameraOf(group[0].exif)
+      const camera = cameraFor(group[0])
       // 没有机身信息的连拍无法确认是同一台机器，宁可不合并
       if (camera) {
         const cover = [...group].sort((a, b) => b.rating - a.rating || a.id - b.id)[0]
@@ -136,7 +144,7 @@ export function buildGroupPlans(rows: GroupRow[]): Map<number, GroupPlan> {
       continue
     }
     const previous = group[group.length - 1]
-    const sameCamera = cameraOf(previous.exif) === cameraOf(row.exif)
+    const sameCamera = cameraFor(previous) === cameraFor(row)
     const close = row.mtime - previous.mtime <= BURST_GAP_MS
     if (sameCamera && close) {
       group.push(row)

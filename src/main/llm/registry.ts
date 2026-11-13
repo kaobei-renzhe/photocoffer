@@ -1,4 +1,5 @@
 import type { LlmCapabilityId } from '../../shared/llm'
+import type { NoteRegion } from '../../shared/types'
 import type { LlmContentPart, LlmMessage } from './types'
 
 export interface CapabilityChatOptions {
@@ -12,6 +13,8 @@ export interface CapabilityContext {
   chat: (messages: LlmMessage[], options?: CapabilityChatOptions) => Promise<string>
   /** 取一张已压到合适尺寸的图片，作为多模态输入 */
   image: (itemId: number) => Promise<LlmContentPart>
+  /** 取圈选区域的放大图（归一化坐标），用于看清局部细节 */
+  regionImage: (itemId: number, region: NoteRegion, maxEdge?: number) => Promise<LlmContentPart>
 }
 
 export interface LlmCapability<TInput = unknown, TOutput = unknown> {

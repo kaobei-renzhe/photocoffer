@@ -50,10 +50,10 @@ export function listFacets(): Facet[] {
 
 export function createFacet(name: string): Facet {
   const clean = name.trim()
-  if (!clean) throw new Error('维度名不能为空')
+  if (!clean) throw new Error('分类名不能为空')
   const db = getDb()
   const exists = db.prepare('SELECT id FROM facets WHERE name = ?').get(clean)
-  if (exists) throw new Error('已经有同名维度了')
+  if (exists) throw new Error('已经有同名分类了')
   const id = `facet_${Date.now().toString(36)}`
   const sort = (
     db.prepare('SELECT coalesce(MAX(sort), 0) + 1 AS next FROM facets').get() as { next: number }
@@ -68,10 +68,10 @@ export function createFacet(name: string): Facet {
 
 export function renameFacet(id: string, name: string): void {
   const clean = name.trim()
-  if (!clean) throw new Error('维度名不能为空')
+  if (!clean) throw new Error('分类名不能为空')
   const db = getDb()
   const clash = db.prepare('SELECT id FROM facets WHERE name = ? AND id <> ?').get(clean, id)
-  if (clash) throw new Error('已经有同名维度了')
+  if (clash) throw new Error('已经有同名分类了')
   db.prepare('UPDATE facets SET name = ? WHERE id = ?').run(clean, id)
 }
 
@@ -90,12 +90,12 @@ export function createFacetValue(facetId: string, name: string): FacetValue {
   if (!clean) throw new Error('取值不能为空')
   const db = getDb()
   const facet = db.prepare('SELECT id FROM facets WHERE id = ?').get(facetId)
-  if (!facet) throw new Error('维度不存在')
+  if (!facet) throw new Error('分类不存在')
   const existing = db.prepare('SELECT id, facet_id FROM tags WHERE name = ?').get(clean) as
     | { id: number; facet_id: string | null }
     | undefined
   if (existing && existing.facet_id && existing.facet_id !== facetId) {
-    throw new Error('同名标签已属于其他维度')
+    throw new Error('同名标签已属于其他分类')
   }
   const tag = createTag(clean)
   db.prepare('UPDATE tags SET facet_id = ? WHERE id = ?').run(facetId, tag.id)
@@ -131,7 +131,7 @@ export function bulkSetFacetValue(
   add: boolean
 ): void {
   const allowed = new Set(facetValueIds(facetId))
-  if (!allowed.has(tagId)) throw new Error('取值不属于该维度')
+  if (!allowed.has(tagId)) throw new Error('取值不属于该分类')
   const db = getDb()
   const stmt = add
     ? db.prepare('INSERT OR IGNORE INTO item_tags(item_id, tag_id) VALUES(?, ?)')

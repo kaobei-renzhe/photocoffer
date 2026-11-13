@@ -13,18 +13,29 @@ import {
 import { EMBEDDING_MODELS, modelTotalBytes } from './clip/models'
 import { beginIndexing, endIndexing, isTagging } from './taskLock'
 import { log } from './logger'
-import type { ClipStatus, EmbeddingModelInfo, FilterState, Item } from '../shared/types'
-
-export interface ClipProgress {
-  done: number
-  total: number
-  current: string
-}
+import type {
+  ClipProgress,
+  ClipStatus,
+  EmbeddingModelInfo,
+  FilterState,
+  Item
+} from '../shared/types'
 
 export interface ClipSearchResult {
   items: Item[]
   scores: number[]
+  /** 过滤后的命中总数，翻页用 */
+  total: number
 }
+
+interface RankedEntry {
+  id: number
+  score: number
+}
+
+/** 最近三次查询的完整排序：翻页时不用重新打分 */
+const RANK_CACHE_TTL = 60_000
+const rankCache: Array<{ key: string; at: number; ranked: RankedEntry[] }> = []
 
 let running = false
 let cancelRequested = false
@@ -47,6 +58,7 @@ let cache: VectorCache | null = null
 
 export function invalidateClipCache(): void {
   cache = null
+  rankCache.length = 0
 }
 
 /** BLOB → Float32Array；better-sqlite3 的 Buffer 可能带非 4 字节对齐的偏移，对不上就先拷一份 */
@@ -57,70 +69,6 @@ function viewFloats(buffer: Buffer): Float32Array {
   const copy = new Uint8Array(buffer.byteLength)
   copy.set(buffer)
   return new Float32Array(copy.buffer)
-}
-
-/** 前 K 名的小顶堆：避免对几万条分数做全量排序 */
-class TopK {
-  private readonly scores: number[] = []
-  private readonly ids: number[] = []
-  private readonly size: number
-
-  constructor(size: number) {
-    this.size = Math.max(1, Math.floor(size))
-  }
-
-  push(score: number, id: number): void {
-    if (this.scores.length < this.size) {
-      this.scores.push(score)
-      this.ids.push(id)
-      this.siftUp(this.scores.length - 1)
-      return
-    }
-    // 比堆顶还小就进不了前 K，直接丢掉（绝大多数都会走到这里）
-    if (score <= this.scores[0]) return
-    this.scores[0] = score
-    this.ids[0] = id
-    this.siftDown(0)
-  }
-
-  result(): Array<{ id: number; score: number }> {
-    const out = this.scores.map((score, index) => ({ id: this.ids[index], score }))
-    out.sort((a, b) => b.score - a.score)
-    return out
-  }
-
-  private siftUp(start: number): void {
-    let index = start
-    while (index > 0) {
-      const parent = (index - 1) >> 1
-      if (this.scores[parent] <= this.scores[index]) break
-      this.swap(parent, index)
-      index = parent
-    }
-  }
-
-  private siftDown(start: number): void {
-    let index = start
-    const length = this.scores.length
-    for (;;) {
-      const left = index * 2 + 1
-      if (left >= length) return
-      const right = left + 1
-      const smallest = right < length && this.scores[right] < this.scores[left] ? right : left
-      if (this.scores[index] <= this.scores[smallest]) return
-      this.swap(index, smallest)
-      index = smallest
-    }
-  }
-
-  private swap(a: number, b: number): void {
-    const score = this.scores[a]
-    this.scores[a] = this.scores[b]
-    this.scores[b] = score
-    const id = this.ids[a]
-    this.ids[a] = this.ids[b]
-    this.ids[b] = id
-  }
 }
 
 /* ─────────────── 向量快照文件 ─────────────── */
@@ -530,16 +478,21 @@ export async function indexEmbeddings(
   }
 }
 
-async function rank(
+/** 对当前库的候选照片完整打分一次，结果按查询缓存，翻页直接切片 */
+async function rankedAll(
   vector: Float32Array,
   filter: FilterState,
-  limit: number,
-  excludeId?: number
-): Promise<ClipSearchResult> {
+  excludeId: number | undefined,
+  key: string
+): Promise<RankedEntry[]> {
+  const now = Date.now()
+  const cached = rankCache.find((entry) => entry.key === key)
+  if (cached && now - cached.at < RANK_CACHE_TTL) return cached.ranked
+
   const { ids, data, dim, count } = await loadVectors()
   const allowed = filteredIds({ ...filter, query: '' })
   const queryLength = Math.min(dim, vector.length)
-  const top = new TopK(limit)
+  const ranked: RankedEntry[] = []
   for (let row = 0; row < count; row += 1) {
     const id = ids[row]
     if (id === excludeId) continue
@@ -547,27 +500,44 @@ async function rank(
     const offset = row * dim
     let sum = 0
     for (let d = 0; d < queryLength; d += 1) sum += vector[d] * data[offset + d]
-    top.push(sum, id)
+    ranked.push({ id, score: sum })
   }
-  const ranked = top.result()
+  ranked.sort((a, b) => b.score - a.score)
+  rankCache.unshift({ key, at: now, ranked })
+  if (rankCache.length > 3) rankCache.length = 3
+  return ranked
+}
+
+function pageResult(ranked: RankedEntry[], limit: number, offset: number): ClipSearchResult {
+  const start = Math.max(0, Math.floor(offset))
+  const page = ranked.slice(start, start + Math.max(1, Math.floor(limit)))
   return {
-    items: getItemsByIds(ranked.map((entry) => entry.id)),
-    scores: ranked.map((entry) => Number(entry.score.toFixed(3)))
+    items: getItemsByIds(page.map((entry) => entry.id)),
+    scores: page.map((entry) => Number(entry.score.toFixed(3))),
+    total: ranked.length
   }
 }
 
 export async function searchByText(
   query: string,
   filter: FilterState,
-  limit = 200
+  limit = 200,
+  offset = 0
 ): Promise<ClipSearchResult> {
   const text = query.trim()
-  if (!text) return { items: [], scores: [] }
+  if (!text) return { items: [], scores: [], total: 0 }
+  const model = activeModel()
   const vector = await embedText(text)
-  return rank(vector, filter, limit)
+  const key = `text|${model.tag}|${text}|${JSON.stringify({ ...filter, query: '' })}`
+  const ranked = await rankedAll(vector, filter, undefined, key)
+  return pageResult(ranked, limit, offset)
 }
 
-export async function searchSimilar(itemId: number, limit = 200): Promise<ClipSearchResult> {
+export async function searchSimilar(
+  itemId: number,
+  limit = 200,
+  offset = 0
+): Promise<ClipSearchResult> {
   const model = activeModel()
   const row = getDb()
     .prepare('SELECT vec FROM embeddings WHERE item_id = ? AND model = ?')
@@ -580,5 +550,7 @@ export async function searchSimilar(itemId: number, limit = 200): Promise<ClipSe
   }
   const vector = new Float32Array(row.vec.byteLength / 4)
   Buffer.from(vector.buffer).set(row.vec)
-  return rank(vector, {}, limit, itemId)
+  const key = `similar|${model.tag}|${itemId}`
+  const ranked = await rankedAll(vector, {}, itemId, key)
+  return pageResult(ranked, limit, offset)
 }

@@ -33,7 +33,7 @@ export default function FacetTab({
   }, [])
 
   useEffect(() => {
-    void loadFacets().catch((error) => setMessage(`读取维度失败：${(error as Error).message}`))
+    void loadFacets().catch((error) => setMessage(`读取分类失败：${(error as Error).message}`))
   }, [loadFacets])
 
   const applyValue = async (
@@ -66,7 +66,7 @@ export default function FacetTab({
   return (
     <div className={compact ? 'space-y-2 p-2.5' : 'space-y-3 p-3'}>
       <div className="text-[10.5px] leading-4 text-[var(--faint)]">
-        维度本质是带分类的标签，和主图库的标签筛选共用一套数据。
+        分类本质是带归属的标签，和主图库的标签筛选共用一套数据。
       </div>
 
       {targets.length > 1 && (
@@ -76,7 +76,7 @@ export default function FacetTab({
       )}
 
       {facets.length === 0 && (
-        <div className="text-[11px] text-[var(--faint)]">还没有维度，可在人像工作台左侧新建。</div>
+        <div className="text-[11px] text-[var(--faint)]">还没有分类，可在人像工作台左侧新建。</div>
       )}
 
       {facets.map((facet) => {
@@ -139,7 +139,7 @@ export default function FacetTab({
                   </button>
                 ))}
                 {remaining.length === 0 && (
-                  <span className="text-[10.5px] text-[var(--faint)]">这个维度没有更多取值</span>
+                  <span className="text-[10.5px] text-[var(--faint)]">这个分类没有更多取值</span>
                 )}
               </div>
             )}

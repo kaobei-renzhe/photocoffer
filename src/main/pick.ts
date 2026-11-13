@@ -12,6 +12,8 @@ import { loadLogo, textWidth, watermarkBlockSvg, type LogoAsset } from './waterm
 import type {
   PickAction,
   PickApplyResult,
+  PickDraftInput,
+  PickSessionPatch,
   PickExportFailure,
   PickExportInput,
   PickExportProgress,
@@ -36,6 +38,7 @@ interface SessionRow {
   client_note: string
   reply_count: number
   created_at: number
+  updated_at: number
   sent_at: number | null
   received_at: number | null
 }
@@ -117,13 +120,14 @@ function createSession(
 ): number {
   const db = getDb()
   const insertSession = db.prepare(
-    `INSERT INTO pick_sessions(token, title, client, photo_count, watermark, file_path, created_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO pick_sessions(token, title, client, photo_count, watermark, file_path, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?)`
   )
   const insertItem = db.prepare(
     'INSERT INTO pick_items(session_id, seq, item_id, action, note) VALUES(?, ?, ?, NULL, NULL)'
   )
   const tx = db.transaction(() => {
+    const now = Date.now()
     const info = insertSession.run(
       token,
       input.title.trim() || '未命名选片',
@@ -131,7 +135,8 @@ function createSession(
       shots.length,
       label,
       outPath,
-      Date.now()
+      now,
+      now
     )
     const sessionId = Number(info.lastInsertRowid)
     for (const shot of shots) insertItem.run(sessionId, shot.seq, shot.itemId)
@@ -152,20 +157,25 @@ export function deletePickSession(sessionId: number): void {
   deleteSession(sessionId)
 }
 
-/**
- * 导出选片页：读原图 → 缩图 + 水印 → base64 内嵌 → 单个 HTML。
- * 用户取消保存时由调用方返回 null，不走到这里。
- */
-export async function exportPickSession(
-  input: PickExportInput,
-  outPath: string,
-  onProgress?: (progress: PickExportProgress) => void
-): Promise<PickExportResult> {
-  const ids = [...new Set((input.itemIds ?? []).filter((id) => Number.isFinite(id)))]
+function normalizeIds(itemIds: number[]): number[] {
+  const ids = [...new Set((itemIds ?? []).filter((id) => Number.isFinite(id)))]
   if (ids.length === 0) throw new Error('没有选中照片')
   if (ids.length > MAX_PHOTOS) throw new Error(`一次最多导出 ${MAX_PHOTOS} 张`)
-  if (!input.title.trim()) throw new Error('请先填写标题')
+  return ids
+}
 
+interface RenderedShots {
+  shots: Array<PickHtmlShot & { itemId: number }>
+  failed: PickExportFailure[]
+  label: string
+}
+
+/** 渲染客户看的图：缩图 + 烘焙水印；读不出来的照片跳过并记录 */
+async function renderShots(
+  ids: number[],
+  input: PickExportInput,
+  onProgress?: (progress: PickExportProgress) => void
+): Promise<RenderedShots> {
   const items = getItemsByIds(ids)
   if (items.length !== ids.length) throw new Error('有照片已经不在图库里，请刷新后再试')
 
@@ -199,16 +209,11 @@ export async function exportPickSession(
   }
 
   if (shots.length === 0) throw new Error('所有照片都没能读取，导出已取消')
+  return { shots, failed, label }
+}
 
-  const token = newPickToken()
-  const sessionId = createSession(token, input, label, shots, outPath)
-  const html = buildPickHtml({
-    token,
-    title: input.title.trim() || '未命名选片',
-    client: input.client.trim(),
-    shots
-  })
-
+/** 先写临时文件再原子替换，避免磁盘满时留下半个 HTML */
+async function writePickHtml(outPath: string, html: string): Promise<void> {
   mkdirSync(dirname(outPath), { recursive: true })
   const temp = `${outPath}.tmp`
   try {
@@ -220,8 +225,37 @@ export async function exportPickSession(
     } catch {
       /* 清理失败不影响报错 */
     }
+    throw new Error(`写入浏览页失败：${(error as Error).message}`)
+  }
+}
+
+/**
+ * 导出选片页：读原图 → 缩图 + 水印 → base64 内嵌 → 单个 HTML。
+ * 用户取消保存时由调用方返回 null，不走到这里。
+ */
+export async function exportPickSession(
+  input: PickExportInput,
+  outPath: string,
+  onProgress?: (progress: PickExportProgress) => void
+): Promise<PickExportResult> {
+  const ids = normalizeIds(input.itemIds)
+  if (!input.title.trim()) throw new Error('请先填写标题')
+
+  const { shots, failed, label } = await renderShots(ids, input, onProgress)
+  const token = newPickToken()
+  const sessionId = createSession(token, input, label, shots, outPath)
+  const html = buildPickHtml({
+    token,
+    title: input.title.trim() || '未命名选片',
+    client: input.client.trim(),
+    shots
+  })
+
+  try {
+    await writePickHtml(outPath, html)
+  } catch (error) {
     deleteSession(sessionId)
-    throw new Error(`写入选片页失败：${(error as Error).message}`)
+    throw error
   }
 
   getDb().prepare('UPDATE pick_sessions SET sent_at = ? WHERE id = ?').run(Date.now(), sessionId)
@@ -229,6 +263,160 @@ export async function exportPickSession(
   return {
     sessionId,
     token,
+    path: outPath,
+    bytes: statSync(outPath).size,
+    count: shots.length,
+    failed
+  }
+}
+
+/**
+ * 把一批照片存成「待交付」草稿：只写会话与照片明细，不生成 HTML、不标记发出。
+ * 之后在选片交付里点「生成选片页」再走 exportPickSessionById。
+ */
+export function createPickDraft(input: PickDraftInput): PickSessionSummary {
+  const ids = normalizeIds(input.itemIds)
+  const items = getItemsByIds(ids)
+  if (items.length !== ids.length) throw new Error('有照片已经不在图库里，请刷新后再试')
+
+  const title = String(input.title ?? '').trim() || '未命名选片'
+  const client = String(input.client ?? '').trim()
+  const token = newPickToken()
+  const db = getDb()
+  const insertItem = db.prepare(
+    'INSERT INTO pick_items(session_id, seq, item_id, action, note) VALUES(?, ?, ?, NULL, NULL)'
+  )
+  const tx = db.transaction(() => {
+    const now = Date.now()
+    const info = db
+      .prepare(
+        `INSERT INTO pick_sessions(token, title, client, photo_count, watermark, file_path, created_at, updated_at)
+         VALUES(?, ?, ?, ?, '', NULL, ?, ?)`
+      )
+      .run(token, title, client, ids.length, now, now)
+    const sessionId = Number(info.lastInsertRowid)
+    ids.forEach((itemId, index) => insertItem.run(sessionId, index + 1, itemId))
+    return sessionId
+  })
+  const sessionId = tx()
+  const saved = getPickSessionSummary(sessionId)
+  if (!saved) throw new Error('草稿创建失败')
+  return saved
+}
+
+/** 只允许改还没发出的草稿；发出后标题/客户已经印在选片页上了，不再回改 */
+export function updatePickDraft(sessionId: number, patch: PickSessionPatch): PickSessionSummary {
+  const session = getSession(sessionId)
+  if (!session) throw new Error('选片单不存在')
+  if (session.sent_at) throw new Error('这单已经发出，不能再改标题了')
+
+  const title = patch.title === undefined ? session.title : String(patch.title).trim().slice(0, 80)
+  if (!title) throw new Error('标题不能为空')
+  const client = patch.client === undefined ? session.client : String(patch.client).trim().slice(0, 40)
+
+  getDb()
+    .prepare('UPDATE pick_sessions SET title = ?, client = ?, updated_at = ? WHERE id = ?')
+    .run(title, client, Date.now(), sessionId)
+  const updated = getPickSessionSummary(sessionId)
+  if (!updated) throw new Error('保存失败')
+  return updated
+}
+
+/** 整体替换草稿的照片集合，顺序按传入的 itemIds；只允许改还没发出的草稿 */
+export function updatePickDraftItems(sessionId: number, itemIds: number[]): PickSessionSummary {
+  const session = getSession(sessionId)
+  if (!session) throw new Error('选片单不存在')
+  if (session.sent_at) throw new Error('这单已经发出，不能再改照片了')
+
+  const ids = normalizeIds(itemIds)
+  const items = getItemsByIds(ids)
+  if (items.length !== ids.length) throw new Error('有照片已经不在图库里，请刷新后再试')
+
+  const db = getDb()
+  const insertItem = db.prepare(
+    'INSERT INTO pick_items(session_id, seq, item_id, action, note) VALUES(?, ?, ?, NULL, NULL)'
+  )
+  const tx = db.transaction(() => {
+    db.prepare('DELETE FROM pick_items WHERE session_id = ?').run(sessionId)
+    ids.forEach((itemId, index) => insertItem.run(sessionId, index + 1, itemId))
+    db.prepare('UPDATE pick_sessions SET photo_count = ?, updated_at = ? WHERE id = ?').run(
+      ids.length,
+      Date.now(),
+      sessionId
+    )
+  })
+  tx()
+
+  const updated = getPickSessionSummary(sessionId)
+  if (!updated) throw new Error('保存失败')
+  return updated
+}
+
+function sessionItemIds(sessionId: number): number[] {
+  return (
+    getDb()
+      .prepare('SELECT item_id FROM pick_items WHERE session_id = ? ORDER BY seq')
+      .all(sessionId) as Array<{ item_id: number }>
+  ).map((row) => row.item_id)
+}
+
+/**
+ * 给已有草稿生成选片页：沿用草稿的 token 和照片集合，
+ * 成功后把 file_path / sent_at 写回同一条会话，不新建记录。
+ */
+export async function exportPickSessionById(
+  sessionId: number,
+  input: PickExportInput,
+  outPath: string,
+  onProgress?: (progress: PickExportProgress) => void
+): Promise<PickExportResult> {
+  const session = getSession(sessionId)
+  if (!session) throw new Error('选片单不存在')
+  if (session.sent_at) throw new Error('这单已经生成过浏览页了')
+  if (!input.title.trim()) throw new Error('请先填写标题')
+
+  const ids = sessionItemIds(sessionId)
+  if (ids.length === 0) throw new Error('这单还没有照片')
+  const { shots, failed, label } = await renderShots(ids, input, onProgress)
+  const html = buildPickHtml({
+    token: session.token,
+    title: input.title.trim() || session.title,
+    client: input.client.trim(),
+    shots
+  })
+
+  // 先写文件，成功后再动数据库；写失败时草稿原样保留
+  await writePickHtml(outPath, html)
+
+  const db = getDb()
+  const tx = db.transaction(() => {
+    // 草稿还没有客户动作，直接按实际成功的照片重建编号，保证回传编号能对上
+    db.prepare('DELETE FROM pick_items WHERE session_id = ?').run(sessionId)
+    const insertItem = db.prepare(
+      'INSERT INTO pick_items(session_id, seq, item_id, action, note) VALUES(?, ?, ?, NULL, NULL)'
+    )
+    shots.forEach((shot, index) => insertItem.run(sessionId, index + 1, shot.itemId))
+    const now = Date.now()
+    db.prepare(
+      `UPDATE pick_sessions
+       SET title = ?, client = ?, photo_count = ?, watermark = ?, file_path = ?, sent_at = ?, updated_at = ?
+       WHERE id = ?`
+    ).run(
+      input.title.trim() || session.title,
+      input.client.trim(),
+      shots.length,
+      label,
+      outPath,
+      now,
+      now,
+      sessionId
+    )
+  })
+  tx()
+
+  return {
+    sessionId,
+    token: session.token,
     path: outPath,
     bytes: statSync(outPath).size,
     count: shots.length,
@@ -247,6 +435,7 @@ function mapSession(
     photoCount: row.photo_count,
     watermark: row.watermark,
     createdAt: row.created_at,
+    updatedAt: row.updated_at || row.created_at,
     sentAt: row.sent_at,
     receivedAt: row.received_at,
     filePath: row.file_path ?? null,
@@ -257,6 +446,25 @@ function mapSession(
     reject: row.reject ?? 0,
     pending: row.pending ?? 0
   }
+}
+
+export function getPickSessionSummary(sessionId: number): PickSessionSummary | null {
+  const row = getDb()
+    .prepare(
+      `SELECT s.*,
+              coalesce(SUM(pi.action = 'keep'), 0) AS keep,
+              coalesce(SUM(pi.action = 'fix'), 0) AS fix,
+              coalesce(SUM(pi.action = 'reject'), 0) AS reject,
+              coalesce(SUM(pi.action IS NULL), 0) AS pending
+       FROM pick_sessions s
+       LEFT JOIN pick_items pi ON pi.session_id = s.id
+       WHERE s.id = ?
+       GROUP BY s.id`
+    )
+    .get(sessionId) as
+    | (SessionRow & { keep: number; fix: number; reject: number; pending: number })
+    | undefined
+  return row ? mapSession(row) : null
 }
 
 export function listPickSessions(): PickSessionSummary[] {
@@ -270,7 +478,8 @@ export function listPickSessions(): PickSessionSummary[] {
        FROM pick_sessions s
        LEFT JOIN pick_items pi ON pi.session_id = s.id
        GROUP BY s.id
-       ORDER BY s.created_at DESC, s.id DESC`
+       -- 每个阶段按自己的里程碑排序：待交付看最后编辑、已发出看发出、已完成看回传
+       ORDER BY COALESCE(s.received_at, s.sent_at, s.updated_at) DESC, s.id DESC`
     )
     .all() as Array<SessionRow & { keep: number; fix: number; reject: number; pending: number }>
   return rows.map(mapSession)
@@ -347,11 +556,12 @@ export function applyPickReply(sessionId: number, preview: PickReplyPreview): Pi
         sessionId
       )
     }
+    const now = Date.now()
     db.prepare(
       `UPDATE pick_sessions
-       SET received_at = ?, client_note = ?, reply_count = reply_count + 1
+       SET received_at = ?, client_note = ?, reply_count = reply_count + 1, updated_at = ?
        WHERE id = ?`
-    ).run(Date.now(), note, sessionId)
+    ).run(now, note, sessionId, now)
   })
   tx()
 

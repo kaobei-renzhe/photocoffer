@@ -21,6 +21,7 @@ import type {
 } from '@shared/types'
 import { formatDate } from '../../lib/format'
 import { llmHint } from '../../lib/llmHint'
+import { modLabel } from '../../lib/platform'
 
 export interface StudyTabProps {
   item: Item
@@ -334,7 +335,7 @@ export default function StudyTab({
         {!aiReady
           ? '大模型未启用，仍可手工记笔记；到「设置 → 大模型」配置后就能让老师反问。'
           : scopeBlocked
-            ? `${scopeHint || '这张不在「AI 处理范围」内'}，AI 对话不可用；手工记笔记不受影响。`
+            ? `${scopeHint || '这张不在「AI 作用的照片」里'}，AI 对话不可用；手工记笔记不受影响。`
             : !canAsk
               ? '读片对话能力已关闭，仍可手工记笔记。'
               : 'AI 会先反问，最多两轮；也可以直接让它给答案。'}
@@ -362,7 +363,7 @@ export default function StudyTab({
             <BookOpen size={22} className="mx-auto mb-1.5 text-[var(--faint)] opacity-60" />
             <div className="text-[11.5px] text-[var(--muted)]">还没有研读笔记</div>
             <div className="mt-1 text-[10px] leading-4 text-[var(--faint)]">
-              在下面写第一条：这块为什么吸引你、用了什么手法、下次怎么用。
+              写下：这块为什么吸引你、用了什么手法、下次怎么用。
             </div>
           </div>
         </div>
@@ -556,7 +557,7 @@ export default function StudyTab({
           }}
         />
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="text-[9.5px] text-[var(--faint)]">Ctrl + Enter 保存</span>
+          <span className="text-[9.5px] text-[var(--faint)]">{modLabel} + Enter 保存</span>
           <div className="ml-auto flex flex-wrap items-center gap-1">
             <button
               className="btn h-7 px-2 text-[10.5px]"

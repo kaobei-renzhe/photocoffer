@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, FolderOpen, HardDriveDownload, Loader2, X } from 'lucide-react'
 import type {
+  FinalsCollision,
   FinalsExportMode,
   FinalsExportProgress,
   FinalsExportResult,
@@ -48,6 +49,8 @@ export default function FinalsExportDialog({
   const [watermarkOn, setWatermarkOn] = useState(false)
   const [watermark, setWatermark] = useState('')
   const [style, setStyle] = useState<PickWatermarkStyle>(PICK_WATERMARK_DEFAULT)
+  const [keepMetadata, setKeepMetadata] = useState(false)
+  const [collision, setCollision] = useState<FinalsCollision>('rename')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<FinalsExportProgress | null>(null)
   const [result, setResult] = useState<FinalsExportResult | null>(null)
@@ -63,6 +66,8 @@ export default function FinalsExportDialog({
       setStyle(defaults.watermarkStyle)
       setWatermark(defaults.watermark)
       setWatermarkOn(Boolean(defaults.watermark))
+      setKeepMetadata(defaults.keepMetadata)
+      setCollision(defaults.collision)
     })
   }, [])
 
@@ -79,6 +84,10 @@ export default function FinalsExportDialog({
   const patchStyle = (next: Partial<PickWatermarkStyle>): void =>
     setStyle((prev) => normalizePickWatermark({ ...prev, ...next }))
 
+  /** 前缀命名提示里展示的扩展名；原件复制保留各自的原扩展名 */
+  const extHint =
+    mode === 'jpeg' ? '.jpg' : mode === 'png' ? '.png' : mode === 'webp' ? '.webp' : '（原扩展名）'
+
   const run = async (): Promise<void> => {
     if (running || itemIds.length === 0) return
     setRunning(true)
@@ -89,12 +98,14 @@ export default function FinalsExportDialog({
       const exported = await window.api.finalsExport({
         itemIds,
         mode,
-        maxEdge: mode === 'jpeg' && edge !== 'origin' ? Number(edge) : null,
+        maxEdge: mode !== 'copy' && edge !== 'origin' ? Number(edge) : null,
         quality,
         naming,
         prefix,
-        watermark: mode === 'jpeg' && watermarkOn ? watermark.trim() : '',
-        watermarkStyle: style
+        watermark: mode !== 'copy' && watermarkOn ? watermark.trim() : '',
+        watermarkStyle: style,
+        keepMetadata,
+        collision
       })
       if (exported) {
         setResult(exported)
@@ -138,8 +149,11 @@ export default function FinalsExportDialog({
                 <Check size={16} className="mt-0.5 shrink-0 text-[var(--success)]" />
                 <div className="min-w-0">
                   <div className="text-[12.5px] text-[var(--text)]">
-                    已导出 {result.count} 张 · {formatBytes(result.bytes)}
+                    {result.count > 0
+                      ? `已导出 ${result.count} 张 · ${formatBytes(result.bytes)}`
+                      : '没有导出新文件'}
                     {result.renamed > 0 && ` · ${result.renamed} 张重名已加序号`}
+                    {result.skipped > 0 && ` · ${result.skipped} 张重名已跳过`}
                   </div>
                   <div className="mt-1 break-all text-[10.5px] leading-4 text-[var(--faint)]">
                     {result.dir}
@@ -169,7 +183,9 @@ export default function FinalsExportDialog({
                 <div className="flex rounded-md border border-[var(--border)] p-0.5">
                   {(
                     [
-                      { id: 'jpeg', label: '转成 JPEG' },
+                      { id: 'jpeg', label: 'JPEG' },
+                      { id: 'png', label: 'PNG' },
+                      { id: 'webp', label: 'WebP' },
                       { id: 'copy', label: '原件复制' }
                     ] as Array<{ id: FinalsExportMode; label: string }>
                   ).map((entry) => (
@@ -188,11 +204,15 @@ export default function FinalsExportDialog({
                   ))}
                 </div>
                 <span className="ml-auto text-[10px] leading-4 text-[var(--faint)]">
-                  {mode === 'copy' ? '原样复制，保留 RAW 与 EXIF' : '重新编码，会去掉 EXIF'}
+                  {mode === 'copy'
+                    ? '原样复制，保留 RAW 与 EXIF'
+                    : keepMetadata
+                      ? '重新编码，保留拍摄信息'
+                      : '重新编码，去掉 EXIF/GPS'}
                 </span>
               </div>
 
-              {mode === 'jpeg' && (
+              {mode !== 'copy' && (
                 <div className="mt-3 flex items-center gap-2">
                   <span className="w-[52px] text-[11px] text-[var(--muted)]">尺寸</span>
                   <select
@@ -207,19 +227,26 @@ export default function FinalsExportDialog({
                       </option>
                     ))}
                   </select>
-                  <span className="ml-2 text-[11px] text-[var(--muted)]">质量</span>
-                  <select
-                    className="input h-7 w-[72px] text-[11.5px]"
-                    value={quality}
-                    onChange={(event) => setQuality(Number(event.target.value))}
-                    disabled={running}
-                  >
-                    {[80, 85, 90, 95].map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
+                  {(mode === 'jpeg' || mode === 'webp') && (
+                    <>
+                      <span className="ml-2 text-[11px] text-[var(--muted)]">质量</span>
+                      <select
+                        className="input h-7 w-[72px] text-[11.5px]"
+                        value={quality}
+                        onChange={(event) => setQuality(Number(event.target.value))}
+                        disabled={running}
+                      >
+                        {[80, 85, 90, 95].map((value) => (
+                          <option key={value} value={value}>
+                            {value}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                  {mode === 'png' && (
+                    <span className="ml-2 text-[10px] text-[var(--faint)]">无损，不设质量</span>
+                  )}
                 </div>
               )}
 
@@ -258,11 +285,55 @@ export default function FinalsExportDialog({
               </div>
               {naming === 'prefix' && (
                 <div className="mt-1 pl-[60px] text-[10px] text-[var(--faint)]">
-                  输出如 {prefix.trim() || 'export'}-001.jpg
+                  输出如 {prefix.trim() || 'export'}-001{extHint}
                 </div>
               )}
 
-              {mode === 'jpeg' && (
+              {mode !== 'copy' && (
+                <label className="mt-3 flex cursor-pointer items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 accent-[var(--accent)]"
+                    checked={keepMetadata}
+                    onChange={(event) => setKeepMetadata(event.target.checked)}
+                    disabled={running}
+                  />
+                  <span className="text-[11.5px] text-[var(--text)]">保留拍摄信息（EXIF/GPS）</span>
+                  <span className="ml-auto text-[10px] text-[var(--faint)]">
+                    关闭时只留 sRGB 色彩配置
+                  </span>
+                </label>
+              )}
+
+              <div className="mt-3 flex items-center gap-2">
+                <span className="w-[52px] text-[11px] text-[var(--muted)]">同名</span>
+                <div className="flex rounded-md border border-[var(--border)] p-0.5">
+                  {(
+                    [
+                      { id: 'rename', label: '自动加序号' },
+                      { id: 'skip', label: '跳过' }
+                    ] as Array<{ id: FinalsCollision; label: string }>
+                  ).map((entry) => (
+                    <button
+                      key={entry.id}
+                      className={`h-6 rounded px-2 text-[11px] transition-colors ${
+                        collision === entry.id
+                          ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                          : 'text-[var(--faint)] hover:text-[var(--text)]'
+                      }`}
+                      onClick={() => setCollision(entry.id)}
+                      disabled={running}
+                    >
+                      {entry.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="ml-auto text-[10px] text-[var(--faint)]">
+                  {collision === 'rename' ? '不覆盖已有文件' : '已有同名时不再写新文件'}
+                </span>
+              </div>
+
+              {mode !== 'copy' && (
                 <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
@@ -326,8 +397,13 @@ export default function FinalsExportDialog({
               )}
 
               <p className="mt-3 text-[10.5px] leading-5 text-[var(--faint)]">
-                导出到所选文件夹，同名文件不会覆盖，会自动加 -2、-3。
-                {mode === 'jpeg' ? ' JPEG 会按上面的尺寸和质量重新编码。' : ''}
+                导出到所选文件夹；
+                {collision === 'rename' ? '同名会自动加 -2、-3。' : '同名会直接跳过。'}
+                {mode === 'copy'
+                  ? ''
+                  : keepMetadata
+                    ? ' 重新编码时保留 EXIF/GPS。'
+                    : ' 重新编码会去掉 EXIF/GPS。'}
               </p>
 
               {running && (
@@ -370,7 +446,7 @@ export default function FinalsExportDialog({
 
         <div className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] px-4 py-2.5">
           <span className="text-[10.5px] text-[var(--faint)]">
-            {result ? '要发给客户就直接开文件夹' : '导出过程中别关窗口'}
+            {result ? '要发出去就直接开文件夹' : '导出过程中别关窗口'}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             {result ? (
@@ -399,7 +475,7 @@ export default function FinalsExportDialog({
                   disabled={
                     running ||
                     itemIds.length === 0 ||
-                    (mode === 'jpeg' && watermarkOn && !watermark.trim()) ||
+                    (mode !== 'copy' && watermarkOn && !watermark.trim()) ||
                     (naming === 'prefix' && !prefix.trim())
                   }
                   onClick={() => void run()}

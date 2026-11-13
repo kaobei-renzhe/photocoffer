@@ -44,11 +44,14 @@ function toAnthropicContent(content: string | LlmContentPart[]): unknown {
 
 export function buildRequest(
   provider: LlmProviderId,
-  config: { baseUrl: string; model: string; temperature: number; maxTokens: number },
+  config: { baseUrl: string; model: string; temperature: number | null; maxTokens: number | null },
   key: string,
   messages: LlmMessage[],
   options: { json?: boolean; maxTokens?: number; temperature?: number }
 ): ProviderRequest {
+  // 用户主动填的全局值优先；留空才用能力自己的推荐值（options 由能力传入）
+  const temperature = config.temperature ?? options.temperature
+  const maxTokens = config.maxTokens ?? options.maxTokens ?? 1200
   if (provider === 'anthropic') {
     const system = messages
       .filter((message) => message.role === 'system')
@@ -68,8 +71,8 @@ export function buildRequest(
       },
       body: {
         model: config.model,
-        max_tokens: options.maxTokens ?? config.maxTokens,
-        temperature: options.temperature ?? config.temperature,
+        max_tokens: maxTokens,
+        ...(temperature !== undefined ? { temperature } : {}),
         ...(system ? { system } : {}),
         messages: dialogue
       }
@@ -88,8 +91,8 @@ export function buildRequest(
         role: message.role,
         content: toOpenAiContent(message.content)
       })),
-      temperature: options.temperature ?? config.temperature,
-      max_tokens: options.maxTokens ?? config.maxTokens,
+      ...(temperature !== undefined ? { temperature } : {}),
+      max_tokens: maxTokens,
       // 只有要求 JSON 时才声明，避免部分厂商不认这个字段
       ...(options.json ? { response_format: { type: 'json_object' } } : {})
     }

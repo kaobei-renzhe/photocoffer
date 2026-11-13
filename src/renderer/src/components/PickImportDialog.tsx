@@ -117,7 +117,7 @@ export default function PickImportDialog({
       >
         <div className="h-[46px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <ClipboardPaste size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">导入客户选片结果</span>
+          <span className="text-[13.5px] font-medium">导入浏览页结果</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose} title="关闭（Esc）">
             <X size={15} />
           </button>
@@ -126,11 +126,11 @@ export default function PickImportDialog({
         <div className="flex-1 overflow-y-auto p-4">
           {sessions === null ? (
             <div className="flex items-center gap-2 py-6 text-[12px] text-[var(--muted)]">
-              <Loader2 size={13} className="animate-spin" /> 正在读取选片记录…
+              <Loader2 size={13} className="animate-spin" /> 正在读取选片单…
             </div>
           ) : sessions.length === 0 ? (
             <div className="py-8 text-center text-[12px] text-[var(--faint)]">
-              还没有导出过选片页。先在相册里选中照片，点「生成选片页」。
+              还没有导出过浏览页。先在相册里选中照片，点「生成浏览页」。
             </div>
           ) : (
             <>
@@ -146,7 +146,7 @@ export default function PickImportDialog({
               >
                 {sessions.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {item.title} · {item.client || '未填客户'} · {item.photoCount} 张 ·{' '}
+                    {item.title} · {item.client || '未填称呼'} · {item.photoCount} 张 ·{' '}
                     {formatDate(item.createdAt)}
                     {item.receivedAt ? ' · 已回传' : ''}
                   </option>
@@ -156,12 +156,12 @@ export default function PickImportDialog({
               {session && (
                 <div className="mt-1.5 text-[10.5px] text-[var(--faint)]">
                   这一单共 {session.photoCount} 张
-                  {session.receivedAt ? `，上次回传于 ${formatDate(session.receivedAt)}` : '，还没收到客户回复'}
+                  {session.receivedAt ? `，上次回传于 ${formatDate(session.receivedAt)}` : '，还没收到回传'}
                   。重新导入会覆盖上一次结果。
                 </div>
               )}
 
-              <label className="mt-3 block text-[11px] text-[var(--muted)] mb-1">粘贴客户发回来的文字</label>
+              <label className="mt-3 block text-[11px] text-[var(--muted)] mb-1">粘贴对方发回来的文字</label>
               <textarea
                 className="input w-full h-[150px] py-2 resize-none font-mono text-[11.5px] leading-5"
                 placeholder={SAMPLE}
@@ -200,7 +200,7 @@ export default function PickImportDialog({
                   </div>
                   {preview.note && (
                     <div className="mt-1.5 rounded border border-[var(--border)] bg-[var(--panel)] px-2 py-1.5 text-[11px] leading-5 text-[var(--text)] whitespace-pre-wrap">
-                      客户备注：{preview.note}
+                      对方备注：{preview.note}
                     </div>
                   )}
                   {preview.unmatched.length > 0 && (
@@ -208,7 +208,7 @@ export default function PickImportDialog({
                       <AlertTriangle size={12} className="mt-0.5 shrink-0" />
                       <span>
                         {preview.unmatched.length} 个编号对不上：{preview.unmatched.join(', ')}
-                        （可能客户手改过，确认后再导入）
+                        （可能对方手改过，确认后再导入）
                       </span>
                     </div>
                   )}
@@ -226,7 +226,7 @@ export default function PickImportDialog({
 
         <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center gap-2">
           <span className="text-[10.5px] text-[var(--faint)]">
-            客户的判断单独存，不会动你自己的旗标
+            对方的判断单独存，不会动你自己的旗标
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             <button className="btn btn-ghost h-7 px-2.5 text-[11.5px]" onClick={onClose}>

@@ -1,22 +1,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  FolderOpen,
+  FolderPlus,
+  Layers,
+  Maximize,
+  RefreshCw,
+  Star,
+  Tag as TagIcon,
+  Trash2
+} from 'lucide-react'
 import type {
+  AppUseCase,
   ClipDownloadProgress,
   ClipProgress,
   ClipStatus,
+  CrossLibraryHint,
   EmbeddingModelId,
+  GrownFeature,
   Facet,
   FilterState,
   Folder,
   ImportDirNode,
-  ImportOptions,
-  ImportProgress,
-  ImportResult,
   Item,
-  PendingImport,
   PickApplyResult,
   PickExportResult,
+  PickSessionSummary,
   SmartFolder,
   Stats,
   Tag
@@ -28,7 +40,6 @@ import DetailPanel from './components/DetailPanel'
 import ResizeHandle from './components/ResizeHandle'
 import Lightbox from './components/Lightbox'
 import PortraitWorkspace from './PortraitWorkspace'
-import { findRenderedNeighbor, type Direction } from './lib/spatialNav'
 import { pickScorable } from './lib/scoreQueue'
 import DuplicatesDialog from './components/DuplicatesDialog'
 import AutoBackupDialog from './components/AutoBackupDialog'
@@ -40,19 +51,27 @@ import AdviceDialog from './components/AdviceDialog'
 import SmartFilterDialog from './components/SmartFilterDialog'
 import PickExportDialog from './components/PickExportDialog'
 import FinalsExportDialog from './components/FinalsExportDialog'
+import ContextMenu, { type ContextMenuEntry } from './components/ContextMenu'
 import PickImportDialog from './components/PickImportDialog'
-import PickHistoryDialog from './components/PickHistoryDialog'
+import PickDelivery from './components/PickDelivery'
+import FirstRunDialog from './components/FirstRunDialog'
+import FirstImportHint from './components/FirstImportHint'
 import ImportDialog from './components/ImportDialog'
 import ImportStatusCard from './components/ImportStatusCard'
 import ResumeImportCard from './components/ResumeImportCard'
 import Welcome from './components/Welcome'
 import LibrarySwitcher from './components/LibrarySwitcher'
 import { formatBytes, folderName, samePath } from './lib/format'
+import { pickHttpUrl } from './lib/urlImport'
 import { inAiScope, loadAiScope, type AiScope } from './lib/aiScope'
-import { estimateBatchTokens, formatTokens } from './lib/aiCost'
+import { estimateBatchTokens } from './lib/aiCost'
 import { useLayoutSizes } from './hooks/useLayoutSizes'
 import { useAppearance } from './hooks/useAppearance'
 import { useLightbox } from './hooks/useLightbox'
+import { useShortcuts } from './hooks/useShortcuts'
+import { useSelection } from './hooks/useSelection'
+import { useImport } from './hooks/useImport'
+import { modLabel } from './lib/platform'
 
 const EMPTY_STATS: Stats = {
   total: 0,
@@ -61,13 +80,21 @@ const EMPTY_STATS: Stats = {
   folders: 0,
   bytes: 0,
   errors: 0,
-  clientPicked: 0
+  clientPicked: 0,
+  trashed: 0
 }
 const PAGE = 200
 
 interface Toast {
   text: string
   undo?: boolean
+}
+
+/** 主进程抛回来的错误去掉 IPC 前缀，直接给用户看 */
+function errorText(error: unknown): string {
+  return String((error as Error)?.message ?? error)
+    .replace(/^Error invoking remote method '[^']+':\s*/, '')
+    .replace(/^Error:\s*/, '')
 }
 
 export default function App() {
@@ -78,6 +105,8 @@ export default function App() {
   const [booting, setBooting] = useState(true)
   const [items, setItems] = useState<Item[]>([])
   const [total, setTotal] = useState(0)
+  /** 当前库零结果时，其他库的命中提示 */
+  const [otherHint, setOtherHint] = useState<CrossLibraryHint | null>(null)
   const [tags, setTags] = useState<Tag[]>([])
   const [facets, setFacets] = useState<Facet[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
@@ -85,21 +114,15 @@ export default function App() {
   const [dirTree, setDirTree] = useState<ImportDirNode[]>([])
   const [stats, setStats] = useState<Stats>(EMPTY_STATS)
   const [filter, setFilter] = useState<FilterState>({ sort: 'added' })
-  const [selectedIds, setSelectedIds] = useState<number[]>([])
-  const [activeId, setActiveId] = useState<number | null>(null)
   const [thumbSize, setThumbSize] = useState(230)
-  const [progress, setProgress] = useState<ImportProgress | null>(null)
-  const [importOpen, setImportOpen] = useState(false)
-  const [importRunning, setImportRunning] = useState(false)
-  const [importResult, setImportResult] = useState<ImportResult | null>(null)
-  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null)
-  const [importOptions, setImportOptions] = useState<ImportOptions>({
-    recursive: true,
-    skipDuplicates: true
-  })
   const [duplicatesOpen, setDuplicatesOpen] = useState(false)
   const [autoBackupOpen, setAutoBackupOpen] = useState(false)
   const [autoTagOpen, setAutoTagOpen] = useState(false)
+  /** 首启二选一：null = 还没选过 */
+  const [useCase, setUseCase] = useState<AppUseCase | null>(null)
+  const [useCaseLoaded, setUseCaseLoaded] = useState(false)
+  /** 摄影功能用过一次后常驻主导航 */
+  const [grownFeatures, setGrownFeatures] = useState<GrownFeature[]>([])
   /** 人像工作台：独立三栏视图，和主图库共用同一份 items */
   const [portraitOpen, setPortraitOpen] = useState(false)
   const [relocateOpen, setRelocateOpen] = useState(false)
@@ -114,14 +137,28 @@ export default function App() {
   const [aiReady, setAiReady] = useState(false)
   /** 每个能力自己的开关，关掉后对应入口直接隐藏 */
   const [aiCaps, setAiCaps] = useState<Record<string, boolean>>({})
+  /** 当前模型看不了图：AI 入口不可用，但要在界面上说清楚原因 */
+  const [aiVisionBlocked, setAiVisionBlocked] = useState(false)
   /** AI 处理范围（星级 + 文件夹）：单张的 AI 入口据此显隐；null = 还没读回来 */
   const [aiScope, setAiScope] = useState<AiScope | null>(null)
   const [smartFilterOpen, setSmartFilterOpen] = useState(false)
   const [pickExportOpen, setPickExportOpen] = useState(false)
+  /** 从选片交付打开草稿：生成时写回同一单，不新建 */
+  const [pickExportDraft, setPickExportDraft] = useState<{
+    session: PickSessionSummary
+    itemIds: number[]
+  } | null>(null)
   const [finalsExportOpen, setFinalsExportOpen] = useState(false)
+  /** 导出成品的目标照片；null = 用主图库当前选中的照片 */
+  const [finalsExportIds, setFinalsExportIds] = useState<number[] | null>(null)
+  /** 右键菜单：同一时间只有一份，位置是鼠标坐标 */
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: number } | null>(null)
   const [pickImportOpen, setPickImportOpen] = useState(false)
-  const [pickHistoryOpen, setPickHistoryOpen] = useState(false)
-  /** 从选片记录进入导入时，预选那一单 */
+  /** 选片交付视图：和主图库、人像工作台同级 */
+  const [pickDeliveryOpen, setPickDeliveryOpen] = useState(false)
+  /** 回传或删除后递增，让交付视图重新拉会话 */
+  const [pickDeliveryTick, setPickDeliveryTick] = useState(0)
+  /** 从选片交付进入导入时，预选那一单 */
   const [pickImportSessionId, setPickImportSessionId] = useState<number | null>(null)
   /** AI 筛选用的规则文案，仅用于工具栏 chip 展示；筛选条件本身在 filter.onlyIds 里 */
   const [aiRule, setAiRule] = useState<string | null>(null)
@@ -147,6 +184,17 @@ export default function App() {
   const aiScoringRef = useRef(false)
   const shellRef = useRef<HTMLDivElement>(null)
 
+  const {
+    selectedIds,
+    activeId,
+    setSelectedIds,
+    setActiveId,
+    selectAll,
+    moveSelection,
+    moveSelectionBy,
+    restoreSelection
+  } = useSelection(itemsRef)
+
   filterRef.current = { ...filter, expandedGroups }
   totalRef.current = total
 
@@ -166,6 +214,47 @@ export default function App() {
   }, [])
 
   const notify = useCallback((text: string) => setToast({ text }), [])
+
+  /** 用过一次就常驻主导航；配置写失败也不影响本次会话 */
+  const growFeature = useCallback((feature: GrownFeature) => {
+    setGrownFeatures((prev) => {
+      if (prev.includes(feature)) return prev
+      const next = [...prev, feature]
+      void window.api.saveGrownFeatures(next).catch(() => undefined)
+      return next
+    })
+  }, [])
+
+  const chooseUseCase = useCallback(async (value: AppUseCase): Promise<void> => {
+    try {
+      setUseCase(await window.api.saveUseCase(value))
+    } catch {
+      setUseCase(value)
+    }
+  }, [])
+
+  const {
+    importOpen,
+    openImportDialog,
+    closeImportDialog,
+    importOptions,
+    setImportOptions,
+    importRunning,
+    progress,
+    clearProgress,
+    importResult,
+    setImportResult,
+    pendingImport,
+    firstImportHint,
+    closeFirstImportHint,
+    startImport,
+    importFiles,
+    importFolder,
+    resumePendingImport,
+    discardPendingImport,
+    retryFailedImports,
+    syncLibrary
+  } = useImport({ library, notify, bump, setFilter })
 
   const pushUndo = useCallback(
     (label: string, run: () => Promise<void>, showToast = true) => {
@@ -191,12 +280,6 @@ export default function App() {
     }
   }, [notify])
 
-  /** 退出大图后把焦点交回图库：选中这一张，并让瀑布流滚回它 */
-  const restoreSelection = useCallback((id: number) => {
-    setActiveId(id)
-    setSelectedIds([id])
-  }, [])
-
   const { lightboxId, revealTick, openLightbox, closeLightbox } = useLightbox(restoreSelection)
 
   const refreshMeta = useCallback(async () => {
@@ -219,28 +302,6 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    void window.api.getImportOptions().then(setImportOptions)
-  }, [])
-
-  // 打开图库时看看上次有没有被中断的导入任务
-  useEffect(() => {
-    if (!library) {
-      setPendingImport(null)
-      return
-    }
-    let cancelled = false
-    void window.api
-      .pendingImport()
-      .then((task) => {
-        if (!cancelled) setPendingImport(task)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [library])
-
-  useEffect(() => {
     window.api
       .lastLibrary()
       .then((result) => {
@@ -249,6 +310,24 @@ export default function App() {
       })
       .catch(() => undefined)
       .finally(() => setBooting(false))
+  }, [])
+
+  // 首启使用方式与「用过即常驻」功能一起读回来，避免侧栏闪一下再收起
+  useEffect(() => {
+    let cancelled = false
+    void Promise.all([window.api.getUseCase(), window.api.getGrownFeatures()])
+      .then(([value, features]) => {
+        if (cancelled) return
+        setUseCase(value)
+        setGrownFeatures(features)
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setUseCaseLoaded(true)
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // 侧栏显示库名：优先用启动页里改过的名字
@@ -276,24 +355,33 @@ export default function App() {
 
   const { theme, changeTheme, skin, changeSkin, thumbQuality, changeThumbQuality } = useAppearance()
 
+  /** 筛选签名：只有筛选真的变了才把列表收回到第一页 */
+  const filterKey = useMemo(() => JSON.stringify(filter), [filter])
+  filterRef.current = filter
+  const lastFilterKeyRef = useRef('')
+
   useEffect(() => {
     if (!library) return
     // 找相似模式下列表由该操作接管
     if (similar) return
     let cancelled = false
     setLoading(true)
-    const keep = Math.max(PAGE, itemsRef.current.length)
+    const filterChanged = lastFilterKeyRef.current !== filterKey
+    lastFilterKeyRef.current = filterKey
+    // 换筛选只取首页；只是展开/收起分组时保留已加载条数
+    const keep = filterChanged ? PAGE : Math.max(PAGE, itemsRef.current.length)
     const timer = setTimeout(async () => {
+      const current = filterRef.current
       try {
-        const query = (filter.query ?? '').trim()
+        const query = (current.query ?? '').trim()
         if (semanticMode && query) {
-          const result = await window.api.clipSearchText(query, { ...filter, query: '' }, 200)
+          const result = await window.api.clipSearchText(query, { ...current, query: '' }, 200, 0)
           if (cancelled) return
           applyItems(result.items)
-          setTotal(result.items.length)
+          setTotal(result.total)
           return
         }
-        const result = await window.api.listItems({ ...filter, expandedGroups }, 0, keep)
+        const result = await window.api.listItems({ ...current, expandedGroups }, 0, keep)
         if (cancelled) return
         applyItems(result.items)
         setTotal(result.total)
@@ -305,22 +393,42 @@ export default function App() {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [library, filter, expandedGroups, tick, applyItems, semanticMode, similar])
+  }, [library, filterKey, expandedGroups, tick, applyItems, semanticMode, similar])
 
+  // 本库零结果时，顺手探一下其他库有没有可能命中的内容
+  useEffect(() => {
+    const query = (filter.query ?? '').trim()
+    if (!library || loading || total > 0 || !query) {
+      setOtherHint(null)
+      return
+    }
+    let cancelled = false
+    const timer = setTimeout(() => {
+      void window.api
+        .searchOtherLibraries(query)
+        .then((hint) => {
+          if (!cancelled) setOtherHint(hint.total > 0 ? hint : null)
+        })
+        .catch(() => {
+          if (!cancelled) setOtherHint(null)
+        })
+    }, 300)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [library, filter.query, total, loading, tick])
+
+  // 导入/评分等操作会连续 bump tick：元数据刷新合并成一次 300ms 防抖
   useEffect(() => {
     if (!library) return
-    void refreshMeta()
+    const timer = setTimeout(() => {
+      void refreshMeta()
+      void window.api.clipStatus().then(setClipStatus).catch(() => undefined)
+      void window.api.lastRelocateDir().then(setLastRelocateDir).catch(() => undefined)
+    }, 300)
+    return () => clearTimeout(timer)
   }, [library, tick, refreshMeta])
-
-  useEffect(() => {
-    if (!library) return
-    void window.api.clipStatus().then(setClipStatus)
-  }, [library, tick])
-
-  useEffect(() => {
-    if (!library) return
-    void window.api.lastRelocateDir().then(setLastRelocateDir)
-  }, [library, tick])
 
   useEffect(() => window.api.onClipIndex(setClipProgress), [])
   // 索引结束（完成 / 取消 / 出错）后收起进度卡片，并刷新侧栏的已索引数量
@@ -334,8 +442,6 @@ export default function App() {
   )
   useEffect(() => window.api.onClipAutoStatus(setClipStatus), [])
   useEffect(() => window.api.onClipDownload(setClipDownload), [])
-
-  useEffect(() => window.api.onImportProgress(setProgress), [])
 
   useEffect(
     () =>
@@ -364,106 +470,21 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
-  const startImport = useCallback(
-    async (paths: string[], override?: ImportOptions) => {
-      if (!paths.length) return
-      const options = override ?? importOptions
-      if (override) setImportOptions(override)
-      setPendingImport(null)
-      setImportOpen(false)
-      setImportResult(null)
-      setProgress(null)
-      setImportRunning(true)
-      try {
-        const result = await window.api.importPaths(paths, options)
-        setImportResult(result)
-        // 只导入了一个文件夹时，视图直接切到它，按原目录结构展示
-        if (result.roots.length === 1) {
-          setFilter((prev) => ({ sort: prev.sort, dir: result.roots[0] }))
-        }
-        setTick((v) => v + 1)
-      } catch (error) {
-        const text = (error as Error).message
-          .replace(/^Error invoking remote method '[^']+':\s*/, '')
-          .replace(/^Error:\s*/, '')
-        notify(`导入失败：${text}`)
-      } finally {
-        setImportRunning(false)
-        setProgress(null)
-      }
-    },
-    [importOptions, notify]
-  )
-
-  const importFiles = useCallback(async () => {
-    const paths = await window.api.pickImages()
-    await startImport(paths)
-  }, [startImport])
-
-  const importFolder = useCallback(async () => {
-    const dir = await window.api.pickFolder()
-    if (dir) await startImport([dir])
-  }, [startImport])
-
-  const openImportDialog = useCallback(() => setImportOpen(true), [])
-
-  const resumePendingImport = useCallback(() => {
-    if (!pendingImport) return
-    // 继续时强制跳过已导入的照片，只处理剩下的
-    void startImport(pendingImport.paths, { ...pendingImport.options, skipDuplicates: true })
-  }, [pendingImport, startImport])
-
-  const discardPendingImport = useCallback(() => {
-    void window.api.discardPendingImport()
-    setPendingImport(null)
-    notify('已忽略上次未完成的导入')
-  }, [notify])
-
-  const syncLibrary = useCallback(async () => {
-    if (importRunning) {
-      notify('正在导入，等当前任务结束再刷新')
-      return
-    }
-    setImportOpen(false)
-    setImportResult(null)
-    setProgress(null)
-    setImportRunning(true)
-    try {
-      const result = await window.api.syncLibrary()
-      const parts = [
-        `扫描 ${result.scanned}`,
-        `新增 ${result.added}`,
-        `丢失 ${result.missing}`,
-        `恢复 ${result.restored}`,
-        `刷新 ${result.refreshed}`
-      ]
-      if (result.failed > 0) parts.push(`失败 ${result.failed}`)
-      const roots =
-        result.missingRoots.length > 0
-          ? ` · ${result.missingRoots.length} 个源目录已不在原位，可用「重新定位」接回`
-          : ''
-      notify(`刷新完成 · ${parts.join(' · ')}${roots}`)
-      setTick((value) => value + 1)
-    } catch (error) {
-      const text = (error as Error).message
-        .replace(/^Error invoking remote method '[^']+':\s*/, '')
-        .replace(/^Error:\s*/, '')
-      notify(`刷新失败：${text}`)
-    } finally {
-      setImportRunning(false)
-      setProgress(null)
-    }
-  }, [importRunning, notify])
-
   const loadMore = useCallback(async () => {
-    if (semanticMode || similar) return
     if (loadingMoreRef.current) return
     const current = itemsRef.current
     if (current.length >= totalRef.current) return
     loadingMoreRef.current = true
     setLoadingMore(true)
     try {
-      const result = await window.api.listItems(filterRef.current, current.length, PAGE)
+      const activeFilter = filterRef.current
+      const query = (activeFilter.query ?? '').trim()
+      const result =
+        semanticMode && query
+          ? await window.api.clipSearchText(query, { ...activeFilter, query: '' }, PAGE, current.length)
+          : similar
+            ? await window.api.clipSimilar(similar.id, PAGE, current.length)
+            : await window.api.listItems(activeFilter, current.length, PAGE)
       const seen = new Set(current.map((i) => i.id))
       const merged = [...current, ...result.items.filter((i) => !seen.has(i.id))]
       applyItems(merged)
@@ -472,7 +493,7 @@ export default function App() {
       loadingMoreRef.current = false
       setLoadingMore(false)
     }
-  }, [applyItems])
+  }, [applyItems, semanticMode, similar])
 
   useEffect(() => {
     const onDragEnter = (e: DragEvent): void => {
@@ -497,7 +518,37 @@ export default function App() {
       if (e.dataTransfer?.types.includes('application/x-imagenest-items')) return
       const files = Array.from(e.dataTransfer?.files ?? [])
       const paths = files.map((f) => window.api.getPathForFile(f)).filter(Boolean)
-      void startImport(paths)
+      if (paths.length > 0) {
+        void startImport(paths)
+        return
+      }
+      // 从浏览器拖图片网址进来：交给主进程下载后再走导入
+      const raw =
+        e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain') || ''
+      const url = pickHttpUrl(raw)
+      if (!url) return
+      notify('正在从网址取图…')
+      void window.api
+        .importUrl(url)
+        .then((result) => {
+          if (!result.ok) {
+            notify(
+              result.reason === 'not-image'
+                ? '这个网址不是图片'
+                : result.reason === 'too-large'
+                  ? '图片超过 30 MB，先存下来再导入吧'
+                  : result.reason === 'invalid-url'
+                    ? '只支持 http/https 图片地址'
+                    : result.reason === 'no-library'
+                      ? '先打开一个图库'
+                      : '下载失败，检查网址或网络'
+            )
+            return
+          }
+          setTick((value) => value + 1)
+          notify(result.added === 0 ? '这张图已经在图库里了' : '已从网址存入图库')
+        })
+        .catch((error) => notify(`网址导入失败：${(error as Error).message}`))
     }
     window.addEventListener('dragenter', onDragEnter)
     window.addEventListener('dragover', onDragOver)
@@ -511,13 +562,56 @@ export default function App() {
     }
   }, [library, startImport])
 
+  // Ctrl+V：剪贴板里是图片文件就直接导入；截图这类没有路径的位图交给主进程落盘再入库
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent): void => {
+      if (!library) return
+      const target = event.target as HTMLElement | null
+      const typing =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      if (typing) return
+
+      const data = event.clipboardData
+      if (!data) return
+
+      const files = Array.from(data.files).filter((file) => file.type.startsWith('image/'))
+      const paths = files.map((file) => window.api.getPathForFile(file)).filter(Boolean)
+      if (paths.length) {
+        event.preventDefault()
+        void startImport(paths)
+        return
+      }
+
+      // 网页 / 截图工具复制出来的只有位图，没有磁盘路径，让主进程从系统剪贴板读
+      if (!Array.from(data.items).some((entry) => entry.type.startsWith('image/'))) return
+      event.preventDefault()
+      void window.api
+        .pasteImage()
+        .then((result) => {
+          if (!result.ok) {
+            if (result.reason === 'no-library') notify('先打开一个图库再粘贴')
+            return
+          }
+          setTick((value) => value + 1)
+          notify(result.added === 0 ? '这张图已经在图库里了' : '已存入图库')
+        })
+        .catch((error) => notify(`粘贴失败：${(error as Error).message}`))
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [library, notify, startImport])
+
   const deleteSelected = useCallback(async () => {
     const ids = selectedIds.length ? [...selectedIds] : activeId ? [activeId] : []
     if (!ids.length) return
     await window.api.deleteItems(ids)
     setSelectedIds([])
     setActiveId(null)
-    pushUndo(`已移除 ${ids.length} 张，按 Ctrl+Z 撤销`, async () => {
+    pushUndo(`已移除 ${ids.length} 张，按 ${modLabel}+Z 撤销`, async () => {
       await window.api.restoreItems(ids)
       setTick((v) => v + 1)
     })
@@ -533,19 +627,72 @@ export default function App() {
     }
     const ok = await window.api.confirm(
       '清理丢失记录',
-      `将移除 ${snapshot.missing} 条文件已丢失的索引记录。磁盘上的原图不受影响，清理后可按 Ctrl+Z 撤销。`
+      `将移除 ${snapshot.missing} 条文件已丢失的索引记录。磁盘上的原图不受影响，清理后可按 ${modLabel}+Z 撤销。`
     )
     if (!ok) return
     const ids = await window.api.trashMissing()
     if (!ids.length) return
     setSelectedIds([])
     setActiveId(null)
-    pushUndo(`已清理 ${ids.length} 条丢失记录，按 Ctrl+Z 撤销`, async () => {
+    pushUndo(`已清理 ${ids.length} 条丢失记录，按 ${modLabel}+Z 撤销`, async () => {
       await window.api.restoreItems(ids)
       setTick((v) => v + 1)
     })
     bump()
   }, [notify, pushUndo, bump])
+
+  /** 回收站：把选中的照片恢复到主图库 */
+  const restoreSelected = useCallback(async () => {
+    const ids = selectedIds.length ? [...selectedIds] : activeId ? [activeId] : []
+    if (!ids.length) return
+    await window.api.restoreItems(ids)
+    setSelectedIds([])
+    setActiveId(null)
+    // 全部恢复了就退出回收站视图，别让用户留在空列表里
+    if (ids.length >= stats.trashed) {
+      setFilter((prev) => (prev.trashed ? { ...prev, trashed: false } : prev))
+    }
+    notify(`已恢复 ${ids.length} 张`)
+    bump()
+  }, [selectedIds, activeId, stats.trashed, notify, bump])
+
+  /** 回收站：彻底删除记录与缩略图缓存，原图文件不动 */
+  const purgeSelected = useCallback(async () => {
+    const ids = selectedIds.length ? [...selectedIds] : activeId ? [activeId] : []
+    if (!ids.length) return
+    const ok = await window.api.confirm(
+      '彻底删除这些照片？',
+      `会删除 ${ids.length} 条记录与缩略图缓存，无法撤销；磁盘上的原图文件不会动。`
+    )
+    if (!ok) return
+    await window.api.purgeItems(ids)
+    setSelectedIds([])
+    setActiveId(null)
+    if (ids.length >= stats.trashed) {
+      setFilter((prev) => (prev.trashed ? { ...prev, trashed: false } : prev))
+    }
+    notify(`已彻底删除 ${ids.length} 条记录`)
+    bump()
+  }, [selectedIds, activeId, stats.trashed, notify, bump])
+
+  /** 回收站：清空，并退出空视图 */
+  const purgeAllTrashed = useCallback(async () => {
+    if (stats.trashed === 0) {
+      notify('回收站已经是空的')
+      return
+    }
+    const ok = await window.api.confirm(
+      '清空回收站？',
+      `会彻底删除 ${stats.trashed} 条记录与缩略图缓存，无法撤销；原图文件不受影响。`
+    )
+    if (!ok) return
+    const count = await window.api.purgeAllTrashed()
+    setSelectedIds([])
+    setActiveId(null)
+    setFilter((prev) => ({ ...prev, trashed: false }))
+    notify(`已清空回收站 · ${count} 条`)
+    bump()
+  }, [stats.trashed, notify, bump])
 
   const rateSelected = useCallback(
     async (rating: number) => {
@@ -554,11 +701,20 @@ export default function App() {
       const before = itemsRef.current
         .filter((i) => ids.includes(i.id))
         .map((i) => ({ id: i.id, rating: i.rating }))
-      await Promise.all(ids.map((id) => window.api.updateItem(id, { rating })))
+      await window.api.bulkUpdate(ids, { rating })
       pushUndo(
         `评分改为 ${rating} 星`,
         async () => {
-          for (const prev of before) await window.api.updateItem(prev.id, { rating: prev.rating })
+          // 撤销时按旧分值分组回写，最多 6 次 IPC，不再逐张
+          const groups = new Map<number, number[]>()
+          for (const prev of before) {
+            const list = groups.get(prev.rating) ?? []
+            list.push(prev.id)
+            groups.set(prev.rating, list)
+          }
+          for (const [value, group] of groups) {
+            await window.api.bulkUpdate(group, { rating: value })
+          }
         },
         false
       )
@@ -574,17 +730,56 @@ export default function App() {
       const before = itemsRef.current
         .filter((i) => ids.includes(i.id))
         .map((i) => ({ id: i.id, flag: i.flag }))
-      await Promise.all(ids.map((id) => window.api.updateItem(id, { flag })))
+      await window.api.bulkUpdate(ids, { flag })
       pushUndo(
         `旗标：${flag > 0 ? '留用' : flag < 0 ? '淘汰' : '清除'}`,
         async () => {
-          for (const prev of before) await window.api.updateItem(prev.id, { flag: prev.flag })
+          const groups = new Map<number, number[]>()
+          for (const prev of before) {
+            const list = groups.get(prev.flag) ?? []
+            list.push(prev.id)
+            groups.set(prev.flag, list)
+          }
+          for (const [value, group] of groups) {
+            await window.api.bulkUpdate(group, { flag: value })
+          }
         },
         false
       )
       bump()
     },
     [selectedIds, activeId, pushUndo, bump]
+  )
+
+  /** 批量备注：追加交给主进程一条 SQL 完成，撤销按旧备注分组回写 */
+  const bulkNoteSelected = useCallback(
+    async (text: string, append: boolean) => {
+      const value = text.trim()
+      const ids = selectedIds.length ? selectedIds : activeId ? [activeId] : []
+      if (!ids.length || !value) return
+      const before = itemsRef.current
+        .filter((i) => ids.includes(i.id))
+        .map((i) => ({ id: i.id, note: i.note ?? '' }))
+      await window.api.bulkUpdate(ids, append ? { note: value, noteAppend: true } : { note: value })
+      pushUndo(
+        append ? `已给 ${ids.length} 张追加备注` : `已替换 ${ids.length} 张的备注`,
+        async () => {
+          const groups = new Map<string, number[]>()
+          for (const prev of before) {
+            const list = groups.get(prev.note) ?? []
+            list.push(prev.id)
+            groups.set(prev.note, list)
+          }
+          for (const [note, group] of groups) {
+            await window.api.bulkUpdate(group, { note })
+          }
+        },
+        false
+      )
+      notify(append ? `已给 ${ids.length} 张追加备注` : `已替换 ${ids.length} 张的备注`)
+      bump()
+    },
+    [selectedIds, activeId, pushUndo, notify, bump]
   )
 
   /**
@@ -612,7 +807,7 @@ export default function App() {
         ]
           .filter(Boolean)
           .join('、')
-        notify(`选中的照片都不在「AI 处理范围」内${rule ? `（需要${rule}）` : ''}，已全部跳过`)
+        notify(`选中的照片都不在「AI 作用的照片」里${rule ? `（需要${rule}）` : ''}，已全部跳过`)
         return
       }
       const picked = candidates.slice(0, 12)
@@ -620,11 +815,11 @@ export default function App() {
       if (picked.length > 1) {
         const cost = estimateBatchTokens('quality', picked.length)
         const detail =
-          `本次会给 ${picked.length} 张照片评分，预计消耗 ${formatTokens(cost.tokens)}（粗估）。` +
-          (skipped > 0 ? `另有 ${skipped} 张不在处理范围，会跳过。` : '') +
+          `本次会给 ${picked.length} 张照片评分，会多花一点时间。` +
+          (skipped > 0 ? `另有 ${skipped} 张不在 AI 作用范围，会跳过。` : '') +
           (cost.heavy ? '这次调用量较大，确认后才会开始。' : '')
         const ok = await window.api.confirm(
-          cost.heavy ? '这次 AI 评分会消耗较多 token' : 'AI 评分',
+          cost.heavy ? '这次评分花的时间会久一些' : 'AI 评分',
           detail
         )
         if (!ok) return
@@ -643,7 +838,7 @@ export default function App() {
           : 0
         const extra = [
           failed.length ? `${failed.length} 张失败` : '',
-          skipped ? `跳过 ${skipped} 张不在处理范围` : '',
+          skipped ? `跳过 ${skipped} 张不在 AI 作用范围` : '',
           candidates.length > picked.length ? `本次只评了前 ${picked.length} 张` : ''
         ]
           .filter(Boolean)
@@ -677,14 +872,24 @@ export default function App() {
     void window.api
       .llmStatus()
       .then((status) => {
-        setAiReady(status.config.enabled && status.hasKey && Boolean(status.config.model.trim()))
+        // 视觉能力是硬门槛：模型看不了图时，对应的 AI 入口直接不可用
+        setAiReady(status.ready)
         setAiCaps(
-          Object.fromEntries(status.capabilities.map((capability) => [capability.id, capability.enabled]))
+          Object.fromEntries(
+            status.capabilities.map((capability) => [
+              capability.id,
+              capability.enabled && capability.vision
+            ])
+          )
+        )
+        setAiVisionBlocked(
+          status.capabilities.some((capability) => capability.enabled && !capability.vision)
         )
       })
       .catch(() => {
         setAiReady(false)
         setAiCaps({})
+        setAiVisionBlocked(false)
       })
   }, [library, settingsOpen])
 
@@ -747,162 +952,42 @@ export default function App() {
     )
   }, [])
 
-  const moveSelection = useCallback(
-    (delta: number) => {
-      const list = itemsRef.current
-      if (!list.length) return
-      const index = activeId ? list.findIndex((i) => i.id === activeId) : -1
-      const next = list[Math.min(list.length - 1, Math.max(0, index + delta))] ?? list[0]
-      setActiveId(next.id)
-      setSelectedIds([next.id])
-    },
-    [activeId]
-  )
-
-  /** 方向键：按瀑布流卡片的真实位置走（↑↓ 同列、←→ 跨列），找不到邻居时退回顺序移动 */
-  const moveSelectionBy = useCallback(
-    (direction: Direction) => {
-      const list = itemsRef.current
-      const currentId = activeId ?? selectedIds[0]
-      if (!list.length || !currentId) return
-      const neighbor = findRenderedNeighbor(currentId, direction)
-      const index = neighbor === null ? -1 : list.findIndex((item) => item.id === neighbor)
-      if (index >= 0) {
-        setActiveId(list[index].id)
-        setSelectedIds([list[index].id])
-        return
-      }
-      moveSelection(direction === 'up' || direction === 'left' ? -1 : 1)
-    },
-    [activeId, selectedIds, moveSelection]
-  )
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent): void => {
-      // 人像工作台有自己的一套快捷键，主图库不要再抢键
-      if (portraitOpen) return
-      const el = document.activeElement as HTMLElement | null
-      const typing =
-        !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !typing) {
-        e.preventDefault()
-        void undoLast()
-        return
-      }
-
-      if (e.key === 'Escape') {
-        if (lightboxId) closeLightbox()
-        else if (activeId) setActiveId(null)
-        else setSelectedIds([])
-        return
-      }
-      // 灯箱打开时，键盘交给灯箱自己，别把后面的列表也动了
-      if (lightboxId) return
-      if (typing) return
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-        // 只全选"当前已加载"的图片：不去主进程拉全库 id，避免一次选中上万张后再逐条发 IPC
-        e.preventDefault()
-        const loaded = itemsRef.current
-        if (loaded.length === 0) return
-        setSelectedIds(loaded.map((item) => item.id))
-        notify(`已选中当前加载的 ${loaded.length} 张`)
-        return
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-        const id = selectedIds[0] ?? activeId
-        if (!id) return
-        e.preventDefault()
-        void window.api.copyImage(id).then((ok) => {
-          setToast({ text: ok ? '已复制图片到剪贴板' : '复制失败，试试其它图片' })
-        })
-        return
-      }
-      // macOS 键盘的主删除键是 Backspace，Windows 上不认它，免得误删
-      const macDelete = e.key === 'Backspace' && navigator.platform.startsWith('Mac')
-      if ((e.key === 'Delete' || macDelete) && (selectedIds.length || activeId)) {
-        e.preventDefault()
-        void deleteSelected()
-        return
-      }
-      if (/^[0-5]$/.test(e.key) && (selectedIds.length || activeId)) {
-        e.preventDefault()
-        void rateSelected(Number(e.key))
-        return
-      }
-      if ((e.key === 'p' || e.key === 'P') && (selectedIds.length || activeId)) {
-        e.preventDefault()
-        void setFlagSelected(1)
-        return
-      }
-      if ((e.key === 'x' || e.key === 'X') && (selectedIds.length || activeId)) {
-        e.preventDefault()
-        void setFlagSelected(-1)
-        return
-      }
-      if ((e.key === 'u' || e.key === 'U') && (selectedIds.length || activeId)) {
-        e.preventDefault()
-        void setFlagSelected(0)
-        return
-      }
-      // 方向键按瀑布流实际位置走；j / k 仍保持顺序切换
-      const arrow: Direction | null =
-        e.key === 'ArrowLeft'
-          ? 'left'
-          : e.key === 'ArrowRight'
-            ? 'right'
-            : e.key === 'ArrowUp'
-              ? 'up'
-              : e.key === 'ArrowDown'
-                ? 'down'
-                : null
-      if (arrow) {
-        e.preventDefault()
-        moveSelectionBy(arrow)
-        return
-      }
-      if (e.key === 'j') {
-        e.preventDefault()
-        moveSelection(1)
-        return
-      }
-      if (e.key === 'k') {
-        e.preventDefault()
-        moveSelection(-1)
-        return
-      }
-      if (e.key === ' ' && activeId) {
-        e.preventDefault()
-        openLightbox(activeId)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [
-    selectedIds,
+  useShortcuts({
+    portraitOpen,
+    pickDeliveryOpen,
+    library,
+    useCaseLoaded,
+    useCase,
     lightboxId,
     activeId,
-    portraitOpen,
-    closeLightbox,
+    selectedIds,
+    setSelectedIds,
+    selectAll,
+    setActiveId,
     openLightbox,
+    closeLightbox,
+    undoLast,
     deleteSelected,
     rateSelected,
     setFlagSelected,
     moveSelection,
     moveSelectionBy,
-    undoLast,
     notify
-  ])
+  })
 
-  const handleSelect = (id: number, e: ReactMouseEvent): void => {
+  const selectedIdsRef = useRef<number[]>([])
+  selectedIdsRef.current = selectedIds
+
+  const handleSelect = useCallback((id: number, e: ReactMouseEvent): void => {
+    const current = selectedIdsRef.current
     const additive = e.ctrlKey || e.metaKey
-    if (e.shiftKey && selectedIds.length > 0) {
-      const from = items.findIndex((i) => i.id === selectedIds[selectedIds.length - 1])
-      const to = items.findIndex((i) => i.id === id)
+    if (e.shiftKey && current.length > 0) {
+      const list = itemsRef.current
+      const from = list.findIndex((i) => i.id === current[current.length - 1])
+      const to = list.findIndex((i) => i.id === id)
       if (from >= 0 && to >= 0) {
         const [start, end] = from < to ? [from, to] : [to, from]
-        setSelectedIds(items.slice(start, end + 1).map((i) => i.id))
+        setSelectedIds(list.slice(start, end + 1).map((i) => i.id))
         return
       }
     }
@@ -912,7 +997,7 @@ export default function App() {
       setSelectedIds([id])
       setActiveId(id)
     }
-  }
+  }, [setActiveId, setSelectedIds])
 
   const addSelectedToFolder = async (folderId: number): Promise<void> => {
     const ids = selectedIds.length ? selectedIds : activeId ? [activeId] : []
@@ -929,24 +1014,168 @@ export default function App() {
     bump()
   }
 
+  /** 右键菜单 / 拖拽共用的打标签：失败时把主进程的原因带出来 */
+  const addSelectedTag = async (tagId: number): Promise<void> => {
+    const ids = selectedIds.length ? selectedIds : activeId ? [activeId] : []
+    if (!ids.length) return
+    const name = tags.find((tag) => tag.id === tagId)?.name ?? ''
+    try {
+      await window.api.setTag(ids, tagId, true)
+      pushUndo(
+        `已打上「${name}」`,
+        async () => {
+          await window.api.setTag(ids, tagId, false)
+        },
+        false
+      )
+      notify(`已打上「${name}」`)
+      bump()
+    } catch (error) {
+      notify(`打标签失败：${errorText(error)}`)
+    }
+  }
+
+  /** 右键先把这张选上（已在多选里就保持多选），再在鼠标位置弹菜单 */
+  const openItemContextMenu = useCallback(
+    (id: number, position: { clientX: number; clientY: number; preventDefault: () => void }): void => {
+      position.preventDefault()
+      setSelectedIds((prev) => (prev.includes(id) ? prev : [id]))
+      setActiveId(id)
+      setContextMenu({ x: position.clientX, y: position.clientY, id })
+    },
+    []
+  )
+
   const handleDropItems = async (
     ids: number[],
     target: { folderId?: number; tagId?: number }
   ): Promise<void> => {
     if (!ids.length) return
-    if (target.folderId) {
-      await window.api.addToFolder(ids, target.folderId)
-      pushUndo(`已加入「${folders.find((f) => f.id === target.folderId)?.name ?? ''}」`, async () => {
-        await window.api.removeFromFolder(ids, target.folderId as number)
-      })
+    try {
+      if (target.folderId) {
+        await window.api.addToFolder(ids, target.folderId)
+        pushUndo(`已加入「${folders.find((f) => f.id === target.folderId)?.name ?? ''}」`, async () => {
+          await window.api.removeFromFolder(ids, target.folderId as number)
+        })
+      }
+      if (target.tagId) {
+        await window.api.setTag(ids, target.tagId, true)
+        pushUndo(`已打上「${tags.find((t) => t.id === target.tagId)?.name ?? ''}」`, async () => {
+          await window.api.setTag(ids, target.tagId as number, false)
+        })
+      }
+      bump()
+    } catch (error) {
+      // 目标可能在拖拽途中被删掉，别静默失败
+      notify(`拖入失败：${errorText(error)}`)
     }
-    if (target.tagId) {
-      await window.api.setTag(ids, target.tagId, true)
-      pushUndo(`已打上「${tags.find((t) => t.id === target.tagId)?.name ?? ''}」`, async () => {
-        await window.api.setTag(ids, target.tagId as number, false)
-      })
+  }
+
+  /** 右键菜单条目：回收站视图只给恢复与彻底删除，主库给完整动作 */
+  const buildItemMenu = (item: Item): ContextMenuEntry[] => {
+    const ids = selectedIds.includes(item.id) ? selectedIds : [item.id]
+    const base: ContextMenuEntry[] = [
+      {
+        id: 'open',
+        label: '打开',
+        icon: <Maximize size={12} />,
+        onSelect: () => openLightbox(item.id)
+      },
+      {
+        id: 'reveal',
+        label: '在资源管理器中显示',
+        icon: <FolderOpen size={12} />,
+        onSelect: () => void window.api.showInFolder(item.path)
+      }
+    ]
+    if (filter.trashed) {
+      return [
+        ...base,
+        { id: 'trash-sep', label: '', separator: true },
+        {
+          id: 'restore',
+          label: `从回收站恢复${ids.length > 1 ? `（${ids.length} 张）` : ''}`,
+          icon: <RefreshCw size={12} />,
+          onSelect: () => void restoreSelected()
+        },
+        {
+          id: 'purge',
+          label: `彻底删除${ids.length > 1 ? `（${ids.length} 张）` : ''}`,
+          icon: <Trash2 size={12} />,
+          danger: true,
+          onSelect: () => void purgeSelected()
+        }
+      ]
     }
-    bump()
+    const tagChildren: ContextMenuEntry[] = tags.length
+      ? tags.map((tag) => ({
+          id: `tag-${tag.id}`,
+          label: tag.name,
+          onSelect: () => void addSelectedTag(tag.id)
+        }))
+      : [{ id: 'tag-empty', label: '还没有标签', disabled: true }]
+    const folderChildren: ContextMenuEntry[] = folders.length
+      ? folders.map((folder) => ({
+          id: `folder-${folder.id}`,
+          label: folder.name,
+          onSelect: () => void addSelectedToFolder(folder.id)
+        }))
+      : [{ id: 'folder-empty', label: '还没有文件夹', disabled: true }]
+    return [
+      ...base,
+      {
+        id: 'copy',
+        label: '复制图片',
+        icon: <Copy size={12} />,
+        onSelect: () =>
+          void window.api
+            .copyImage(item.id)
+            .then((ok) => notify(ok ? '已复制图片到剪贴板' : '复制失败，试试其它图片'))
+      },
+      { id: 'action-sep', label: '', separator: true },
+      {
+        id: 'rate',
+        label: '评分',
+        icon: <Star size={12} />,
+        hint: item.rating ? '★'.repeat(item.rating) : undefined,
+        children: [
+          ...[1, 2, 3, 4, 5].map((n) => ({
+            id: `rate-${n}`,
+            label: '★'.repeat(n),
+            checked: item.rating === n,
+            onSelect: () => void rateSelected(n)
+          })),
+          {
+            id: 'rate-0',
+            label: '清除评分',
+            checked: item.rating === 0,
+            onSelect: () => void rateSelected(0)
+          }
+        ]
+      },
+      { id: 'tag', label: '加标签', icon: <TagIcon size={12} />, children: tagChildren },
+      {
+        id: 'folder',
+        label: '加入文件夹',
+        icon: <FolderPlus size={12} />,
+        children: folderChildren
+      },
+      {
+        id: 'stack',
+        label: ids.length > 1 ? `堆叠这 ${ids.length} 张` : '堆叠',
+        icon: <Layers size={12} />,
+        disabled: ids.length < 2,
+        onSelect: () => void stackSelected()
+      },
+      { id: 'remove-sep', label: '', separator: true },
+      {
+        id: 'remove',
+        label: '移除',
+        icon: <Trash2 size={12} />,
+        danger: true,
+        onSelect: () => void deleteSelected()
+      }
+    ]
   }
 
   const saveSmart = async (name: string): Promise<void> => {
@@ -956,16 +1185,53 @@ export default function App() {
     bump()
   }
 
-  const createFolder = async (name: string): Promise<void> => {
+  const createFolder = async (name: string, parentId: number | null = null): Promise<void> => {
     if (!name.trim()) return
     try {
-      await window.api.createFolder(name.trim())
+      await window.api.createFolder(name.trim(), parentId)
       bump()
     } catch (error) {
-      const text = (error as Error).message
-        .replace(/^Error invoking remote method '[^']+':\s*/, '')
-        .replace(/^Error:\s*/, '')
-      notify(`新建文件夹失败：${text}`)
+      notify(`新建文件夹失败：${errorText(error)}`)
+    }
+  }
+
+  const renameFolder = async (id: number, name: string): Promise<void> => {
+    if (!name.trim()) return
+    try {
+      await window.api.renameFolder(id, name.trim())
+      bump()
+    } catch (error) {
+      notify(`重命名失败：${errorText(error)}`)
+    }
+  }
+
+  const moveFolder = async (
+    id: number,
+    parentId: number | null,
+    index: number
+  ): Promise<void> => {
+    try {
+      await window.api.moveFolder(id, parentId, index)
+      bump()
+    } catch (error) {
+      notify(`移动文件夹失败：${errorText(error)}`)
+    }
+  }
+
+  /** 把当前选中的照片设为文件夹封面；没有选中就给出提示 */
+  const setFolderCover = async (folderId: number): Promise<void> => {
+    const id = activeId ?? selectedIds[0] ?? null
+    const item = id ? itemsRef.current.find((entry) => entry.id === id) : null
+    if (!item) {
+      notify('先在文件夹里选一张照片，再设为封面')
+      return
+    }
+    try {
+      await window.api.setFolderCover(folderId, item.id)
+      notify(`已把「${item.name}」设为封面`)
+      bump()
+    } catch (error) {
+      notify(`设置封面失败：${errorText(error)}`)
     }
   }
 
@@ -995,13 +1261,14 @@ export default function App() {
       setExpandedGroups([])
       setSemanticMode(false)
       setSimilar(null)
+      setPickDeliveryOpen(false)
       notify('已从备份恢复')
       bump()
     } catch (error) {
       notify(`恢复失败：${(error as Error).message}`)
     } finally {
       // 恢复时补齐缩略图会走导入进度条，结束后要收起来
-      setProgress(null)
+      clearProgress()
     }
   }
 
@@ -1018,7 +1285,7 @@ export default function App() {
     try {
       setClipDownload({ received: 0, total: 0, file: '' })
       await window.api.clipDownloadModel(modelId)
-      setToast({ text: '语义模型下载完成' })
+      setToast({ text: '识图模型下载完成' })
       setClipStatus(await window.api.clipStatus())
       return true
     } catch (error) {
@@ -1036,13 +1303,13 @@ export default function App() {
       const result = await window.api.clipIndex()
       notify(
         result.cancelled
-          ? `语义索引已停止 · 本次新增 ${result.indexed} 张`
-          : `语义索引完成 · 新增 ${result.indexed} 张${result.failed ? ` · 失败 ${result.failed}` : ''}`
+          ? `识图已停止 · 本次新增 ${result.indexed} 张`
+          : `识图完成 · 新增 ${result.indexed} 张${result.failed ? ` · 失败 ${result.failed}` : ''}`
       )
       setClipStatus(await window.api.clipStatus())
       bump()
     } catch (error) {
-      notify(`语义索引失败：${(error as Error).message}`)
+      notify(`识图失败：${(error as Error).message}`)
     } finally {
       setClipProgress(null)
     }
@@ -1053,7 +1320,7 @@ export default function App() {
     setClipStatus(status)
     if (!status.modelReady) {
       const ok = await window.api.confirm(
-        '语义搜索需要先下载模型',
+        '描述搜图需要先下载识图模型',
         `${status.modelLabel} 模型约 ${formatBytes(status.modelBytes)}，只会下载一次，保存到本机。继续吗？`
       )
       if (!ok) return
@@ -1072,7 +1339,7 @@ export default function App() {
 
     if (!status.modelReady) {
       const ok = await window.api.confirm(
-        '语义搜索需要先下载模型',
+        '描述搜图需要先下载识图模型',
         `${status.modelLabel} 模型约 ${formatBytes(status.modelBytes)}，只会下载一次，保存到本机。继续吗？`
       )
       if (!ok) return
@@ -1084,7 +1351,7 @@ export default function App() {
     setClipStatus(fresh)
     setSemanticMode(true)
     if (fresh.total > fresh.indexed && !fresh.running) {
-      notify('正在后台建立语义索引，完成后就能搜了')
+      notify('正在后台识别图片，完成后就能按描述搜')
       void startClipIndex()
     }
   }
@@ -1095,7 +1362,7 @@ export default function App() {
       const result = await window.api.clipSimilar(id, 200)
       setSimilar({ id, name: item?.name ?? '当前图片' })
       applyItems(result.items)
-      setTotal(result.items.length)
+      setTotal(result.total)
       setSelectedIds([])
       setActiveId(null)
     } catch (error) {
@@ -1110,6 +1377,7 @@ export default function App() {
 
   const activeItem = items.find((i) => i.id === activeId) ?? null
   const lightboxIndex = items.findIndex((i) => i.id === lightboxId)
+  const contextMenuItem = contextMenu ? items.find((i) => i.id === contextMenu.id) ?? null : null
 
   /** 选片页按相册里的顺序编号，而不是按用户点选的先后 */
   const pickItemIds = useMemo(
@@ -1124,6 +1392,23 @@ export default function App() {
     const dir = filter.dir ?? (first ? first.path.replace(/[\\/][^\\/]+$/, '') : '')
     return `${dir ? folderName(dir) : '选片'} · ${stamp}`
   }, [items, selectedIds, filter.dir])
+
+  /** 把当前选中的一批照片存成「待交付」草稿，生成选片页留给交付视图 */
+  const savePickDraft = useCallback(async (): Promise<void> => {
+    if (!pickItemIds.length) return
+    try {
+      await window.api.pickCreateDraft({ itemIds: pickItemIds, title: pickTitle })
+      notify('已存为待交付，去侧栏「选片交付」里生成浏览页')
+      setSelectedIds([])
+      setPickDeliveryTick((value) => value + 1)
+    } catch (error) {
+      const text = (error as Error).message
+        .replace(/^Error invoking remote method '[^']+':\s*/, '')
+        .replace(/^Error:\s*/, '')
+      notify(`存草稿失败：${text}`)
+    }
+  }, [pickItemIds, pickTitle, notify])
+
   // 条件/排序/模式变化时让瀑布流回到顶部
   const listResetKey = [
     filter.sort ?? '',
@@ -1152,8 +1437,24 @@ export default function App() {
     setExpandedGroups([])
     setSemanticMode(false)
     setSimilar(null)
+    setOtherHint(null)
+    setPickDeliveryOpen(false)
     closeLightbox()
     bump()
+  }
+
+  /** 零结果提示：切到命中的第一个库，并把查询词一起带过去 */
+  const openOtherLibrary = async (): Promise<void> => {
+    const target = otherHint?.matches[0]
+    if (!target) return
+    const query = filter.query ?? ''
+    try {
+      const dir = await window.api.openLibrary(target.path)
+      switchLibrary(dir)
+      setFilter({ sort: 'added', query })
+    } catch (error) {
+      notify(`切换图库失败：${errorText(error)}`)
+    }
   }
 
   if (booting) {
@@ -1174,6 +1475,7 @@ export default function App() {
           setActiveId(null)
           setSemanticMode(false)
           setSimilar(null)
+          setPickDeliveryOpen(false)
         }}
       />
     )
@@ -1210,7 +1512,14 @@ export default function App() {
           }}
           onImportFiles={openImportDialog}
           onImportFolder={openImportDialog}
-          onPortrait={() => setPortraitOpen(true)}
+          useCase={useCase ?? 'pro'}
+          grownFeatures={grownFeatures}
+          onGrowFeature={growFeature}
+          onPortrait={() => {
+            growFeature('portrait')
+            growFeature('facets')
+            setPortraitOpen(true)
+          }}
           onSync={() => void syncLibrary()}
           onRescan={rescan}
           onDuplicates={() => setDuplicatesOpen(true)}
@@ -1223,14 +1532,23 @@ export default function App() {
           onIndexClip={() => void ensureClipIndex()}
           onAutoTag={() => setAutoTagOpen(true)}
           onRelocate={() => setRelocateOpen(true)}
-          onPickHistory={() => setPickHistoryOpen(true)}
+          onPickDelivery={() => {
+            growFeature('delivery')
+            setPickDeliveryOpen(true)
+          }}
           lastRelocateDir={lastRelocateDir}
           onEquipment={() => setEquipmentOpen(true)}
           onSettings={() => openSettings('appearance')}
           onCreateFolder={createFolder}
+          onRenameFolder={renameFolder}
+          onMoveFolder={moveFolder}
+          onSetFolderCover={setFolderCover}
           onDropItems={handleDropItems}
           onDeleteFolder={async (id) => {
-            const ok = await window.api.confirm('删除这个文件夹？', '图片本身不会被删除。')
+            const ok = await window.api.confirm(
+              '删除这个文件夹？',
+              '里面的图片不会被删除；子文件夹会移到上一级。'
+            )
             if (ok) {
               await window.api.deleteFolder(id)
               if (filter.folderId === id) setFilter({ ...filter, folderId: null })
@@ -1288,6 +1606,7 @@ export default function App() {
             onOpenSmartFilter={() => setSmartFilterOpen(true)}
             onClearAi={clearAiFilter}
             aiReady={aiReady}
+            aiVisionBlocked={aiVisionBlocked}
             canScore={aiCaps['photo.quality'] !== false}
             canSmartFilter={aiCaps['photo.smartFilter'] !== false}
             semanticMode={semanticMode}
@@ -1296,13 +1615,22 @@ export default function App() {
             onAddToFolder={addSelectedToFolder}
             onDeleteSelected={deleteSelected}
             onClearMissing={clearMissing}
+            onRetryErrors={() => void retryFailedImports()}
+            trashView={Boolean(filter.trashed)}
+            onRestoreSelected={() => void restoreSelected()}
+            onPurgeSelected={() => void purgeSelected()}
+            onPurgeAllTrashed={() => void purgeAllTrashed()}
             onClearSelection={() => setSelectedIds([])}
+            onBulkNote={bulkNoteSelected}
             onSaveSmart={saveSmart}
-            onExportPick={() => setPickExportOpen(true)}
-            onExportFinals={() => setFinalsExportOpen(true)}
-            onImportPick={() => {
-              setPickImportSessionId(null)
-              setPickImportOpen(true)
+            onSaveDraft={() => void savePickDraft()}
+            onExportPick={() => {
+              setPickExportDraft(null)
+              setPickExportOpen(true)
+            }}
+            onExportFinals={() => {
+              setFinalsExportIds(null)
+              setFinalsExportOpen(true)
             }}
           />
           {similar && (
@@ -1323,7 +1651,7 @@ export default function App() {
             quality={thumbQuality}
             loading={loading}
             loadingMore={loadingMore}
-            hasMore={!similar && !semanticMode && items.length < total}
+            hasMore={items.length < total}
             resetKey={listResetKey}
             focusId={lightboxId ?? activeId}
             focusTick={revealTick}
@@ -1332,7 +1660,10 @@ export default function App() {
             onLoadMore={loadMore}
             onSelect={handleSelect}
             onOpen={openLightbox}
+            onContextMenu={openItemContextMenu}
             onImportFiles={openImportDialog}
+            otherHint={otherHint}
+            onOpenOtherLibrary={() => void openOtherLibrary()}
             hasFilter={
               Boolean(filter.query) ||
               Boolean(filter.folderId) ||
@@ -1343,6 +1674,7 @@ export default function App() {
               Boolean(filter.orientation) ||
               Boolean(filter.flag) ||
               Boolean(filter.missing) ||
+              Boolean(filter.trashed) ||
               Boolean(filter.pickAction) ||
               (filter.minRating ?? 0) > 0
             }
@@ -1377,6 +1709,7 @@ export default function App() {
             onScore={() => void scoreItems([activeItem.id])}
             aiScoring={aiScoring}
             aiReady={aiReady}
+            visionBlocked={aiVisionBlocked}
             canScore={aiCaps['photo.quality'] !== false}
             canAdvice={aiCaps['photo.advice'] !== false}
             canStudy={aiCaps['photo.socratic'] !== false}
@@ -1388,7 +1721,7 @@ export default function App() {
         <div className="absolute inset-0 z-40 grid place-items-center bg-[rgba(9,11,15,0.82)] backdrop-blur-sm pointer-events-none">
           <div className="px-10 py-8 rounded-2xl border-2 border-dashed border-[var(--accent)] text-center">
             <div className="text-[16px] text-[var(--accent-2)] font-medium">松手就收进图库</div>
-            <div className="text-[12px] text-[var(--muted)] mt-1">支持文件夹递归导入</div>
+            <div className="text-[12px] text-[var(--muted)] mt-1">支持文件夹、文件与图片网址</div>
           </div>
         </div>
       )}
@@ -1414,10 +1747,30 @@ export default function App() {
         onDismiss={() => setImportResult(null)}
       />
 
+      {firstImportHint !== null && (
+        <FirstImportHint
+          count={firstImportHint}
+          onTag={() => {
+            closeFirstImportHint()
+            setAutoTagOpen(true)
+          }}
+          onSend={() => {
+            closeFirstImportHint()
+            growFeature('delivery')
+            setPickDeliveryOpen(true)
+          }}
+          onClose={closeFirstImportHint}
+        />
+      )}
+
+      {library && useCaseLoaded && useCase === null && (
+        <FirstRunDialog onChoose={(value) => void chooseUseCase(value)} />
+      )}
+
       {clipDownload && (
         <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-[60] w-[360px] rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-2xl">
           <div className="flex items-center justify-between text-[12px] mb-2">
-            <span className="text-[var(--muted)] truncate pr-3">正在下载语义模型</span>
+            <span className="text-[var(--muted)] truncate pr-3">正在下载识图模型</span>
             <span className="text-[var(--text)] tabular-nums">
               {clipDownload.total
                 ? `${Math.round((clipDownload.received / clipDownload.total) * 100)}%`
@@ -1442,7 +1795,7 @@ export default function App() {
       {clipProgress && !clipDownload && (
         clipCardMinimized ? (
           <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 shadow-2xl">
-            <span className="text-[11.5px] text-[var(--muted)]">语义索引</span>
+            <span className="text-[11.5px] text-[var(--muted)]">识图</span>
             <span className="text-[11.5px] text-[var(--text)] tabular-nums">
               {clipProgress.total ? `${clipProgress.done}/${clipProgress.total}` : '准备中…'}
               {clipProgress.total
@@ -1461,7 +1814,7 @@ export default function App() {
           <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-40 w-[360px] rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-2xl">
             <div className="flex items-center justify-between text-[12px] mb-2">
               <span className="text-[var(--muted)] truncate pr-3">
-                语义索引 {clipProgress.current || (clipProgress.total ? '' : '准备中…')}
+                识图 {clipProgress.current || (clipProgress.total ? '' : '准备中…')}
               </span>
               <span className="flex items-center gap-1 shrink-0">
                 <span className="text-[var(--text)] tabular-nums">
@@ -1533,9 +1886,21 @@ export default function App() {
           folders={folders}
           onRefresh={bump}
           onPushUndo={pushUndo}
+          onContextMenu={(id, x, y) =>
+            openItemContextMenu(id, { clientX: x, clientY: y, preventDefault: () => undefined })
+          }
           aiReady={aiReady}
           canAsk={aiCaps['photo.socratic'] !== false}
           aiScope={aiScope}
+        />
+      )}
+
+      {contextMenu && contextMenuItem && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={buildItemMenu(contextMenuItem)}
+          onClose={() => setContextMenu(null)}
         />
       )}
 
@@ -1545,7 +1910,7 @@ export default function App() {
           onOptions={setImportOptions}
           onPickFolder={importFolder}
           onPickFiles={importFiles}
-          onClose={() => setImportOpen(false)}
+          onClose={closeImportDialog}
         />
       )}
 
@@ -1611,6 +1976,8 @@ export default function App() {
           onChange={changeTheme}
           skin={skin}
           onSkin={changeSkin}
+          useCase={useCase ?? 'pro'}
+          onUseCase={(value) => void chooseUseCase(value)}
           thumbQuality={thumbQuality}
           onThumbQuality={changeThumbQuality}
           folders={folders}
@@ -1643,23 +2010,32 @@ export default function App() {
 
       {pickExportOpen && (
         <PickExportDialog
-          itemIds={pickItemIds}
-          defaultTitle={pickTitle}
-          onClose={() => setPickExportOpen(false)}
+          itemIds={pickExportDraft?.itemIds ?? pickItemIds}
+          defaultTitle={pickExportDraft?.session.title ?? pickTitle}
+          sessionId={pickExportDraft?.session.id}
+          defaultClient={pickExportDraft?.session.client}
+          onClose={() => {
+            setPickExportOpen(false)
+            setPickExportDraft(null)
+          }}
           onExported={(result: PickExportResult) => {
             notify(
-              `已生成选片页 · ${result.count} 张 · ${formatBytes(result.bytes)}${
+              `已生成浏览页 · ${result.count} 张 · ${formatBytes(result.bytes)}${
                 result.failed.length ? `（${result.failed.length} 张读取失败已跳过）` : ''
               }`
             )
+            setPickDeliveryTick((value) => value + 1)
           }}
         />
       )}
 
       {finalsExportOpen && (
         <FinalsExportDialog
-          itemIds={pickItemIds}
-          onClose={() => setFinalsExportOpen(false)}
+          itemIds={finalsExportIds ?? pickItemIds}
+          onClose={() => {
+            setFinalsExportOpen(false)
+            setFinalsExportIds(null)
+          }}
           onExported={(result) => {
             notify(
               `已导出 ${result.count} 张到 ${folderName(result.dir)}${
@@ -1677,9 +2053,13 @@ export default function App() {
           onApplied={(result: PickApplyResult, sessionId: number) => {
             setPickImportOpen(false)
             setPickImportSessionId(null)
-            setFilter({ ...filter, pickAction: 'any', pickSessionId: sessionId })
+            // 在选片交付里粘贴反馈时，留在原视图看这一单更新；在主图库入口进来才跳去筛选
+            if (!pickDeliveryOpen) {
+              setFilter({ ...filter, pickAction: 'any', pickSessionId: sessionId })
+            }
+            setPickDeliveryTick((value) => value + 1)
             notify(
-              `客户已选 ${result.keep + result.fix} 张（要修 ${result.fix} 张）${
+              `浏览页已选 ${result.keep + result.fix} 张（要修 ${result.fix} 张）${
                 result.unmatched.length ? ` · ${result.unmatched.length} 个编号对不上` : ''
               }${result.replyCount > 1 ? ` · 第 ${result.replyCount} 次回传` : ''}`
             )
@@ -1688,23 +2068,39 @@ export default function App() {
         />
       )}
 
-      {pickHistoryOpen && (
-        <PickHistoryDialog
-          onClose={() => setPickHistoryOpen(false)}
+      {pickDeliveryOpen && (
+        <PickDelivery
+          refreshTick={pickDeliveryTick}
+          onBack={() => setPickDeliveryOpen(false)}
+          onPickNew={() => {
+            setPickDeliveryOpen(false)
+            setSelectedIds([])
+            notify('在主图库选中照片后，点选中操作条里的「生成浏览页」')
+          }}
           onOpenImport={(sessionId) => {
-            setPickHistoryOpen(false)
             setPickImportSessionId(sessionId)
             setPickImportOpen(true)
           }}
           onViewSession={(sessionId) => {
-            setPickHistoryOpen(false)
+            setPickDeliveryOpen(false)
             setFilter({ ...filter, pickAction: 'any', pickSessionId: sessionId })
+            setSelectedIds([])
+            setActiveId(null)
+          }}
+          onExportFinals={(itemIds) => {
+            setFinalsExportIds(itemIds)
+            setFinalsExportOpen(true)
+          }}
+          onExportDraft={(session, itemIds) => {
+            setPickExportDraft({ session, itemIds })
+            setPickExportOpen(true)
           }}
           onDeleted={(sessionId) => {
             // 正在看这一单时把它删了，筛选条件也一起收回，避免列表空着
             if (filter.pickSessionId === sessionId) {
               setFilter({ ...filter, pickAction: undefined, pickSessionId: undefined })
             }
+            setPickDeliveryTick((value) => value + 1)
             bump()
           }}
         />

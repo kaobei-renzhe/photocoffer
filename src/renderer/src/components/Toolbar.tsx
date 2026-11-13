@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
+  Archive,
   ChevronDown,
   ChevronUp,
-  ClipboardPaste,
   Download,
   FileImage,
   Folder as FolderIcon,
   FolderPlus,
+  LayoutGrid,
   Layers,
+  NotebookPen,
+  RefreshCw,
   Save,
   Search,
   SlidersHorizontal,
@@ -42,6 +45,8 @@ interface ToolbarProps {
   aiReady: boolean
   /** 能力级开关：只有总开关就绪且该能力开启时才渲染入口 */
   canScore: boolean
+  /** 当前模型看不了图：AI 入口不可用，但要在工具栏上说清楚 */
+  aiVisionBlocked: boolean
   canSmartFilter: boolean
   semanticMode: boolean
   clipStatus: ClipStatus | null
@@ -50,14 +55,23 @@ interface ToolbarProps {
   onDeleteSelected: () => void
   /** 丢失视图里一次性清理所有丢失记录 */
   onClearMissing: () => void
+  /** 重试所有导入失败的记录 */
+  onRetryErrors: () => void
+  /** 当前是否在回收站视图 */
+  trashView: boolean
+  onRestoreSelected: () => void
+  onPurgeSelected: () => void
+  onPurgeAllTrashed: () => void
   onClearSelection: () => void
+  /** 批量备注：append = 接在原备注后面，false = 整体替换 */
+  onBulkNote: (text: string, append: boolean) => Promise<void> | void
   onSaveSmart: (name: string) => void
+  /** 把选中的照片存成「待交付」草稿，之后在选片交付里生成 */
+  onSaveDraft: () => void
   /** 客户选片：把选中的照片导出成客户能直接点开的网页 */
   onExportPick: () => void
   /** 导出成品：按尺寸/质量转 JPEG 或原样复制到文件夹 */
   onExportFinals: () => void
-  /** 客户选片：粘贴客户回传的文字 */
-  onImportPick: () => void
 }
 
 export default function Toolbar({
@@ -79,6 +93,7 @@ export default function Toolbar({
   onClearAi,
   aiReady,
   canScore,
+  aiVisionBlocked,
   canSmartFilter,
   semanticMode,
   clipStatus,
@@ -86,18 +101,63 @@ export default function Toolbar({
   onAddToFolder,
   onDeleteSelected,
   onClearMissing,
+  onRetryErrors,
+  trashView,
+  onRestoreSelected,
+  onPurgeSelected,
+  onPurgeAllTrashed,
   onClearSelection,
+  onBulkNote,
   onSaveSmart,
+  onSaveDraft,
   onExportPick,
-  onExportFinals,
-  onImportPick
+  onExportFinals
 }: ToolbarProps) {
   const [saving, setSaving] = useState(false)
   const [smartName, setSmartName] = useState('')
-  /** 第二排筛选条件可以折叠，给图库让出高度 */
-  const [filtersOpen, setFiltersOpen] = useState(true)
-  /** 主色筛选默认收起，展开才显示色块 */
+  /** 筛选条件收进抽屉，默认不占高度 */
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  /** 主色筛选再收一层，展开才显示色块 */
   const [colorOpen, setColorOpen] = useState(false)
+  /** 视图菜单：缩略图大小与连拍展开都放这里 */
+  const [viewOpen, setViewOpen] = useState(false)
+  /** 批量备注：展开输入行，避免一直占着选中条 */
+  const [noteOpen, setNoteOpen] = useState(false)
+  const [noteText, setNoteText] = useState('')
+  const [noteAppend, setNoteAppend] = useState(true)
+  const [noteBusy, setNoteBusy] = useState(false)
+  /** 缩略图滑杆先走本地值，150ms 后再提交，拖动时不要连续重排 */
+  const [thumbDraft, setThumbDraft] = useState(thumbSize)
+
+  useEffect(() => {
+    setThumbDraft(thumbSize)
+  }, [thumbSize])
+
+  useEffect(() => {
+    if (thumbDraft === thumbSize) return
+    const timer = setTimeout(() => onThumbSize(thumbDraft), 150)
+    return () => clearTimeout(timer)
+  }, [thumbDraft, thumbSize, onThumbSize])
+
+  useEffect(() => {
+    if (selectedIds.length === 0) {
+      setNoteOpen(false)
+      setNoteText('')
+    }
+  }, [selectedIds.length])
+
+  const applyNote = async (): Promise<void> => {
+    const value = noteText.trim()
+    if (!value || noteBusy) return
+    setNoteBusy(true)
+    try {
+      await onBulkNote(value, noteAppend)
+      setNoteText('')
+      setNoteOpen(false)
+    } finally {
+      setNoteBusy(false)
+    }
+  }
 
   const patch = (next: Partial<FilterState>): void => onFilter({ ...filter, ...next })
   const facetCount = Object.values(filter.facets ?? {}).reduce(
@@ -130,7 +190,6 @@ export default function Toolbar({
     filter.colorFamily,
     filter.orientation,
     filter.flag,
-    filter.expandBursts,
     filter.missing,
     (filter.minRating ?? 0) > 0,
     (filter.minAiScore ?? 0) > 0,
@@ -151,9 +210,12 @@ export default function Toolbar({
   }
 
   const pending = clipStatus ? Math.max(0, clipStatus.total - clipStatus.indexed) : 0
+  const semanticTitle = semanticMode
+    ? `正在用画面语义搜索${clipStatus && pending > 0 ? `（已识图 ${clipStatus.indexed}/${clipStatus.total}）` : ''}，点此切回普通搜索`
+    : '用自然语言描述画面来找图（本地模型，不上传）'
 
   return (
-    <div className="shrink-0 border-b border-[var(--border)] bg-[var(--panel)] px-3 py-2">
+    <div className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--panel)] px-3 py-2">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-[420px]">
           <Search
@@ -161,52 +223,58 @@ export default function Toolbar({
             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--faint)] pointer-events-none"
           />
           <input
-            className="input w-full pl-8"
+            className="input w-full"
+            style={{ paddingLeft: 32, paddingRight: 36 }}
             placeholder={
               semanticMode ? '描述画面，比如「海边的日落」…' : '搜索文件名、标签、备注…'
             }
             value={filter.query ?? ''}
             onChange={(e) => patch({ query: e.target.value })}
           />
+          <button
+            className={`absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md transition-colors ${
+              semanticMode
+                ? 'bg-[var(--accent-soft)] text-[var(--accent-2)]'
+                : 'text-[var(--faint)] hover:text-[var(--text)]'
+            }`}
+            onClick={onToggleSemantic}
+            title={semanticTitle}
+            aria-pressed={semanticMode}
+          >
+            <Sparkles size={13} />
+          </button>
         </div>
-
-        <button
-          className={`btn h-8 px-2.5 shrink-0 ${
-            semanticMode ? 'border-[var(--accent)] text-[var(--accent-2)] bg-[var(--accent-soft)]' : ''
-          }`}
-          onClick={onToggleSemantic}
-          title={
-            semanticMode
-              ? '正在用画面语义搜索，点此切回普通搜索'
-              : '用自然语言描述画面来找图（本地模型，不上传）'
-          }
-        >
-          <Sparkles size={13} /> 语义
-          {semanticMode && clipStatus && pending > 0 && (
-            <span className="ml-1 text-[10.5px] text-[var(--faint)] tabular-nums">
-              {clipStatus.indexed}/{clipStatus.total}
-            </span>
-          )}
-        </button>
 
         <button
           className={`btn h-8 px-2.5 shrink-0 ${
             !filtersOpen && activeCount > 0 ? 'border-[var(--accent-border)] text-[var(--accent-2)]' : ''
           }`}
           onClick={() => setFiltersOpen((open) => !open)}
-          title={filtersOpen ? '折叠筛选条件' : '展开筛选条件'}
+          title={filtersOpen ? '收起筛选条件' : '展开筛选条件'}
         >
           <SlidersHorizontal size={13} /> 筛选
           {activeCount > 0 && (
-            <span className="ml-0.5 text-[10.5px] text-[var(--faint)] tabular-nums">{activeCount}</span>
+            <span className="ml-1 grid h-[16px] min-w-[16px] place-items-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-medium tabular-nums text-[var(--on-accent)]">
+              {activeCount}
+            </span>
           )}
           {filtersOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
         </button>
 
+        {aiReady && aiVisionBlocked && (
+          <span
+            className="rounded border border-[var(--warn)]/40 px-2 py-[3px] text-[10.5px] leading-4 text-[var(--warn)]"
+            title="当前模型看不了图。到设置 → 大模型里换一个视觉模型后，AI 入口会恢复。"
+          >
+            当前模型看不了图
+          </span>
+        )}
+
         <select
-          className="input"
+          className="input h-8 shrink-0 text-[12.5px]"
           value={filter.sort ?? 'added'}
           onChange={(e) => patch({ sort: e.target.value as FilterState['sort'] })}
+          title="排序方式"
         >
           <option value="added">最新导入</option>
           <option value="mtime">拍摄时间</option>
@@ -216,44 +284,74 @@ export default function Toolbar({
           {aiReady && canScore && <option value="ai">AI 评分</option>}
         </select>
 
-        <div className="ml-auto flex items-center gap-2">
+        <div className="relative shrink-0">
           <button
-            className="btn btn-ghost h-8 px-2.5"
-            onClick={onImportPick}
-            title="粘贴客户回传的选片文字，自动按编号打标"
+            className={`btn h-8 px-2.5 ${
+              viewOpen ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
+            }`}
+            onClick={() => setViewOpen((open) => !open)}
+            title="视图设置：缩略图大小与连拍展开"
           >
-            <ClipboardPaste size={13} /> 导入选片结果
+            <LayoutGrid size={13} /> 视图
+            {viewOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           </button>
-          <span className="text-[11.5px] text-[var(--muted)] tabular-nums">
-            {loading ? '加载中…' : `${total} 张`}
-          </span>
-          <div className="flex items-center gap-2 pl-2 border-l border-[var(--border)]">
-            <span className="text-[11px] text-[var(--faint)]">缩略图</span>
-            <input
-              type="range"
-              min={150}
-              max={340}
-              step={10}
-              value={thumbSize}
-              onChange={(e) => onThumbSize(Number(e.target.value))}
-              className="w-[86px] accent-[var(--accent)]"
-            />
-          </div>
+          {viewOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setViewOpen(false)} />
+              <div className="absolute right-0 top-9 z-40 w-[226px] rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 shadow-2xl">
+                <label className="block text-[10.5px] text-[var(--faint)]">缩略图大小</label>
+                <input
+                  type="range"
+                  min={150}
+                  max={340}
+                  step={10}
+                  value={thumbDraft}
+                  onChange={(e) => setThumbDraft(Number(e.target.value))}
+                  className="mt-1.5 w-full accent-[var(--accent)]"
+                />
+                <button
+                  className={`btn mt-3 h-7 w-full justify-center text-[11.5px] ${
+                    filter.expandBursts ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
+                  }`}
+                  onClick={() => patch({ expandBursts: !filter.expandBursts })}
+                  title="把连拍组拆开显示"
+                >
+                  {filter.expandBursts ? '收起连拍' : '展开连拍'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
+
+        <span className="ml-auto text-[11.5px] text-[var(--muted)] tabular-nums">
+          {loading ? '加载中…' : `${total} 张`}
+        </span>
       </div>
 
-      <div className={`flex items-center gap-2 mt-2 flex-wrap ${filtersOpen ? '' : 'hidden'}`}>
+      {trashView && (
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5 text-[11.5px] text-[var(--muted)]">
+          <Trash2 size={12} className="shrink-0 text-[var(--faint)]" />
+          回收站里的照片可以恢复；彻底删除只删记录和缩略图，原图不动。
+          <button className="btn h-6 px-2 text-[11px] ml-auto" onClick={onPurgeAllTrashed}>
+            清空回收站
+          </button>
+        </div>
+      )}
+
+      {filtersOpen && (
+        <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-2">
         <select
           className="input h-7 text-[12px]"
           value={filter.minRating ?? 0}
           onChange={(e) => patch({ minRating: Number(e.target.value) })}
         >
-          <option value={0}>全部星级</option>
-          <option value={1}>1 星以上</option>
-          <option value={2}>2 星以上</option>
-          <option value={3}>3 星以上</option>
-          <option value={4}>4 星以上</option>
-          <option value={5}>5 星</option>
+          <option value={0}>星级</option>
+          <option value={1}>星级 · 1★以上</option>
+          <option value={2}>星级 · 2★以上</option>
+          <option value={3}>星级 · 3★以上</option>
+          <option value={4}>星级 · 4★以上</option>
+          <option value={5}>星级 · 5★</option>
         </select>
 
         {aiReady && canScore && (
@@ -267,12 +365,12 @@ export default function Toolbar({
             }}
             title="按大模型质量评分筛选"
           >
-            <option value="0">全部 AI 评分</option>
-            <option value="60">AI ≥ 60</option>
-            <option value="70">AI ≥ 70</option>
-            <option value="80">AI ≥ 80</option>
-            <option value="90">AI ≥ 90</option>
-            <option value="unscored">未评分</option>
+            <option value="0">AI 评分</option>
+            <option value="60">AI 评分 · ≥60</option>
+            <option value="70">AI 评分 · ≥70</option>
+            <option value="80">AI 评分 · ≥80</option>
+            <option value="90">AI 评分 · ≥90</option>
+            <option value="unscored">AI 评分 · 未评</option>
           </select>
         )}
 
@@ -281,10 +379,10 @@ export default function Toolbar({
           value={filter.orientation ?? ''}
           onChange={(e) => patch({ orientation: (e.target.value || null) as FilterState['orientation'] })}
         >
-          <option value="">全部构图</option>
-          <option value="landscape">横向</option>
-          <option value="portrait">纵向</option>
-          <option value="square">方形</option>
+          <option value="">构图</option>
+          <option value="landscape">构图 · 横向</option>
+          <option value="portrait">构图 · 纵向</option>
+          <option value="square">构图 · 方形</option>
         </select>
 
         <select
@@ -292,11 +390,11 @@ export default function Toolbar({
           value={filter.flag ?? 0}
           onChange={(e) => patch({ flag: Number(e.target.value) })}
         >
-          <option value={0}>全部旗标</option>
-          <option value={1}>✓ 留用</option>
-          <option value={-1}>✕ 淘汰</option>
-          <option value={FLAG_FILTER_NOT_REJECTED}>— 非淘汰</option>
-          <option value={FLAG_FILTER_NOT_PICKED}>— 非留用</option>
+          <option value={0}>旗标</option>
+          <option value={1}>旗标 · 留用</option>
+          <option value={-1}>旗标 · 淘汰</option>
+          <option value={FLAG_FILTER_NOT_REJECTED}>旗标 · 非淘汰</option>
+          <option value={FLAG_FILTER_NOT_PICKED}>旗标 · 非留用</option>
         </select>
 
         {filter.missing && (
@@ -315,21 +413,11 @@ export default function Toolbar({
               aiRule ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
             }`}
             onClick={onOpenSmartFilter}
-            title="用一句话描述要挑哪些图，让大模型帮你筛（会消耗 token）"
+            title="用一句话描述要挑哪些图，让大模型帮你筛（会调用模型）"
           >
             <Sparkles size={12} /> AI 筛选
           </button>
         )}
-
-        <button
-          className={`btn h-7 px-2 text-[11.5px] ${
-            filter.expandBursts ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
-          }`}
-          onClick={() => patch({ expandBursts: !filter.expandBursts })}
-          title="把连拍组拆开显示"
-        >
-          {filter.expandBursts ? '收起连拍' : '展开连拍'}
-        </button>
 
         <button
           className={`btn h-7 px-2 text-[11.5px] ${
@@ -375,13 +463,24 @@ export default function Toolbar({
         )}
 
         {filter.errors && (
-          <button
-            className="btn h-7 px-2 text-[11.5px] border-[var(--danger-border)] text-[var(--danger-text)]"
-            onClick={() => patch({ errors: false })}
-          >
-            导入异常
-            <X size={11} />
-          </button>
+          <>
+            {total > 0 && (
+              <button
+                className="btn h-7 px-2 text-[11.5px]"
+                onClick={onRetryErrors}
+                title="重新读取这批文件，修好的会自动回到图库"
+              >
+                <RefreshCw size={12} /> 重试这 {total} 张
+              </button>
+            )}
+            <button
+              className="btn h-7 px-2 text-[11.5px] border-[var(--danger-border)] text-[var(--danger-text)]"
+              onClick={() => patch({ errors: false })}
+            >
+              导入异常
+              <X size={11} />
+            </button>
+          </>
         )}
 
         {hasFilter && (
@@ -404,7 +503,8 @@ export default function Toolbar({
                 onlyIds: [],
                 flag: 0,
                 missing: false,
-                errors: false
+                errors: false,
+                trashed: false
               })
             }}
           >
@@ -444,142 +544,235 @@ export default function Toolbar({
             </button>
           )}
         </div>
-      </div>
+          </div>
 
-      {filtersOpen && colorOpen && (
-        <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10.5px] text-[var(--faint)]">按照片画面的主色筛图：</span>
-            <button
-              className={`h-[24px] px-2 rounded-md border text-[11px] transition-colors ${
-                filter.colorFamily
-                  ? 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
-                  : 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]'
-              }`}
-              onClick={() => patch({ colorFamily: null })}
-            >
-              不限
-            </button>
-            {COLOR_OPTIONS.map((option) => {
-              const active = filter.colorFamily === option.value
-              return (
+          {colorOpen && (
+            <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10.5px] text-[var(--faint)]">按照片画面的主色筛图：</span>
                 <button
-                  key={option.value}
-                  title={option.label}
-                  aria-pressed={active}
-                  onClick={() => patch({ colorFamily: active ? null : option.value })}
-                  className="w-[16px] h-[16px] rounded-full transition-transform hover:scale-110"
-                  style={{
-                    background: option.hex,
-                    boxShadow: active
-                      ? '0 0 0 2px var(--panel-2), 0 0 0 3.5px var(--accent)'
-                      : '0 0 0 1px rgba(255,255,255,0.14)'
-                  }}
-                />
-              )
-            })}
-          </div>
-          <div className="mt-1.5 text-[10.5px] leading-4 text-[var(--faint)]">
-            主色是导入照片时从画面里提取的。点一个色块，只留下以这个色系为主的照片；再点同一个色块或「不限」就取消。这个条件也会一起存进智能文件夹。
-          </div>
+                  className={`h-[24px] px-2 rounded-md border text-[11px] transition-colors ${
+                    filter.colorFamily
+                      ? 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
+                      : 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]'
+                  }`}
+                  onClick={() => patch({ colorFamily: null })}
+                >
+                  不限
+                </button>
+                {COLOR_OPTIONS.map((option) => {
+                  const active = filter.colorFamily === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      title={option.label}
+                      aria-pressed={active}
+                      onClick={() => patch({ colorFamily: active ? null : option.value })}
+                      className="w-[16px] h-[16px] rounded-full transition-transform hover:scale-110"
+                      style={{
+                        background: option.hex,
+                        boxShadow: active
+                          ? '0 0 0 2px var(--panel-2), 0 0 0 3.5px var(--accent)'
+                          : '0 0 0 1px rgba(255,255,255,0.14)'
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <div className="mt-1.5 text-[10.5px] leading-4 text-[var(--faint)]">
+                主色是导入照片时从画面里提取的。点一个色块，只留下以这个色系为主的照片；再点同一个色块或「不限」就取消。这个条件也会一起存进智能文件夹。
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {selectedIds.length > 0 && (
-        <div className="flex items-center gap-2 mt-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2.5 py-1.5">
+        <div className="flex flex-wrap items-center gap-2 mt-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2.5 py-1.5">
           <span className="text-[12px] text-[var(--accent-text)]">已选 {selectedIds.length} 张</span>
-          <div className="flex items-center gap-0.5 pl-2 border-l border-[var(--accent-border)]">
-            <Star size={12} className="text-[var(--muted)]" />
-            {[1, 2, 3, 4, 5].map((n) => (
+          {trashView ? (
+            <div className="ml-auto flex items-center gap-1">
               <button
-                key={n}
-                className="w-[16px] text-[12px] text-[var(--muted)] hover:text-amber-300"
-                onClick={() => onRateSelected(n)}
+                className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                onClick={onRestoreSelected}
+                title="把选中的照片恢复到主图库"
               >
-                {n}
+                <RefreshCw size={12} /> 恢复
               </button>
-            ))}
-          </div>
-          {folders.length > 0 && (
-            <div className="flex items-center gap-1 pl-2 border-l border-[var(--accent-border)]">
-              <FolderPlus size={12} className="text-[var(--muted)]" />
-              <select
-                className="input h-6 text-[11px] bg-transparent border-0"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) onAddToFolder(Number(e.target.value))
-                }}
+              <button
+                className="btn btn-ghost btn-danger h-6 px-2 text-[11.5px]"
+                onClick={onPurgeSelected}
+                title="删除记录与缩略图缓存；磁盘上的原图不受影响，且无法撤销"
               >
-                <option value="">加入文件夹</option>
-                {folders.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
+                <Trash2 size={12} /> 彻底删除
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-0.5 pl-2 border-l border-[var(--accent-border)]">
+                <Star size={12} className="text-[var(--muted)]" />
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    className="w-[16px] text-[12px] text-[var(--muted)] hover:text-amber-300"
+                    onClick={() => onRateSelected(n)}
+                  >
+                    {n}
+                  </button>
                 ))}
-              </select>
+              </div>
+              <button
+                className={`btn btn-ghost h-6 px-2 text-[11.5px] ${
+                  noteOpen ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
+                }`}
+                onClick={() => setNoteOpen((open) => !open)}
+                title="给选中的照片批量写备注"
+              >
+                <NotebookPen size={12} /> 备注
+              </button>
+              {folders.length > 0 && (
+                <div className="flex items-center gap-1 pl-2 border-l border-[var(--accent-border)]">
+                  <FolderPlus size={12} className="text-[var(--muted)]" />
+                  <select
+                    className="input h-6 text-[11px] bg-transparent border-0"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) onAddToFolder(Number(e.target.value))
+                    }}
+                  >
+                    <option value="">加入文件夹</option>
+                    {folders.map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <div className="flex items-center gap-1 pl-2 border-l border-[var(--accent-border)]">
+                <button
+                  className="w-[20px] text-[12px] text-[var(--success)] hover:text-[var(--text)]"
+                  title="标为留用"
+                  onClick={() => onFlagSelected(1)}
+                >
+                  ✓
+                </button>
+                <button
+                  className="w-[20px] text-[12px] text-[var(--danger-text)] hover:text-[var(--text)]"
+                  title="标为淘汰"
+                  onClick={() => onFlagSelected(-1)}
+                >
+                  ✕
+                </button>
+                <button
+                  className="w-[20px] text-[12px] text-[var(--muted)] hover:text-white"
+                  title="清除旗标"
+                  onClick={() => onFlagSelected(0)}
+                >
+                  –
+                </button>
+              </div>
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                  onClick={onSaveDraft}
+                  title="先存成「待交付」，之后在侧栏「选片交付」里生成浏览页"
+                >
+                  <Archive size={12} /> 存为待交付
+                </button>
+                <button
+                  className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                  onClick={onExportPick}
+                  title="把选中的照片生成一个能直接点开的浏览页"
+                >
+                  <FileImage size={12} /> 生成浏览页
+                </button>
+                <button
+                  className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                  onClick={onExportFinals}
+                  title="按尺寸/质量导出 JPEG，或原样复制原件到文件夹"
+                >
+                  <Download size={12} /> 导出成品
+                </button>
+                {aiReady && canScore && (
+                  <button
+                    className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                    disabled={aiScoring}
+                    onClick={onScoreSelected}
+                    title="用大模型给选中的图评分（一次最多 12 张），结果会存进图库，每次都会调用模型"
+                  >
+                    <Sparkles size={12} /> {aiScoring ? '评分中…' : 'AI 评分'}
+                  </button>
+                )}
+                {selectedIds.length >= 2 && (
+                  <button
+                    className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                    onClick={onStackSelected}
+                    title="把选中的图片堆成一组"
+                  >
+                    <Layers size={12} /> 堆叠
+                  </button>
+                )}
+                <button
+                  className="btn btn-ghost btn-danger h-6 px-2 text-[11.5px]"
+                  onClick={onDeleteSelected}
+                >
+                  <Trash2 size={12} /> 移除
+                </button>
+              </div>
+            </>
+          )}
+          {noteOpen && !trashView && (
+            <div className="flex w-full items-center gap-2 border-t border-[var(--accent-border)] pt-1.5">
+              <input
+                className="input h-7 min-w-[160px] flex-1 text-[11.5px]"
+                placeholder={`写给这 ${selectedIds.length} 张的备注…`}
+                value={noteText}
+                onChange={(event) => setNoteText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    void applyNote()
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    setNoteOpen(false)
+                    setNoteText('')
+                  }
+                }}
+                autoFocus
+                disabled={noteBusy}
+              />
+              <div className="flex shrink-0 rounded-md border border-[var(--border)] p-0.5">
+                {[
+                  { value: true, label: '追加' },
+                  { value: false, label: '替换' }
+                ].map((entry) => (
+                  <button
+                    key={entry.label}
+                    className={`h-6 rounded px-2 text-[11px] transition-colors ${
+                      noteAppend === entry.value
+                        ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                        : 'text-[var(--faint)] hover:text-[var(--text)]'
+                    }`}
+                    onClick={() => setNoteAppend(entry.value)}
+                    disabled={noteBusy}
+                    title={entry.value ? '接在已有备注后面，空备注直接写入' : '覆盖原有备注'}
+                  >
+                    {entry.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="btn h-7 shrink-0 px-2.5 text-[11.5px]"
+                disabled={!noteText.trim() || noteBusy}
+                onClick={() => void applyNote()}
+              >
+                {noteBusy ? '写入中…' : '应用'}
+              </button>
             </div>
           )}
-          <div className="flex items-center gap-1 pl-2 border-l border-[var(--accent-border)]">
-            <button
-              className="w-[20px] text-[12px] text-[var(--success)] hover:text-[var(--text)]"
-              title="标为留用"
-              onClick={() => onFlagSelected(1)}
-            >
-              ✓
-            </button>
-            <button
-              className="w-[20px] text-[12px] text-[var(--danger-text)] hover:text-[var(--text)]"
-              title="标为淘汰"
-              onClick={() => onFlagSelected(-1)}
-            >
-              ✕
-            </button>
-            <button
-              className="w-[20px] text-[12px] text-[var(--muted)] hover:text-white"
-              title="清除旗标"
-              onClick={() => onFlagSelected(0)}
-            >
-              –
-            </button>
-          </div>
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              className="btn btn-ghost h-6 px-2 text-[11.5px]"
-              onClick={onExportPick}
-              title="把选中的照片生成一个客户能直接点开的选片页"
-            >
-              <FileImage size={12} /> 生成选片页
-            </button>
-            <button
-              className="btn btn-ghost h-6 px-2 text-[11.5px]"
-              onClick={onExportFinals}
-              title="按尺寸/质量导出 JPEG，或原样复制原件到文件夹"
-            >
-              <Download size={12} /> 导出成品
-            </button>
-            {aiReady && canScore && (
-              <button
-                className="btn btn-ghost h-6 px-2 text-[11.5px]"
-                disabled={aiScoring}
-                onClick={onScoreSelected}
-                title="用大模型给选中的图评分（一次最多 12 张），结果会存进图库，每次都会消耗 token"
-              >
-                <Sparkles size={12} /> {aiScoring ? '评分中…' : 'AI 评分'}
-              </button>
-            )}
-            {selectedIds.length >= 2 && (
-              <button
-                className="btn btn-ghost h-6 px-2 text-[11.5px]"
-                onClick={onStackSelected}
-                title="把选中的图片堆成一组"
-              >
-                <Layers size={12} /> 堆叠
-              </button>
-            )}
-            <button className="btn btn-ghost btn-danger h-6 px-2 text-[11.5px]" onClick={onDeleteSelected}>
-              <Trash2 size={12} /> 移除
-            </button>
-          </div>
           <button className="btn btn-ghost h-6 px-1.5" onClick={onClearSelection} title="取消选择">
             <X size={13} />
           </button>

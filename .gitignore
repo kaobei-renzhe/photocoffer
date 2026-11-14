@@ -14,3 +14,13 @@ dist/
 Thumbs.db
 .DS_Store
 .vscode/
+
+# 设计过程稿与临时产物：只保留最终稿，不随仓库发布
+.trae-html-share-packages/
+design/_audit/
+design/icon-drafts/
+design/theme-v2*
+scripts/_*.mjs
+scripts/gen-icons*.mjs
+scripts/gen-sheet.mjs
+scripts/rename-product.py

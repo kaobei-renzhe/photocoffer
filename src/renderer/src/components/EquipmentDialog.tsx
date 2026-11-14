@@ -225,7 +225,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
     `${plan.scenario}-${plan.body?.id ?? ''}-${plan.lens?.id ?? ''}`
 
   const planText = (plan: GearPlan): string => {
-    const lines = [`${scenarioName(plan.scenario)}方案 · 月相`]
+    const lines = [`${scenarioName(plan.scenario)}方案 · 存照`]
     if (plan.body) lines.push(`机身：${plan.body.brand} ${plan.body.model}`.trim())
     if (plan.lens) lines.push(`镜头：${plan.lens.brand} ${plan.lens.model}`.trim())
     for (const item of plan.accessories) {
@@ -272,7 +272,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
   }
 
   const kitText = (kit: GearKit): string => {
-    const lines = [kit.name, `${scenarioName(kit.scenario)}方案 · 月相`]
+    const lines = [kit.name, `${scenarioName(kit.scenario)}方案 · 存照`]
     const body = items.find((item) => item.id === kit.bodyId)
     const lens = items.find((item) => item.id === kit.lensId)
     if (body) lines.push(`机身：${body.brand} ${body.model}`.trim())
@@ -549,16 +549,16 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                         key={key}
                         className={`rounded-xl border px-3 py-2.5 ${
                           index === 0
-                            ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
+                            ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] shadow-[inset_2px_0_0_var(--accent)]'
                             : 'border-[var(--border)] bg-[var(--panel-2)]'
                         }`}
                       >
                         <div className="flex items-center gap-2 mb-1.5">
                           <span
-                            className={`text-[10.5px] px-1.5 py-[1px] rounded ${
+                            className={`text-[10.5px] px-1.5 py-[1px] rounded border ${
                               index === 0
-                                ? 'bg-[var(--accent)] text-[var(--on-accent)]'
-                                : 'bg-[var(--panel-3)] text-[var(--muted)]'
+                                ? 'border-[var(--accent-border)] text-[var(--accent-text)]'
+                                : 'border-[var(--border)] bg-[var(--panel-3)] text-[var(--muted)]'
                             }`}
                           >
                             {index === 0 ? '首选' : '备选'}
@@ -707,7 +707,7 @@ function FilterChip({
     <button
       className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
         active
-          ? 'border-[var(--accent)] text-[var(--accent-2)] bg-[var(--accent-soft)]'
+          ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
           : 'border-[var(--border)] text-[var(--muted)] bg-[var(--panel-2)]'
       }`}
       onClick={onClick}

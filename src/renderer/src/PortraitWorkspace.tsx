@@ -358,7 +358,7 @@ export default function PortraitWorkspace({
         <div className="flex items-center gap-1 ml-3 flex-wrap">
           {activeFolder && (
             <button
-              className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] text-[11px]"
+              className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[11px] text-[var(--accent-text)]"
               onClick={() => setFolderId(null)}
               title="移除文件夹条件"
             >
@@ -374,7 +374,7 @@ export default function PortraitWorkspace({
               return (
                 <button
                   key={`${facet.id}-${valueId}`}
-                  className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] text-[11px]"
+                  className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[11px] text-[var(--accent-text)]"
                   onClick={() => toggleFilter(facet.id, valueId)}
                   title="移除这个条件"
                 >
@@ -537,7 +537,7 @@ export default function PortraitWorkspace({
                         key={value.id}
                         className={`inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border text-[11px] transition-colors ${
                           on
-                            ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]'
+                            ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                             : 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--faint)] hover:text-[var(--text)]'
                         }`}
                         onClick={() => toggleFilter(facet.id, value.id)}

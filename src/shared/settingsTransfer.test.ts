@@ -34,10 +34,10 @@ describe('buildSettingsFile', () => {
 })
 
 describe('parseSettingsFile', () => {
-  it('拒绝不是月相的文件与未知版本', () => {
+  it('拒绝不是存照的文件与未知版本', () => {
     expect(() => parseSettingsFile('not json')).toThrow('不是有效的 JSON')
     expect(() => parseSettingsFile(JSON.stringify({ app: 'other', format: 1 }))).toThrow(
-      '不是月相的配置文件'
+      '不是存照的配置文件'
     )
     expect(() => parseSettingsFile(JSON.stringify({ app: 'lunaris', format: 9 }))).toThrow(
       '版本不支持'

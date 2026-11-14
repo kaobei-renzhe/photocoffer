@@ -102,7 +102,7 @@ export function parseSettingsFile(text: string): {
   } catch {
     throw new Error('这不是有效的 JSON 文件')
   }
-  if (payload.app !== SETTINGS_APP_TAG) throw new Error('这不是月相的配置文件')
+  if (payload.app !== SETTINGS_APP_TAG) throw new Error('这不是存照的配置文件')
   if (payload.format !== SETTINGS_FORMAT) throw new Error('配置文件版本不支持')
 
   const source = (payload.config ?? {}) as Record<string, unknown>

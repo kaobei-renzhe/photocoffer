@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="zh-CN" data-mode="dark">
+<head>
+<meta charset="utf-8" />
+<title>存照 · 界面主题对齐设计稿</title>
+<style>
+  /* ============ 主题 token：深色（默认） ============ */
+  :root {
+    color-scheme: dark;
+    --bg: #14161b;
+    --chrome: #191c22;
+    --panel: #1d2026;
+    --panel-2: #22262d;
+    --panel-3: #2a2e36;
+    --card: #191d23;
+    --canvas: #101216;
+    --stage: #0c0e12;
+    --border: #262b33;
+    --border-strong: #343a44;
+    --text: #e8eef4;
+    --muted: #a7b2c2;
+    --faint: #8590a2;
+    --accent: #5b9fe8;
+    --accent-2: #7cb3f2;
+    --accent-soft: #1d2a3d;
+    --accent-border: #2e4360;
+    --accent-text: #a9c9f2;
+    --on-accent: #14161b;
+    --danger: #f2604a;
+    --danger-text: #f58e7f;
+    --danger-soft: #2a1b17;
+    --danger-border: #5c3128;
+    --success: #7cbf94;
+    --success-soft: #16221b;
+    --success-border: #3a6650;
+    --warn: #d9a54a;
+    --warn-soft: #221d11;
+    --warn-border: #4a3f22;
+    --star: #f5c344;
+    --scroll-thumb: #2a2e36;
+    --scroll-thumb-hover: #3b414c;
+    --input-focus-border: #3d5b85;
+    --input-focus-bg: #171a20;
+    --btn-primary-bg: #f7fafc;
+    --btn-primary-text: #14161b;
+    --btn-primary-hover: #ffffff;
+    --btn-primary-active: #d3dce6;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .24), 0 6px 18px rgba(0, 0, 0, .18);
+    --shadow-2: 0 14px 36px rgba(0, 0, 0, .42);
+    --radius-ctl: 8px;
+    --radius-panel: 11px;
+    --fs-xs: 10.5px;
+    --fs-sm: 11.5px;
+    --fs-base: 12.5px;
+    --fs-nav: 13px;
+    --fs-title: 13.5px;
+  }
+  html[data-mode='light'] {
+    color-scheme: light;
+    --bg: #f0f3f7;
+    --chrome: #e8eef4;
+    --panel: #ffffff;
+    --panel-2: #f4f7fa;
+    --panel-3: #e4e9f0;
+    --card: #ffffff;
+    --canvas: #f7fafc;
+    --stage: #e9edf2;
+    --border: #d8dee7;
+    --border-strong: #c2ccd9;
+    --text: #1a1d23;
+    --muted: #4a5464;
+    --faint: #5a6472;
+    --accent: #2f6cb8;
+    --accent-2: #24589c;
+    --accent-soft: #e3edf9;
+    --accent-border: #b7d2f0;
+    --accent-text: #1d4e8f;
+    --on-accent: #ffffff;
+    --danger: #c93a2a;
+    --danger-text: #a82e20;
+    --danger-soft: #fbeae7;
+    --danger-border: #efc3bb;
+    --success: #2f7d4f;
+    --success-soft: #e6f4ea;
+    --success-border: #b9ddc6;
+    --warn: #8a5b14;
+    --warn-soft: #fbf2de;
+    --warn-border: #e3d2ac;
+    --star: #a0720e;
+    --scroll-thumb: #c2cbd8;
+    --scroll-thumb-hover: #a8b3c3;
+    --input-focus-border: #7fa8de;
+    --input-focus-bg: #ffffff;
+    --btn-primary-bg: #14161b;
+    --btn-primary-text: #f7fafc;
+    --btn-primary-hover: #2a2e36;
+    --btn-primary-active: #0f1115;
+    --shadow-1: 0 1px 2px rgba(20, 22, 27, .05), 0 6px 18px rgba(20, 22, 27, .05);
+    --shadow-2: 0 14px 36px rgba(20, 22, 27, .14);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: var(--fs-base)/1.45 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+  svg { flex: none; }
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .ic { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.7; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .ic.sm { width: 12px; height: 12px; }
+  .ic.xs { width: 10px; height: 10px; }
+  .ic.lg { width: 16px; height: 16px; }
+
+  .screen { display: none; }
+  .screen.on { display: flex; }
+  .screen.client.on { display: flex; }
+  .screen.splash.on, .screen.specs.on { display: block; }
+
+  .app { width: 1440px; height: 900px; overflow: hidden; background: var(--bg); }
+
+  /* ============ 侧栏 ============ */
+  .side {
+    width: 236px; flex: none; display: flex; flex-direction: column;
+    background: var(--chrome); border-right: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 9px; padding: 15px 14px 13px; }
+  .brand img { width: 26px; height: 26px; border-radius: 7px; display: block; }
+  .brand b { font-size: var(--fs-title); font-weight: 600; letter-spacing: .1em; }
+  .brand .sub { font-size: 9px; color: var(--faint); letter-spacing: .14em; margin-top: 1px; }
+  .brand .swap {
+    margin-left: auto; width: 24px; height: 24px; display: grid; place-items: center;
+    border-radius: 6px; color: var(--faint);
+  }
+
+  .nav { padding: 2px 8px 0; }
+  .navitem {
+    display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 9px;
+    border-radius: var(--radius-ctl); color: var(--muted); font-size: var(--fs-nav);
+    position: relative;
+  }
+  .navitem .ic { color: var(--faint); }
+  .navitem .n { margin-left: auto; font-size: var(--fs-sm); color: var(--faint); font-variant-numeric: tabular-nums; }
+  .navitem.on { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+  .navitem.on .ic { color: var(--accent); }
+  .navitem.on .n { color: var(--accent-text); opacity: .76; }
+  .navitem.on::before {
+    content: ''; position: absolute; left: 0; top: 8px; bottom: 8px; width: 2px;
+    border-radius: 2px; background: var(--accent);
+  }
+
+  .rule { height: 1px; background: var(--border); margin: 11px 14px; }
+  .scroller { flex: 1; min-height: 0; padding: 0 8px; overflow: hidden; }
+  .sechead {
+    display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px;
+    font-size: var(--fs-xs); font-weight: 500; letter-spacing: .09em;
+    color: var(--faint); text-transform: uppercase;
+  }
+  .sechead .num { margin-left: auto; letter-spacing: 0; }
+  .gap { height: 12px; }
+  .rowitem {
+    display: flex; align-items: center; gap: 8px; height: 29px; padding: 0 9px 0 14px;
+    border-radius: var(--radius-ctl); color: var(--muted); font-size: var(--fs-base);
+  }
+  .rowitem .ic { color: var(--faint); }
+  .rowitem .n { margin-left: auto; font-size: var(--fs-sm); color: var(--faint); font-variant-numeric: tabular-nums; }
+  .tagrow {
+    display: flex; align-items: center; height: 29px; padding: 0 9px 0 14px;
+    color: var(--muted); font-size: var(--fs-base);
+  }
+  .tagrow .n { margin-left: auto; font-size: var(--fs-sm); color: var(--faint); font-variant-numeric: tabular-nums; }
+  .taglink { display: flex; align-items: center; height: 29px; padding: 0 9px 0 14px; color: var(--muted); font-size: var(--fs-sm); }
+
+  .sidefoot { padding: 11px 12px 12px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    height: 30px; padding: 0 11px; border-radius: var(--radius-ctl);
+    border: 1px solid var(--border-strong); background: var(--panel); color: var(--text);
+    font: inherit; font-size: var(--fs-base); white-space: nowrap;
+  }
+  .btn .ic { color: var(--muted); }
+  .btn.primary {
+    background: var(--btn-primary-bg); border-color: var(--btn-primary-bg);
+    color: var(--btn-primary-text); font-weight: 600;
+  }
+  .btn.primary .ic { color: var(--btn-primary-text); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn.ghost .ic { color: inherit; }
+  .btn.danger { background: var(--danger); border-color: var(--danger); color: var(--on-accent); font-weight: 600; }
+  .btn.danger .ic { color: var(--on-accent); }
+  .btn.import { flex: 1; height: 34px; }
+  .btn.more { width: 34px; height: 34px; padding: 0; }
+  .btn.sm { height: 26px; padding: 0 8px; font-size: var(--fs-sm); }
+
+  /* ============ 主区 ============ */
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--canvas); }
+  .topbar {
+    height: 54px; flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 0 18px; background: var(--chrome); border-bottom: 1px solid var(--border);
+  }
+  .search {
+    display: flex; align-items: center; gap: 8px; width: 360px; height: 32px;
+    padding: 0 11px; border-radius: var(--radius-ctl);
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--faint);
+    font-size: var(--fs-sm);
+  }
+  .search .ic { color: var(--faint); }
+  .search kbd {
+    margin-left: auto; font: inherit; font-size: 9.5px; color: var(--faint);
+    border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 4px; line-height: 15px;
+  }
+  .tbtn {
+    display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px;
+    border: 1px solid var(--border); border-radius: var(--radius-ctl);
+    background: transparent; color: var(--muted); font: inherit; font-size: var(--fs-sm);
+  }
+  .tbtn .ic { color: var(--faint); }
+  .tbtn.on { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-text); }
+  .tbtn.on .ic { color: var(--accent); }
+  .badge {
+    min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--accent-border); color: var(--accent-text);
+    font-size: 9.5px; line-height: 14px; text-align: center; font-weight: 600;
+  }
+  .spacer { flex: 1; }
+  .count { font-size: var(--fs-sm); color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .selbar {
+    margin: 12px 18px 0; height: 36px; flex: none; display: flex; align-items: center; gap: 10px;
+    padding: 0 11px; border-radius: var(--radius-ctl);
+    background: var(--accent-soft); border: 1px solid var(--accent-border);
+    font-size: var(--fs-sm); color: var(--accent-text);
+  }
+  .selbar b { font-weight: 600; }
+  .selbar .div { width: 1px; height: 15px; background: var(--accent-border); }
+  .selbar .act {
+    display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 7px;
+    border-radius: 6px; color: var(--accent-text); font-size: var(--fs-sm);
+  }
+  .selbar .act .ic { color: var(--accent); }
+  .selbar .close { margin-left: auto; color: var(--muted); display: grid; place-items: center; }
+
+  .stage { flex: 1; min-height: 0; padding: 14px 18px 20px; overflow: hidden; }
+  .waterfall { column-count: 4; column-gap: 14px; }
+  .shot {
+    break-inside: avoid; width: 100%; margin: 0 0 14px; position: relative;
+    border-radius: var(--radius-panel); overflow: hidden; background: var(--card);
+    border: 1px solid var(--border); box-shadow: var(--shadow-1);
+  }
+  .shot img, .shot .crop { display: block; width: 100%; }
+  .shot img { height: auto; }
+  .shot .crop { background-image: url('mockups/images/02.webp'); background-size: 300% 300%; background-repeat: no-repeat; }
+  .shot.on { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .shot.lift { transform: translateY(-2px); box-shadow: var(--shadow-2); }
+  .shot .mark {
+    position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--btn-primary-bg); color: var(--btn-primary-text);
+    display: grid; place-items: center; border: 1px solid rgba(255, 255, 255, .16);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .3);
+  }
+  .shot .tag {
+    position: absolute; left: 8px; bottom: 8px; height: 19px; padding: 0 6px;
+    border-radius: 5px; background: rgba(10, 12, 16, .68); color: rgba(255, 255, 255, .84);
+    font-size: 9px; line-height: 19px; letter-spacing: .04em;
+  }
+  .shot .star {
+    position: absolute; left: 9px; top: 9px; display: flex; align-items: center; gap: 2px;
+    color: var(--star); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+  }
+
+  /* ============ 详情面板 ============ */
+  .insp {
+    width: 316px; flex: none; display: flex; flex-direction: column;
+    background: var(--panel); border-left: 1px solid var(--border);
+  }
+  .insp-head {
+    height: 46px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .insp-head b { font-size: var(--fs-base); font-weight: 600; }
+  .insp-head .idx { margin-left: auto; font-size: var(--fs-sm); color: var(--faint); font-variant-numeric: tabular-nums; }
+  .insp-head .ic { color: var(--faint); }
+  .insp-body { flex: 1; min-height: 0; padding: 13px 14px 0; overflow: hidden; }
+  .preview {
+    height: 236px; border-radius: var(--radius-ctl); background: var(--stage);
+    display: grid; place-items: center; overflow: hidden; border: 1px solid var(--border);
+  }
+  .preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .fname { margin-top: 11px; font-size: var(--fs-base); font-weight: 500; }
+  .fsub { margin-top: 2px; font-size: var(--fs-sm); color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  .sec { margin-top: 18px; }
+  .sec-h {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 7px;
+    font-size: var(--fs-xs); font-weight: 500; letter-spacing: .09em;
+    color: var(--faint); text-transform: uppercase;
+  }
+  .sec-h .ic { color: var(--faint); }
+  .kv { display: grid; grid-template-columns: 76px 1fr; gap: 5px 8px; font-size: var(--fs-sm); }
+  .kv dt { color: var(--faint); }
+  .kv dd { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .stars { display: flex; align-items: center; gap: 3px; color: var(--star); }
+  .stars .off { color: var(--border-strong); }
+  .stars .num { margin-left: 5px; font-size: var(--fs-sm); color: var(--faint); }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tagchip {
+    display: inline-flex; align-items: center; height: 22px; padding: 0 8px;
+    border-radius: 6px; background: var(--panel-2); border: 1px solid var(--border);
+    color: var(--muted); font-size: var(--fs-sm);
+  }
+  .tagchip.sel { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent-text); }
+
+  .note {
+    padding: 9px 10px; border-radius: var(--radius-ctl); background: var(--panel-2);
+    border: 1px solid var(--border); color: var(--muted); font-size: var(--fs-sm); line-height: 1.6;
+  }
+  .note .ic { color: var(--faint); vertical-align: -2px; margin-right: 4px; }
+
+  .actions {
+    flex: none; display: flex; gap: 8px; padding: 12px 14px;
+    border-top: 1px solid var(--border); background: var(--panel);
+  }
+  .actions .btn { flex: 1; }
+
+  /* ============ 人像工作台 ============ */
+  .pheader {
+    height: 52px; flex: none; display: flex; align-items: center; gap: 9px;
+    padding: 0 14px; background: var(--chrome); border-bottom: 1px solid var(--border);
+  }
+  .pheader .title { display: flex; align-items: center; gap: 7px; font-size: var(--fs-title); font-weight: 500; }
+  .pheader .title .ic { color: var(--faint); }
+  .cond {
+    display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px;
+    border-radius: 6px; border: 1px solid var(--accent-border); background: var(--accent-soft);
+    color: var(--accent-text); font-size: 11px;
+  }
+  .pheader .clear { color: var(--faint); font-size: 11px; }
+  .seg { display: flex; align-items: center; padding: 2px; border-radius: var(--radius-ctl); border: 1px solid var(--border); background: var(--card); }
+  .seg button { height: 24px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); font: inherit; font-size: 11px; }
+  .seg button.on { background: var(--accent-soft); color: var(--accent-text); font-weight: 500; }
+  .slider { display: flex; align-items: center; gap: 7px; font-size: var(--fs-xs); color: var(--faint); }
+  .slider .track { width: 92px; height: 3px; border-radius: 99px; background: var(--border-strong); position: relative; }
+  .slider .track::before { content: ''; position: absolute; inset: 0 42% 0 0; border-radius: 99px; background: var(--accent); }
+  .slider .track::after { content: ''; position: absolute; left: 58%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--accent); }
+
+  .pbody { flex: 1; min-height: 0; display: flex; }
+  .pfilter {
+    width: 228px; flex: none; padding: 12px 8px; overflow: hidden;
+    border-right: 1px solid var(--border); background: var(--chrome);
+  }
+  .pfilter .group { margin-bottom: 15px; }
+  .pfilter .ghead { display: flex; align-items: center; gap: 5px; padding: 0 5px; margin-bottom: 6px; }
+  .pfilter .ghead b { font-size: var(--fs-sm); font-weight: 500; color: var(--text); }
+  .pfilter .ghead span { font-size: var(--fs-xs); color: var(--faint); }
+  .pfilter .ghead .ic { margin-left: auto; color: var(--faint); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 0 5px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px; height: 23px; padding: 0 7px;
+    border-radius: 6px; border: 1px solid var(--border); background: var(--panel-2);
+    color: var(--faint); font-size: 11px;
+  }
+  .chip i { font-style: normal; color: var(--faint); font-variant-numeric: tabular-nums; opacity: .76; }
+  .chip.on { border-color: var(--accent-border); background: var(--accent-soft); color: var(--accent-text); }
+  .chip.on i { color: var(--accent-text); opacity: .7; }
+
+  .pcenter { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--canvas); }
+  .scanbar {
+    flex: none; display: flex; align-items: center; gap: 10px; height: 34px;
+    padding: 0 18px; border-bottom: 1px solid var(--border); font-size: var(--fs-xs); color: var(--faint);
+  }
+  .scanbar .ic { color: var(--faint); }
+  .scanbar b { font-weight: 500; color: var(--muted); }
+  .scanbar .track { width: 118px; height: 3px; border-radius: 99px; background: var(--border-strong); overflow: hidden; }
+  .scanbar .track i { display: block; width: 100%; height: 100%; background: var(--accent); }
+  .scanbar .right { margin-left: auto; }
+  .pstage { flex: 1; min-height: 0; padding: 14px 16px 18px; overflow: hidden; }
+  .pstage .waterfall { column-count: 3; column-gap: 12px; }
+  .pstage .shot { margin-bottom: 12px; }
+
+  /* ============ 客户选片页 ============ */
+  .client {
+    width: 1440px; height: 900px; flex-direction: column;
+    background: #f7fafc; color: #1a1d23;
+    font: 12.5px/1.5 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  }
+  .c-head {
+    height: 62px; flex: none; display: flex; align-items: center; gap: 14px;
+    padding: 0 30px; background: #e8eef4; border-bottom: 1px solid #d8dee7;
+  }
+  .c-brand { display: flex; align-items: center; gap: 9px; }
+  .c-brand img { width: 27px; height: 27px; border-radius: 7px; display: block; }
+  .c-brand b { font-size: 14px; letter-spacing: .12em; font-weight: 600; }
+  .c-brand span { font-size: 9.5px; color: #5a6472; letter-spacing: .16em; }
+  .c-studio { padding-left: 14px; border-left: 1px solid #c2ccd9; font-size: 12px; color: #4a5464; }
+  .c-right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: #4a5464; }
+  .c-hero { flex: none; padding: 24px 30px 16px; display: flex; align-items: flex-end; gap: 26px; }
+  .c-hero .eyebrow { font-size: 10.5px; letter-spacing: .16em; color: #5a6472; }
+  .c-hero h1 { font-family: 'Songti SC', 'Source Han Serif SC', SimSun, serif; font-size: 34px; font-weight: 600; letter-spacing: .04em; margin-top: 6px; }
+  .c-hero .sub { font-size: 12.5px; color: #4a5464; margin-top: 6px; }
+  .c-hero .meta { margin-left: auto; text-align: right; font-size: 11px; color: #5a6472; line-height: 1.8; }
+  .c-tabs { flex: none; display: flex; gap: 22px; padding: 0 30px; border-bottom: 1px solid #d8dee7; }
+  .c-tab { height: 38px; display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5a6472; position: relative; }
+  .c-tab b { font-weight: 500; font-variant-numeric: tabular-nums; }
+  .c-tab.on { color: #1a1d23; font-weight: 500; }
+  .c-tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: #2f6cb8; }
+  .c-grid {
+    flex: 1; min-height: 0; padding: 16px 30px; overflow: hidden;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; align-content: start;
+  }
+  .c-card {
+    position: relative; height: 174px; border-radius: 8px;
+    overflow: hidden; background: #fff; border: 1px solid #d8dee7;
+    box-shadow: 0 1px 2px rgba(20, 22, 27, .05);
+  }
+  .c-card img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; }
+  .c-card .crop { display: block; width: 100%; height: 100%; background-image: url('mockups/images/02.webp'); background-size: 300% 300%; background-repeat: no-repeat; }
+  .c-card.on { outline: 2px solid #f5c344; outline-offset: -2px; }
+  .c-heart {
+    position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 50%;
+    background: #f5c344; color: #14161b; display: grid; place-items: center;
+    box-shadow: 0 2px 8px rgba(20, 22, 27, .24);
+  }
+  .c-foot {
+    flex: none; height: 64px; display: flex; align-items: center; gap: 12px;
+    padding: 0 30px; background: #ffffff; border-top: 1px solid #d8dee7;
+  }
+  .c-foot .txt { font-size: 12.5px; color: #4a5464; }
+  .c-foot .txt b { color: #1a1d23; font-weight: 600; }
+  .c-foot .sp { flex: 1; }
+  .c-credit { flex: none; height: 28px; display: flex; align-items: center; justify-content: center; gap: 6px; background: #f0f3f7; color: #5a6472; font-size: 10px; letter-spacing: .04em; }
+  .c-credit img { width: 13px; height: 13px; border-radius: 3px; opacity: .8; }
+
+  /* ============ 启动画面 ============ */
+  .splash {
+    width: 1440px; height: 900px; background: #14161b; color: #e8eef4; position: relative;
+    overflow: hidden; font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  }
+  .splash::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(560px 420px at 50% 42%, rgba(232, 238, 244, .055), transparent 70%);
+  }
+  .splash .center {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .splash .icon {
+    width: 132px; height: 132px; border-radius: 30px; display: block;
+    box-shadow: 0 0 0 1px rgba(232, 238, 244, .08), 0 28px 80px rgba(0, 0, 0, .55);
+  }
+  .splash h1 {
+    margin-top: 34px; font-size: 52px; font-weight: 300; letter-spacing: .28em;
+    text-indent: .28em; color: #e8eef4;
+  }
+  .splash .tag { margin-top: 14px; font-size: 14px; color: #a7b2c2; letter-spacing: .08em; }
+  .splash .load { position: absolute; bottom: 72px; left: 50%; width: 196px; height: 2px; margin-left: -98px; background: #2a2e36; overflow: hidden; }
+  .splash .load i { display: block; width: 62%; height: 100%; background: #5b9fe8; }
+  .splash .ver { position: absolute; left: 32px; bottom: 26px; font-size: 10.5px; color: #8590a2; letter-spacing: .04em; }
+  .splash .footnote { position: absolute; right: 32px; bottom: 26px; font-size: 10.5px; color: #8590a2; letter-spacing: .04em; }
+  .splash .status { position: absolute; bottom: 88px; left: 50%; transform: translateX(-50%); font-size: 10.5px; color: #8590a2; letter-spacing: .12em; }
+
+  /* ============ 规范页 ============ */
+  .specs {
+    width: 1440px; height: 900px; overflow: hidden; background: #14161b; color: #e8eef4;
+    padding: 30px 40px; font: 12.5px/1.5 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  }
+  .spec-head { display: flex; align-items: center; gap: 13px; height: 46px; }
+  .spec-head img { width: 40px; height: 40px; border-radius: 10px; display: block; }
+  .spec-head h1 { font-size: 21px; font-weight: 600; letter-spacing: .03em; }
+  .spec-head p { color: #8590a2; font-size: 11.5px; margin-top: 3px; }
+  .spec-head .meta { margin-left: auto; text-align: right; font-size: 9.5px; color: #8590a2; letter-spacing: .12em; line-height: 1.8; }
+  .spec-body { display: flex; gap: 24px; margin-top: 18px; height: 772px; }
+  .spec-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .spec-card { border: 1px solid #262b33; border-radius: 12px; background: #191c22; padding: 11px 15px; }
+  .spec-card h2 { font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .spec-card h2 .pill { height: 18px; padding: 0 7px; border-radius: 9px; font-size: 9px; line-height: 18px; background: #1d2a3d; color: #a9c9f2; border: 1px solid #2e4360; font-weight: 500; }
+  .spec-card h2 .pill.plain { background: #22262d; border-color: #343a44; color: #a7b2c2; }
+  .spec-card .hint { font-size: 10.5px; color: #8590a2; margin: -4px 0 10px; line-height: 1.6; }
+  .sw-group { margin-bottom: 10px; }
+  .sw-group:last-child { margin-bottom: 0; }
+  .sw-group .gl { font-size: 9px; letter-spacing: .12em; color: #8590a2; text-transform: uppercase; margin-bottom: 5px; }
+  .swatch-row { display: flex; gap: 7px; }
+  .sw { flex: 1; min-width: 0; }
+  .sw .box { height: 38px; border-radius: 7px; border: 1px solid rgba(255, 255, 255, .08); }
+  .sw .nm { margin-top: 5px; font-size: 9.5px; color: #a7b2c2; }
+  .sw .hx { font-size: 9px; color: #8590a2; font-variant-numeric: tabular-nums; }
+
+  .rule-list { display: flex; flex-direction: column; gap: 8px; }
+  .rulecard {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+    border-radius: 8px; background: #1d2026; border: 1px solid #262b33;
+  }
+  .rulecard .demo { width: 126px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .rulecard .txt { font-size: 10.5px; color: #8590a2; line-height: 1.55; }
+  .rulecard .txt b { display: block; color: #e8eef4; font-size: 11px; font-weight: 500; }
+  .rulecard .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+
+  .contrast { display: grid; grid-template-columns: 1fr auto; gap: 5px 10px; font-size: 10.5px; color: #a7b2c2; }
+  .contrast b { font-weight: 400; }
+  .contrast .ok { color: #7cbf94; font-variant-numeric: tabular-nums; }
+
+  .btn-demo { display: inline-flex; align-items: center; gap: 5px; height: 27px; padding: 0 10px; border-radius: 7px; font-size: 11px; font-weight: 600; }
+
+  .skin-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .skin { border: 1px solid #262b33; border-radius: 8px; padding: 7px; background: #1d2026; }
+  .skin.on { border-color: #5b9fe8; }
+  .skin .sws { display: flex; gap: 3px; }
+  .skin .sws span { height: 22px; flex: 1; border-radius: 4px; }
+  .skin .nm { margin-top: 5px; font-size: 10px; color: #e8eef4; }
+  .skin .ht { font-size: 8.5px; color: #8590a2; }
+
+  .type-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+  .type-row .sp { width: 112px; flex: none; color: #8590a2; font-size: 9.5px; font-variant-numeric: tabular-nums; }
+  .type-row .sample { color: #e8eef4; }
+
+  .sel-demo {
+    display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 9px;
+    border-radius: 7px; background: #1d2a3d; border: 1px solid #2e4360; color: #a9c9f2;
+    box-shadow: inset 2px 0 0 #5b9fe8; font-size: 11px;
+  }
+  .sel-demo .n { margin-left: auto; color: #a9c9f2; opacity: .76; }
+  .sel-demo .ic { color: #5b9fe8; }
+
+  /* ============ A/B 降噪变体 ============ */
+  body[data-variant='b'] .shot .mark {
+    width: 18px; height: 18px;
+    background: rgba(10, 12, 16, .72);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, .2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+    backdrop-filter: blur(6px);
+  }
+  body[data-variant='b'] .selbar {
+    background: var(--panel-2);
+    border-color: var(--border);
+    color: var(--text);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  body[data-variant='b'] .selbar b { color: var(--accent-text); }
+  body[data-variant='b'] .selbar .div { background: var(--border); }
+  body[data-variant='b'] .selbar .act { color: var(--muted); }
+  body[data-variant='b'] .selbar .act .ic { color: var(--faint); }
+  body[data-variant='b'] .selbar .close { color: var(--faint); }
+  body[data-variant='b'] .sidefoot .btn.import {
+    background: transparent; border-color: var(--border-strong); color: var(--text);
+  }
+  body[data-variant='b'] .sidefoot .btn.import .ic { color: var(--muted); }
+
+  body[data-state='default'] .selbar { display: none; }
+  body[data-state='default'] .topbar .tbtn.on {
+    background: transparent; border-color: var(--border); color: var(--muted);
+  }
+  body[data-state='default'] .topbar .tbtn.on .ic { color: var(--faint); }
+  body[data-state='default'] .topbar .badge { display: none; }
+  body[data-state='default'] .shot.on { outline: none; }
+  body[data-state='default'] .shot .mark { display: none; }
+  body[data-state='default'] .shot.lift { transform: none; box-shadow: var(--shadow-1); }
+</style>
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-aperture" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l7.8 4.5M4.2 7.5l7.8 4.5M4.2 16.5l7.8-4.5M12 21v-9l-7.8-4.5M19.8 7.5L12 12M19.8 16.5L12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 12l3 3 5-6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M17 20V4M17 4l3 3"/></symbol>
+  <symbol id="i-layout" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="9.5" r="1.6"/><path d="M4 17l5-4 4 3 3-2.5 4 3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10M12 14l-4-4M12 14l4-4M4 19h16"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 6.7M20 5v6h-6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M5 12l6-6M5 12l6 6"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 7h3l1.6-2h6.8L17 7h3a2 2 0 012 2v9a2 2 0 01-2 2H4a2 2 0 01-2-2V9a2 2 0 012-2z"/><circle cx="12" cy="13" r="3.6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M9 21h6M12 17v4"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 8h10M18 8h2M4 16h4M12 16h8"/><circle cx="16" cy="8" r="2"/><circle cx="10" cy="16" r="2"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.6-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.4-7 10-7 10z" fill="currentColor" stroke="none"/></symbol>
+</svg>
+
+<!-- ==================== 图库 ==================== -->
+<div class="screen app" data-name="gallery">
+  <aside class="side">
+    <div class="brand">
+      <img src="../build/icon.png" alt="" />
+      <div>
+        <b>存照</b>
+        <div class="sub">LOCAL PHOTO ARCHIVE</div>
+      </div>
+      <span class="swap"><svg class="ic"><use href="#i-refresh"/></svg></span>
+    </div>
+
+    <nav class="nav">
+      <div class="navitem on"><svg class="ic"><use href="#i-grid"/></svg>全部图片<span class="n">30,409</span></div>
+      <div class="navitem"><svg class="ic"><use href="#i-aperture"/></svg>人像工作台</div>
+      <div class="navitem"><svg class="ic"><use href="#i-check"/></svg>选片记录</div>
+    </nav>
+
+    <div class="rule"></div>
+
+    <div class="scroller">
+      <div class="sechead"><svg class="ic xs"><use href="#i-chev"/></svg>源目录<span class="num">1</span></div>
+      <div class="rowitem"><svg class="ic"><use href="#i-folder"/></svg>照片<span class="n">31,864</span></div>
+
+      <div class="gap"></div>
+      <div class="sechead"><svg class="ic xs"><use href="#i-chev"/></svg>文件夹<span class="num">3</span></div>
+      <div class="rowitem"><svg class="ic"><use href="#i-folder"/></svg>2026 婚礼<span class="n">1,286</span></div>
+      <div class="rowitem"><svg class="ic"><use href="#i-folder"/></svg>产品棚拍<span class="n">642</span></div>
+      <div class="rowitem"><svg class="ic"><use href="#i-folder"/></svg>旅行随拍<span class="n">3,104</span></div>
+
+      <div class="gap"></div>
+      <div class="sechead"><svg class="ic xs"><use href="#i-chev"/></svg>标签<span class="num">23</span></div>
+      <div class="tagrow"><span>人像</span><span class="n">7,043</span></div>
+      <div class="tagrow"><span>风景</span><span class="n">8,210</span></div>
+      <div class="tagrow"><span>街拍</span><span class="n">3,980</span></div>
+      <div class="tagrow"><span>城市建筑</span><span class="n">770</span></div>
+      <div class="tagrow"><span>夜景</span><span class="n">460</span></div>
+      <div class="tagrow"><span>花草</span><span class="n">1,063</span></div>
+      <div class="tagrow"><span>动物</span><span class="n">2,471</span></div>
+      <div class="tagrow"><span>室内</span><span class="n">2,135</span></div>
+      <div class="tagrow"><span>美食</span><span class="n">1,842</span></div>
+      <div class="tagrow"><span>宠物</span><span class="n">1,206</span></div>
+      <div class="tagrow"><span>静物</span><span class="n">932</span></div>
+      <div class="tagrow"><span>运动</span><span class="n">488</span></div>
+      <div class="taglink">全部 23 个标签 →</div>
+    </div>
+
+    <div class="sidefoot">
+      <button class="btn primary import"><svg class="ic"><use href="#i-plus"/></svg>导入图片</button>
+      <button class="btn more"><svg class="ic"><use href="#i-more"/></svg></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="search">
+        <svg class="ic"><use href="#i-search"/></svg>
+        搜索文件名、标签、备注
+        <kbd>Ctrl K</kbd>
+      </div>
+      <button class="tbtn on"><svg class="ic"><use href="#i-filter"/></svg>筛选<span class="badge">3</span></button>
+      <button class="tbtn"><svg class="ic"><use href="#i-sort"/></svg>最新导入<svg class="ic xs"><use href="#i-chev"/></svg></button>
+      <button class="tbtn"><svg class="ic"><use href="#i-layout"/></svg></button>
+      <span class="spacer"></span>
+      <span class="count">30,409 张</span>
+    </header>
+
+    <div class="selbar">
+      <b>已选 3 张</b>
+      <span class="div"></span>
+      <span class="act"><svg class="ic sm"><use href="#i-star"/></svg>评星</span>
+      <span class="act"><svg class="ic sm"><use href="#i-flag"/></svg>旗标</span>
+      <span class="act"><svg class="ic sm"><use href="#i-check"/></svg>加入选片</span>
+      <span class="act"><svg class="ic sm"><use href="#i-download"/></svg>导出</span>
+      <span class="close"><svg class="ic sm"><use href="#i-x"/></svg></span>
+    </div>
+
+    <div class="stage">
+      <div class="waterfall">
+        <figure class="shot on">
+          <img src="mockups/images/01.webp" width="492" height="720" alt="" />
+          <span class="mark"><svg class="ic sm"><use href="#i-check"/></svg></span>
+          <span class="tag">RAW · 45.2 MP</span>
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/03.webp" width="720" height="587" alt="" />
+          <span class="star"><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg></span>
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/05.webp" width="720" height="576" alt="" />
+          <span class="tag">RAW</span>
+        </figure>
+        <figure class="shot lift">
+          <img src="mockups/images/07.webp" width="591" height="720" alt="" />
+          <span class="mark"><svg class="ic sm"><use href="#i-check"/></svg></span>
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/09.webp" width="586" height="720" alt="" />
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/11.webp" width="640" height="424" alt="" />
+          <span class="mark"><svg class="ic sm"><use href="#i-check"/></svg></span>
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/04.webp" width="720" height="586" alt="" />
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/06.webp" width="586" height="720" alt="" />
+          <span class="tag">RAW</span>
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/08.webp" width="586" height="720" alt="" />
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/10.webp" width="594" height="720" alt="" />
+        </figure>
+        <figure class="shot">
+          <img src="mockups/images/12.webp" width="588" height="720" alt="" />
+        </figure>
+        <figure class="shot">
+          <div class="crop" style="aspect-ratio:3/4;background-position:100% 0%"></div>
+          <span class="star"><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg></span>
+        </figure>
+      </div>
+    </div>
+  </main>
+
+  <aside class="insp">
+    <div class="insp-head">
+      <b>照片信息</b>
+      <span class="idx">1 / 30,409</span>
+      <svg class="ic sm"><use href="#i-x"/></svg>
+    </div>
+    <div class="insp-body">
+      <div class="preview"><img src="mockups/images/01.webp" alt="" /></div>
+      <div class="fname">溪谷漫步_0142.jpg</div>
+      <div class="fsub">4920 × 7200 · 45.2 MP · 24.6 MB</div>
+
+      <div class="sec">
+        <div class="sec-h">评分</div>
+        <div class="stars">
+          <svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic off"><use href="#i-star"/></svg>
+          <span class="num">4 星</span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h">拍摄参数</div>
+        <dl class="kv">
+          <dt>相机</dt><dd>SONY ILCE-7RM5</dd>
+          <dt>镜头</dt><dd>FE 85mm F1.4 GM</dd>
+          <dt>光圈 / 快门</dt><dd>f/1.8 · 1/500s</dd>
+          <dt>ISO / 焦距</dt><dd>200 · 85mm</dd>
+        </dl>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h">标签</div>
+        <div class="tags">
+          <span class="tagchip">人像</span>
+          <span class="tagchip">户外</span>
+          <span class="tagchip">逆光</span>
+          <span class="tagchip">溪流</span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><svg class="ic xs"><use href="#i-spark"/></svg>AI 摘要</div>
+        <div class="note"><svg class="ic sm"><use href="#i-spark"/></svg>人物位于溪流岩石上，右上侧自然光形成发丝边缘光；画面留白充足，适合竖版封面。</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary"><svg class="ic"><use href="#i-check"/></svg>加入选片</button>
+      <button class="btn"><svg class="ic"><use href="#i-download"/></svg>导出</button>
+    </div>
+  </aside>
+</div>
+
+<!-- ==================== 人像工作台 ==================== -->
+<div class="screen app" data-name="portrait">
+  <main class="main">
+    <header class="pheader">
+      <button class="btn ghost sm"><svg class="ic sm"><use href="#i-back"/></svg>返回图库</button>
+      <div class="title"><svg class="ic"><use href="#i-camera"/></svg>人像工作台</div>
+      <span class="cond">婚纱客片<svg class="ic xs"><use href="#i-x"/></svg></span>
+      <span class="cond">户外<svg class="ic xs"><use href="#i-x"/></svg></span>
+      <span class="clear">清空条件</span>
+      <span class="spacer"></span>
+      <span class="count">128 / 860 张</span>
+      <div class="seg"><button class="on">仅人像</button><button>全部</button></div>
+      <div class="slider">大小<span class="track"></span></div>
+      <button class="btn sm"><svg class="ic sm"><use href="#i-refresh"/></svg>刷新</button>
+    </header>
+
+    <div class="pbody">
+      <aside class="pfilter">
+        <div class="group">
+          <div class="ghead"><svg class="ic sm"><use href="#i-folder"/></svg><b>文件夹</b><span>4</span></div>
+          <div class="chips" style="flex-direction:column;align-items:stretch;gap:2px">
+            <div class="navitem on" style="height:26px;font-size:11.5px"><svg class="ic sm"><use href="#i-image"/></svg>全部照片<span class="n">860</span></div>
+            <div class="rowitem" style="height:26px"><svg class="ic sm"><use href="#i-folder"/></svg>婚纱客片<span class="n">128</span></div>
+            <div class="rowitem" style="height:26px"><svg class="ic sm"><use href="#i-folder"/></svg>毕业写真<span class="n">94</span></div>
+            <div class="rowitem" style="height:26px"><svg class="ic sm"><use href="#i-folder"/></svg>亲子<span class="n">66</span></div>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="ghead"><b>性别</b><span>多选</span><svg class="ic xs"><use href="#i-plus"/></svg></div>
+          <div class="chips">
+            <span class="chip on">女<i>612</i></span>
+            <span class="chip">男<i>248</i></span>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="ghead"><b>年龄段</b><span>单选</span><svg class="ic xs"><use href="#i-plus"/></svg></div>
+          <div class="chips">
+            <span class="chip">18–24<i>96</i></span>
+            <span class="chip on">25–30<i>284</i></span>
+            <span class="chip">31–40<i>312</i></span>
+            <span class="chip">40+<i>168</i></span>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="ghead"><b>场景</b><span>多选</span><svg class="ic xs"><use href="#i-plus"/></svg></div>
+          <div class="chips">
+            <span class="chip">海边<i>142</i></span>
+            <span class="chip on">森林<i>118</i></span>
+            <span class="chip">城市<i>96</i></span>
+            <span class="chip">棚拍<i>84</i></span>
+          </div>
+        </div>
+
+        <div class="group">
+          <div class="ghead"><b>服装</b><span>多选</span><svg class="ic xs"><use href="#i-plus"/></svg></div>
+          <div class="chips">
+            <span class="chip on">白裙<i>210</i></span>
+            <span class="chip">西装<i>128</i></span>
+            <span class="chip">便装<i>302</i></span>
+          </div>
+        </div>
+      </aside>
+
+      <section class="pcenter">
+        <div class="scanbar">
+          <svg class="ic sm"><use href="#i-spark"/></svg>
+          <span><b>人像识别完成</b> · 本地模型</span>
+          <span class="track"><i></i></span>
+          <span>860 / 860 · 100%</span>
+          <span class="right">按导入时间排序</span>
+        </div>
+        <div class="pstage">
+          <div class="waterfall">
+            <figure class="shot on">
+              <img src="mockups/images/01.webp" width="492" height="720" alt="" />
+              <span class="mark"><svg class="ic sm"><use href="#i-check"/></svg></span>
+              <span class="tag">人像 99%</span>
+            </figure>
+            <figure class="shot">
+              <div class="crop" style="aspect-ratio:3/4;background-position:0% 0%"></div>
+              <span class="tag">人像 97%</span>
+            </figure>
+            <figure class="shot">
+              <img src="mockups/images/11.webp" width="640" height="424" alt="" />
+              <span class="tag">人像 98%</span>
+            </figure>
+            <figure class="shot">
+              <div class="crop" style="aspect-ratio:3/4;background-position:50% 0%"></div>
+              <span class="tag">人像 96%</span>
+            </figure>
+            <figure class="shot lift">
+              <div class="crop" style="aspect-ratio:3/4;background-position:100% 0%"></div>
+              <span class="mark"><svg class="ic sm"><use href="#i-check"/></svg></span>
+            </figure>
+            <figure class="shot">
+              <div class="crop" style="aspect-ratio:3/4;background-position:0% 50%"></div>
+              <span class="tag">人像 95%</span>
+            </figure>
+            <figure class="shot">
+              <div class="crop" style="aspect-ratio:3/4;background-position:50% 50%"></div>
+              <span class="tag">人像 97%</span>
+            </figure>
+            <figure class="shot">
+              <div class="crop" style="aspect-ratio:3/4;background-position:100% 50%"></div>
+              <span class="tag">人像 94%</span>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <aside class="insp">
+        <div class="insp-head">
+          <b>人像详情</b>
+          <span class="idx">第 1 / 128 张</span>
+          <svg class="ic sm"><use href="#i-x"/></svg>
+        </div>
+        <div class="insp-body">
+          <div class="preview"><img src="mockups/images/01.webp" alt="" /></div>
+          <div class="fname">溪谷漫步_0142.jpg</div>
+          <div class="fsub">4920 × 7200 · 人像 99%</div>
+
+          <div class="sec">
+            <div class="sec-h">人像维度</div>
+            <div class="tags">
+              <span class="tagchip sel">女</span>
+              <span class="tagchip sel">25–30</span>
+              <span class="tagchip">森林</span>
+              <span class="tagchip">白裙</span>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h">检测信息</div>
+            <dl class="kv">
+              <dt>人脸数量</dt><dd>1</dd>
+              <dt>清晰度</dt><dd>92 / 100</dd>
+              <dt>朝向</dt><dd>侧脸 34°</dd>
+              <dt>遮挡</dt><dd>无</dd>
+            </dl>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><svg class="ic xs"><use href="#i-spark"/></svg>AI 建议</div>
+            <div class="note"><svg class="ic sm"><use href="#i-spark"/></svg>可归入「婚纱客片 · 户外 · 白裙」；同类构图共 18 张，建议一起出片。</div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn primary"><svg class="ic"><use href="#i-check"/></svg>加入选片</button>
+          <button class="btn"><svg class="ic"><use href="#i-sliders"/></svg>调整维度</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- ==================== 客户选片页 ==================== -->
+<div class="screen client" data-name="select">
+  <header class="c-head">
+    <div class="c-brand">
+      <img src="../build/icon.png" alt="" />
+      <b>存照</b>
+      <span>CLIENT SELECTION</span>
+    </div>
+    <div class="c-studio">银月摄影工作室</div>
+    <div class="c-right">
+      <span>林小姐 &amp; 周先生</span>
+      <button class="btn sm"><svg class="ic sm"><use href="#i-download"/></svg>下载全部</button>
+    </div>
+  </header>
+
+  <section class="c-hero">
+    <div>
+      <div class="eyebrow">2026 初夏 · 溪谷</div>
+      <h1>选片单</h1>
+      <div class="sub">共 128 张。点选喜欢的照片，选好后提交；提交前可以随时改。</div>
+    </div>
+    <div class="meta">拍摄日期 2026.05.18<br />摄影师 银月 · 交付周期 7 天</div>
+  </section>
+
+  <div class="c-tabs">
+    <div class="c-tab on">全部 <b>128</b></div>
+    <div class="c-tab">我的选择 <b>18</b></div>
+    <div class="c-tab">已确认 <b>0</b></div>
+  </div>
+
+  <div class="c-grid">
+    <figure class="c-card on">
+      <img src="mockups/images/01.webp" width="492" height="720" alt="" />
+      <span class="c-heart"><svg class="ic sm"><use href="#i-heart"/></svg></span>
+    </figure>
+    <figure class="c-card">
+      <img src="mockups/images/03.webp" width="720" height="587" alt="" />
+    </figure>
+    <figure class="c-card on">
+      <img src="mockups/images/05.webp" width="720" height="576" alt="" />
+      <span class="c-heart"><svg class="ic sm"><use href="#i-heart"/></svg></span>
+    </figure>
+    <figure class="c-card">
+      <img src="mockups/images/07.webp" width="591" height="720" alt="" />
+    </figure>
+    <figure class="c-card">
+      <img src="mockups/images/09.webp" width="586" height="720" alt="" />
+    </figure>
+    <figure class="c-card on">
+      <img src="mockups/images/11.webp" width="640" height="424" alt="" />
+      <span class="c-heart"><svg class="ic sm"><use href="#i-heart"/></svg></span>
+    </figure>
+    <figure class="c-card">
+      <img src="mockups/images/04.webp" width="720" height="586" alt="" />
+    </figure>
+    <figure class="c-card">
+      <img src="mockups/images/06.webp" width="586" height="720" alt="" />
+    </figure>
+    <figure class="c-card">
+      <img src="mockups/images/08.webp" width="586" height="720" alt="" />
+    </figure>
+    <figure class="c-card on">
+      <img src="mockups/images/10.webp" width="594" height="720" alt="" />
+      <span class="c-heart"><svg class="ic sm"><use href="#i-heart"/></svg></span>
+    </figure>
+    <figure class="c-card">
+      <img src="mockups/images/12.webp" width="588" height="720" alt="" />
+    </figure>
+    <figure class="c-card">
+      <div class="crop" style="aspect-ratio:3/4;background-position:50% 0%"></div>
+    </figure>
+    <figure class="c-card">
+      <div class="crop" style="background-position:0% 0%"></div>
+    </figure>
+    <figure class="c-card">
+      <div class="crop" style="background-position:100% 0%"></div>
+    </figure>
+    <figure class="c-card">
+      <div class="crop" style="background-position:50% 50%"></div>
+    </figure>
+  </div>
+
+  <div class="c-foot">
+    <span class="txt">已选 <b>18</b> / 128 张</span>
+    <span class="sp"></span>
+    <button class="btn sm">重置</button>
+    <button class="btn sm">下载清单</button>
+    <button class="btn primary" style="height:34px;padding:0 16px"><svg class="ic"><use href="#i-check"/></svg>提交选片</button>
+  </div>
+  <footer class="c-credit">
+    <img src="../build/icon.png" alt="" />
+    由 存照 提供选片服务 · 照片保存在工作室本地
+  </footer>
+</div>
+
+<!-- ==================== 启动画面 ==================== -->
+<div class="screen splash" data-name="splash">
+  <div class="center">
+    <img class="icon" src="../build/icon.png" alt="" />
+    <h1>存照</h1>
+    <div class="tag">照片不搬家，留在自己硬盘上</div>
+  </div>
+  <div class="status">正在打开图库</div>
+  <div class="load"><i></i></div>
+  <div class="ver">版本 0.4.0</div>
+  <div class="footnote">本地优先 · 无云同步</div>
+</div>
+
+<!-- ==================== 规范一：色板与规则 ==================== -->
+<div class="screen specs" data-name="palette">
+  <div class="spec-head">
+    <img src="../build/icon.png" alt="" />
+    <div>
+      <h1>存照 · 界面主题对齐</h1>
+      <p>界面是匣，功能色是照片 · 全部 chrome 无彩，饱和只留给照片</p>
+    </div>
+    <div class="meta">THEME ALIGNMENT<br />2026.11.15 · DARK / LIGHT</div>
+  </div>
+
+  <div class="spec-body">
+    <div class="spec-col">
+      <div class="spec-card">
+        <h2>深色 · 匣体与匣壁 <span class="pill">DARK</span></h2>
+        <div class="sw-group">
+          <div class="gl">表面 · 匣体</div>
+          <div class="swatch-row">
+            <div class="sw"><div class="box" style="background:#14161b"></div><div class="nm">底板</div><div class="hx">#14161B</div></div>
+            <div class="sw"><div class="box" style="background:#191c22"></div><div class="nm">侧栏</div><div class="hx">#191C22</div></div>
+            <div class="sw"><div class="box" style="background:#1d2026"></div><div class="nm">面板</div><div class="hx">#1D2026</div></div>
+            <div class="sw"><div class="box" style="background:#22262d"></div><div class="nm">控件</div><div class="hx">#22262D</div></div>
+            <div class="sw"><div class="box" style="background:#2a2e36"></div><div class="nm">内凹</div><div class="hx">#2A2E36</div></div>
+            <div class="sw"><div class="box" style="background:#101216"></div><div class="nm">画布</div><div class="hx">#101216</div></div>
+          </div>
+        </div>
+        <div class="sw-group">
+          <div class="gl">文字 · 匣壁</div>
+          <div class="swatch-row">
+            <div class="sw"><div class="box" style="background:#1d2026;display:grid;place-items:center;color:#e8eef4;font-size:12px">正文</div><div class="hx">#E8EEF4 · 13.96</div></div>
+            <div class="sw"><div class="box" style="background:#1d2026;display:grid;place-items:center;color:#a7b2c2;font-size:11px">次要</div><div class="hx">#A7B2C2 · 7.61</div></div>
+            <div class="sw"><div class="box" style="background:#1d2026;display:grid;place-items:center;color:#8590a2;font-size:10.5px">弱化</div><div class="hx">#8590A2 · 5.06</div></div>
+            <div class="sw"><div class="box" style="background:#1d2026;display:grid;place-items:center;color:#5b9fe8;font-size:12px">天蓝</div><div class="hx">#5B9FE8 · 5.88</div></div>
+            <div class="sw"><div class="box" style="background:#1d2026;display:grid;place-items:center;color:#f5c344;font-size:12px">暖黄</div><div class="hx">#F5C344 · 9.93</div></div>
+          </div>
+        </div>
+        <div class="sw-group">
+          <div class="gl">三色 · 一色一职</div>
+          <div class="swatch-row">
+            <div class="sw"><div class="box" style="background:#5b9fe8"></div><div class="nm">系统回应</div><div class="hx">#5B9FE8</div></div>
+            <div class="sw"><div class="box" style="background:#f5c344"></div><div class="nm">用户标记</div><div class="hx">#F5C344</div></div>
+            <div class="sw"><div class="box" style="background:#f2604a"></div><div class="nm">不可逆</div><div class="hx">#F2604A</div></div>
+            <div class="sw"><div class="box" style="background:#7cbf94"></div><div class="nm">成功</div><div class="hx">#7CBF94</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec-card">
+        <h2>浅色 · 匣体与匣壁 <span class="pill plain">LIGHT</span></h2>
+        <div class="sw-group">
+          <div class="gl">表面 · 冷白纸感</div>
+          <div class="swatch-row">
+            <div class="sw"><div class="box" style="background:#f0f3f7"></div><div class="nm">背景</div><div class="hx">#F0F3F7</div></div>
+            <div class="sw"><div class="box" style="background:#e8eef4"></div><div class="nm">侧栏</div><div class="hx">#E8EEF4</div></div>
+            <div class="sw"><div class="box" style="background:#ffffff"></div><div class="nm">面板</div><div class="hx">#FFFFFF</div></div>
+            <div class="sw"><div class="box" style="background:#f4f7fa"></div><div class="nm">控件</div><div class="hx">#F4F7FA</div></div>
+            <div class="sw"><div class="box" style="background:#e4e9f0"></div><div class="nm">内凹</div><div class="hx">#E4E9F0</div></div>
+            <div class="sw"><div class="box" style="background:#f7fafc"></div><div class="nm">画布</div><div class="hx">#F7FAFC</div></div>
+          </div>
+        </div>
+        <div class="sw-group" style="margin-bottom:0">
+          <div class="gl">文字与功能色</div>
+          <div class="swatch-row">
+            <div class="sw"><div class="box" style="background:#fff;display:grid;place-items:center;color:#1a1d23;font-size:12px">正文</div><div class="hx">#1A1D23 · 16.88</div></div>
+            <div class="sw"><div class="box" style="background:#fff;display:grid;place-items:center;color:#4a5464;font-size:11px">次要</div><div class="hx">#4A5464 · 7.65</div></div>
+            <div class="sw"><div class="box" style="background:#fff;display:grid;place-items:center;color:#5a6472;font-size:10.5px">弱化</div><div class="hx">#5A6472 · 6.00</div></div>
+            <div class="sw"><div class="box" style="background:#fff;display:grid;place-items:center;color:#2f6cb8;font-size:12px">天蓝</div><div class="hx">#2F6CB8 · 5.31</div></div>
+            <div class="sw"><div class="box" style="background:#fff;display:grid;place-items:center;color:#a0720e;font-size:12px">暖黄</div><div class="hx">#A0720E · 4.30</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec-card">
+        <h2>四套皮肤的定位</h2>
+        <div class="skin-grid">
+          <div class="skin on">
+            <div class="sws"><span style="background:linear-gradient(135deg,#14161b 50%,#f0f3f7 50%)"></span><span style="background:#2a2e36"></span><span style="background:#5b9fe8"></span></div>
+            <div class="nm">默认</div><div class="ht">跟随系统</div>
+          </div>
+          <div class="skin">
+            <div class="sws"><span style="background:#14161b"></span><span style="background:#1e2127"></span><span style="background:#5b9fe8"></span></div>
+            <div class="nm">深色</div><div class="ht">常驻深色</div>
+          </div>
+          <div class="skin">
+            <div class="sws"><span style="background:#f0f3f7"></span><span style="background:#e8eef4"></span><span style="background:#2f6cb8"></span></div>
+            <div class="nm">浅色</div><div class="ht">冷白纸感</div>
+          </div>
+          <div class="skin">
+            <div class="sws"><span style="background:#0a0c0f"></span><span style="background:#14171c"></span><span style="background:#82b4f2"></span></div>
+            <div class="nm">高对比</div><div class="ht">无障碍</div>
+          </div>
+        </div>
+        <div style="margin-top:9px;font-size:9.5px;color:#8590a2">6 套 → 4 套：模式选择，不是主题商店</div>
+      </div>
+    </div>
+
+    <div class="spec-col">
+      <div class="spec-card">
+        <h2>一色一职，禁止越界</h2>
+        <div class="rule-list">
+          <div class="rulecard">
+            <span class="demo"><span class="sel-demo" style="width:118px"><span class="dot" style="background:#5b9fe8"></span>选中<span class="n">3</span></span></span>
+            <span class="txt"><b>天蓝 = 系统回应你</b>选中、聚焦、链接、进度；不做主按钮实底</span>
+          </div>
+          <div class="rulecard">
+            <span class="demo"><span style="display:flex;gap:3px;color:#f5c344"><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg><svg class="ic"><use href="#i-star"/></svg></span></span>
+            <span class="txt"><b>暖黄 = 你标记的照片</b>星级、旗标、客户选片心形</span>
+          </div>
+          <div class="rulecard">
+            <span class="demo"><span class="btn-demo" style="background:#f2604a;color:#14161b">永久删除</span></span>
+            <span class="txt"><b>珊瑚红 = 不可逆操作</b>只在最终确认层出现，入口保持中性</span>
+          </div>
+          <div class="rulecard">
+            <span class="demo"><span class="btn-demo" style="background:#f7fafc;color:#14161b">加入选片</span></span>
+            <span class="txt"><b>主按钮 = 反色</b>深色白底黑字，浅色黑底白字；不用彩色</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec-card">
+        <h2>两套主题的主按钮</h2>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;border-radius:9px;padding:12px;background:#14161b;border:1px solid #262b33">
+            <div style="font-size:9.5px;color:#8590a2;letter-spacing:.1em;margin-bottom:9px">DARK</div>
+            <div style="display:flex;gap:7px;align-items:center">
+              <span class="btn-demo" style="background:#f7fafc;color:#14161b">导入图片</span>
+              <span class="btn-demo" style="background:#1d2026;color:#e8eef4;border:1px solid #343a44;font-weight:400">次操作</span>
+            </div>
+          </div>
+          <div style="flex:1;border-radius:9px;padding:12px;background:#f7fafc;border:1px solid #d8dee7">
+            <div style="font-size:9.5px;color:#5a6472;letter-spacing:.1em;margin-bottom:9px">LIGHT</div>
+            <div style="display:flex;gap:7px;align-items:center">
+              <span class="btn-demo" style="background:#14161b;color:#f7fafc">导入图片</span>
+              <span class="btn-demo" style="background:#fff;color:#1a1d23;border:1px solid #c2ccd9;font-weight:400">次操作</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec-card">
+        <h2>对比度复核</h2>
+        <div class="contrast">
+          <b>正文 / 底板（深）</b><span class="ok">15.48 ✓</span>
+          <b>次要 / 面板（深）</b><span class="ok">7.61 ✓</span>
+          <b>弱化 / 面板（深）</b><span class="ok">5.06 ✓</span>
+          <b>天蓝 / 面板（深）</b><span class="ok">5.88 ✓</span>
+          <b>暖黄 / 底板（深）</b><span class="ok">11.01 ✓</span>
+          <b>正文 / 背景（浅）</b><span class="ok">15.17 ✓</span>
+          <b>弱化 / 面板（浅）</b><span class="ok">6.00 ✓</span>
+          <b>天蓝 / 面板（浅）</b><span class="ok">5.31 ✓</span>
+          <b>暖黄 / 内凹（浅）</b><span class="ok">3.51 ✓</span>
+        </div>
+        <div style="margin-top:9px;font-size:9.5px;color:#8590a2">浅色暖黄已按复核报告改为 #A0720E；105 项实测，修订后全部达标</div>
+      </div>
+
+      <div class="spec-card" style="flex:1">
+        <h2>三条硬约束</h2>
+        <div class="contrast" style="grid-template-columns:auto 1fr">
+          <b>大面积无彩</b><span>彩色 UI 面积 &lt; 5%，饱和只留给照片</span>
+          <b>一色一职</b><span>天蓝 / 暖黄 / 珊瑚红，不跨场景借用</span>
+          <b>材料一致</b><span>所有色值必须能在 PA2 色板找到出处</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 规范二：组件与状态 ==================== -->
+<div class="screen specs" data-name="components">
+  <div class="spec-head">
+    <img src="../build/icon.png" alt="" />
+    <div>
+      <h1>组件与状态</h1>
+      <p>选中四件套 · 反色主按钮 · 四套皮肤 · 字阶本轮不动</p>
+    </div>
+    <div class="meta">THEME ALIGNMENT<br />COMPONENTS</div>
+  </div>
+
+  <div class="spec-body">
+    <div class="spec-col">
+      <div class="spec-card">
+        <h2>按钮</h2>
+        <div style="display:flex;gap:14px">
+          <div style="flex:1;border-radius:8px;padding:10px;background:#14161b;border:1px solid #262b33">
+            <div style="font-size:9px;letter-spacing:.1em;color:#8590a2;margin-bottom:8px">DARK</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="btn-demo" style="background:#f7fafc;color:#14161b">主操作</span>
+              <span class="btn-demo" style="background:#1d2026;color:#e8eef4;border:1px solid #343a44;font-weight:400">次操作</span>
+              <span class="btn-demo" style="background:transparent;color:#a7b2c2;font-weight:400">幽灵</span>
+              <span class="btn-demo" style="background:#f2604a;color:#14161b">永久删除</span>
+            </div>
+          </div>
+          <div style="flex:1;border-radius:8px;padding:10px;background:#f7fafc;border:1px solid #d8dee7">
+            <div style="font-size:9px;letter-spacing:.1em;color:#5a6472;margin-bottom:8px">LIGHT</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span class="btn-demo" style="background:#14161b;color:#f7fafc">主操作</span>
+              <span class="btn-demo" style="background:#ffffff;color:#1a1d23;border:1px solid #c2ccd9;font-weight:400">次操作</span>
+              <span class="btn-demo" style="background:transparent;color:#4a5464;font-weight:400">幽灵</span>
+              <span class="btn-demo" style="background:#c93a2a;color:#ffffff">永久删除</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spec-card">
+        <h2>选中态必须是四件套</h2>
+        <p class="hint">soft 底 + border 边 + accent-text 字 + ≤2px 指示条；禁止只涂 soft 底。</p>
+        <div class="sel-demo"><svg class="ic sm"><use href="#i-grid"/></svg>全部图片<span class="n">30,409</span></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <span style="display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 7px;border-radius:6px;background:#1d2a3d;border:1px solid #2e4360;color:#a9c9f2;font-size:11px">女<i style="font-style:normal;opacity:.7">612</i></span>
+          <span style="display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 7px;border-radius:6px;background:#22262d;border:1px solid #343a44;color:#8590a2;font-size:11px">男<i style="font-style:normal">248</i></span>
+          <span style="display:inline-flex;align-items:center;gap:5px;height:23px;padding:0 7px;border-radius:6px;background:#1d2a3d;border:1px solid #2e4360;color:#a9c9f2;font-size:11px">森林<i style="font-style:normal;opacity:.7">118</i></span>
+        </div>
+      </div>
+
+      <div class="spec-card">
+        <h2>输入与焦点</h2>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="height:30px;border-radius:7px;border:1px solid #262b33;background:#22262d;display:flex;align-items:center;gap:7px;padding:0 10px;color:#8590a2;font-size:11px"><svg class="ic sm"><use href="#i-search"/></svg>搜索文件名、标签</div>
+          <div style="height:30px;border-radius:7px;border:1px solid #5b9fe8;background:#171a20;box-shadow:0 0 0 3px rgba(91,159,232,.18);display:flex;align-items:center;padding:0 10px;color:#e8eef4;font-size:11px">输入中…</div>
+          <div style="height:30px;border-radius:7px;border:1px solid #262b33;background:#2a2e36;display:flex;align-items:center;padding:0 10px;color:#8590a2;font-size:11px">禁用态</div>
+        </div>
+      </div>
+
+      <div class="spec-card" style="flex:1">
+        <h2>字阶 · 本轮不动</h2>
+        <div class="type-row"><span class="sp">10.5 / 弱化</span><span class="sample" style="font-size:10.5px;color:#8590a2">分组标题 · 字距 +0.09em</span></div>
+        <div class="type-row"><span class="sp">11.5 / 次要</span><span class="sample" style="font-size:11.5px;color:#a7b2c2">照片数量、参数、提示</span></div>
+        <div class="type-row"><span class="sp">12.5 / 正文</span><span class="sample" style="font-size:12.5px">列表项、标签、按钮文案</span></div>
+        <div class="type-row"><span class="sp">13 / 导航</span><span class="sample" style="font-size:13px">全部图片 · 人像工作台</span></div>
+        <div class="type-row"><span class="sp">13.5 / 标题</span><span class="sample" style="font-size:13.5px;font-weight:600">面板标题</span></div>
+        <div class="type-row"><span class="sp">20 / 大字</span><span class="sample" style="font-size:20px;font-weight:600;letter-spacing:.04em">存照</span></div>
+        <div style="margin-top:10px;font-size:9.5px;color:#8590a2">字阶 6 档与字体栈属于字体专项，不在本轮主题色对齐范围。</div>
+      </div>
+    </div>
+
+    <div class="spec-col">
+      <div class="spec-card">
+        <h2>图库 · 选中与评分</h2>
+        <div style="display:flex;gap:10px">
+          <div style="flex:1;position:relative;border-radius:8px;overflow:hidden;outline:2px solid #5b9fe8;outline-offset:-2px">
+            <img src="mockups/images/01.webp" alt="" style="display:block;width:100%;height:150px;object-fit:cover" />
+            <span style="position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;background:#f7fafc;color:#14161b;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.3)"><svg class="ic sm"><use href="#i-check"/></svg></span>
+            <span style="position:absolute;left:8px;top:8px;color:#f5c344;display:flex;gap:2px"><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg></span>
+          </div>
+          <div style="flex:1;position:relative;border-radius:8px;overflow:hidden;border:1px solid #262b33">
+            <img src="mockups/images/03.webp" alt="" style="display:block;width:100%;height:150px;object-fit:cover" />
+            <span style="position:absolute;left:8px;top:8px;color:#f5c344;display:flex;gap:2px"><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg><svg class="ic xs"><use href="#i-star"/></svg></span>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:9.5px;color:#8590a2">选中 = 2px 天蓝环 + 反色角标；评分 = 暖黄，只做用户标记。</div>
+      </div>
+
+      <div class="spec-card">
+        <h2>客户选片页 · 品牌时刻</h2>
+        <div style="border-radius:9px;overflow:hidden;border:1px solid #d8dee7;background:#f7fafc;color:#1a1d23">
+          <div style="height:38px;display:flex;align-items:center;gap:7px;padding:0 12px;background:#e8eef4;border-bottom:1px solid #d8dee7">
+            <img src="../build/icon.png" alt="" style="width:18px;height:18px;border-radius:5px" />
+            <b style="font-size:11px;letter-spacing:.1em">存照</b>
+            <span style="font-size:8.5px;color:#5a6472;letter-spacing:.1em">CLIENT SELECTION</span>
+            <span style="margin-left:auto;font-size:9px;color:#5a6472">银月摄影工作室</span>
+          </div>
+          <div style="padding:12px 14px">
+            <div style="font-family:'Songti SC','Source Han Serif SC',SimSun,serif;font-size:20px;font-weight:600">选片单</div>
+            <div style="font-size:9.5px;color:#4a5464;margin-top:3px">2026 初夏 · 溪谷 · 共 128 张</div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <span style="width:52px;height:42px;border-radius:4px;background:url('mockups/images/01.webp') center/cover"></span>
+              <span style="width:52px;height:42px;border-radius:4px;background:url('mockups/images/11.webp') center/cover;position:relative">
+                <span style="position:absolute;top:-4px;right:-4px;width:13px;height:13px;border-radius:50%;background:#f5c344;color:#14161b;display:grid;place-items:center"><svg class="ic" style="width:8px;height:8px"><use href="#i-heart"/></svg></span>
+              </span>
+              <span style="width:52px;height:42px;border-radius:4px;background:url('mockups/images/05.webp') center/cover"></span>
+              <span style="width:52px;height:42px;border-radius:4px;background:url('mockups/images/07.webp') center/cover"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:10px">
+              <span style="font-size:9px;color:#4a5464">已选 <b style="color:#1a1d23">18</b> / 128</span>
+              <span style="margin-left:auto;height:22px;padding:0 9px;border-radius:5px;background:#14161b;color:#f7fafc;display:inline-flex;align-items:center;font-size:9px;font-weight:600">提交选片</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;font-size:9.5px;color:#8590a2">唯一对外页面：沿用匣体、反色主按钮与暖黄心形，和桌面端同一套材料。</div>
+      </div>
+
+      <div class="spec-card" style="flex:1">
+        <h2>跨屏一致性</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div style="padding:9px 10px;border-radius:7px;background:#1d2026;border:1px solid #262b33">
+            <div style="font-size:9px;letter-spacing:.08em;color:#8590a2;margin-bottom:5px">侧栏</div>
+            <div style="font-size:10.5px;color:#a7b2c2;line-height:1.7">导航 / 源目录 / 文件夹 / 标签<br />全灰阶，无类别彩点</div>
+          </div>
+          <div style="padding:9px 10px;border-radius:7px;background:#1d2026;border:1px solid #262b33">
+            <div style="font-size:9px;letter-spacing:.08em;color:#8590a2;margin-bottom:5px">主区</div>
+            <div style="font-size:10.5px;color:#a7b2c2;line-height:1.7">搜索 / 筛选 / 排序<br />选中条 + 瀑布流</div>
+          </div>
+          <div style="padding:9px 10px;border-radius:7px;background:#1d2026;border:1px solid #262b33">
+            <div style="font-size:9px;letter-spacing:.08em;color:#8590a2;margin-bottom:5px">详情</div>
+            <div style="font-size:10.5px;color:#a7b2c2;line-height:1.7">预览 / 参数 / 标签<br />底部反色主操作</div>
+          </div>
+          <div style="padding:9px 10px;border-radius:7px;background:#1d2026;border:1px solid #262b33">
+            <div style="font-size:9px;letter-spacing:.08em;color:#8590a2;margin-bottom:5px">彩色预算</div>
+            <div style="font-size:10.5px;color:#a7b2c2;line-height:1.7">彩色 UI &lt; 5%<br />饱和只留给照片</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const params = new URLSearchParams(location.search)
+  const mode = params.get('mode')
+  const name = params.get('screen') || 'gallery'
+  const variant = params.get('variant')
+  const state = params.get('state')
+  if (mode === 'light' || mode === 'dark') document.documentElement.dataset.mode = mode
+  document.body.dataset.variant = variant === 'b' ? 'b' : 'a'
+  document.body.dataset.state = state === 'default' ? 'default' : 'selected'
+  const target = document.querySelector('.screen[data-name="' + name + '"]')
+  if (target) target.classList.add('on')
+</script>
+</body>
+</html>

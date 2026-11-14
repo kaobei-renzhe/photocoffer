@@ -29,7 +29,7 @@ export async function importSettings(file: string): Promise<SettingsImportResult
     throw new Error('配置文件不存在或无法读取')
   }
   if (size > MAX_IMPORT_BYTES) {
-    throw new Error('配置文件超过 2 MB，可能不是月相的配置')
+    throw new Error('配置文件超过 2 MB，可能不是存照的配置')
   }
   const { config, gear: incoming, skipped } = parseSettingsFile(readFileSync(file, 'utf8'))
 

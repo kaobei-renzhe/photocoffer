@@ -80,7 +80,7 @@ export default function ImportDialog({
 
         <div className="p-4 space-y-4">
           <div className="text-[11.5px] text-[var(--muted)] leading-5">
-            选一个文件夹，月相会扫描并导入里面的照片。
+            选一个文件夹，存照会扫描并导入里面的照片。
           </div>
 
           <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3 space-y-3">

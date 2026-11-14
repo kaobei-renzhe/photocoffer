@@ -1486,7 +1486,7 @@ export default function App() {
 
   if (booting) {
     return (
-      <div className="h-full grid place-items-center text-[var(--faint)] text-[13px]">正在唤醒月相…</div>
+      <div className="h-full grid place-items-center text-[var(--faint)] text-[13px]">正在唤醒存照…</div>
     )
   }
 

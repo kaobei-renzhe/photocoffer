@@ -103,12 +103,7 @@ export default function AppDialogHost() {
           )}
           <button
             ref={confirmRef}
-            className={`btn ${current.danger ? '' : 'btn-primary'}`}
-            style={
-              current.danger
-                ? { background: 'transparent', borderColor: 'var(--danger-border)', color: 'var(--danger-text)' }
-                : undefined
-            }
+            className={`btn ${current.danger ? 'btn-danger-solid' : 'btn-primary'}`}
             onClick={() => reply(true)}
           >
             {current.confirmText ?? '确定'}

@@ -1,7 +1,7 @@
-# 月相 · Lunaris
+# 存照
 
 <p align="center">
-  <img src="build/icon.png" width="120" alt="Lunaris logo" />
+  <img src="build/icon.png" width="120" alt="存照 logo" />
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 
 ## 为什么用它
 
-拍完一场照片，系统自带的文件管理器不够用，网盘又不想把原图传上去——月相补的就是这一段：
+拍完一场照片，系统自带的文件管理器不够用，网盘又不想把原图传上去——存照补的就是这一段：
 
 - **照片不搬家**：只在你指定的文件夹里建一份索引和缩略图，原图原地不动、不改名、不删除。
 - **从一堆照片到客户拿到的成品**：打星挑片 → 生成客户选片页 → 客户回传 → 只看客户要的 → 导出成品。
@@ -29,13 +29,13 @@
 
 把安装包所在路径发给你常用的 AI 助手，附一句：
 
-> 帮我装好月相：Windows 直接运行 `release` 里的 `月相 Setup 安装包.exe`，按默认设置装完；macOS 打开 `release` 里的 dmg，把「月相」拖进「应用程序」。装完打开一次，确认能启动。
+> 帮我装好存照：Windows 直接运行 `release` 里的 `存照 Setup 安装包.exe`，按默认设置装完；macOS 打开 `release` 里的 dmg，把「存照」拖进「应用程序」。装完打开一次，确认能启动。
 
 **Windows**
 
-1. 打开仓库里的 `release` 目录，双击最新的 `月相 Setup <版本号>.exe`。
+1. 打开仓库里的 `release` 目录，双击最新的 `存照 Setup <版本号>.exe`。
 2. 安装包没有买代码签名，Windows 会提示「已保护你的电脑」→ 点「更多信息」→「仍要运行」。
-3. 装完从开始菜单打开「月相」。
+3. 装完从开始菜单打开「存照」。
 
 **macOS**
 
@@ -48,9 +48,9 @@ npm run dist:mac
 
 产物在 `release/` 下：macOS 会同时产出 `arm64` 与 `x64` 两个 dmg（需在 macOS 上打包）。也可以在 GitHub Actions 里跑「build-mac」，跑完在 Artifacts 里下载。
 
-第一次打开被 Gatekeeper 拦住时：右键点「月相」→「打开」，或执行 `xattr -cr /Applications/月相.app`。原因是安装包没有 Apple 开发者签名。
+第一次打开被 Gatekeeper 拦住时：右键点「存照」→「打开」，或执行 `xattr -cr /Applications/存照.app`。原因是安装包没有 Apple 开发者签名。
 
-卸载：Windows 在 设置 → 应用 里卸载；macOS 把「月相」拖进废纸篓。**卸载不会删你的照片和图库。**
+卸载：Windows 在 设置 → 应用 里卸载；macOS 把「存照」拖进废纸篓。**卸载不会删你的照片和图库。**
 
 ## 第一次打开（约 3 分钟）
 
@@ -112,8 +112,8 @@ npm run dist:mac
 
 ### 界面与其它
 
-- **多图库**：左侧栏顶部「月相」旁边的 ⇄ 按钮可以新建 / 切换图库，每个图库各自独立，互不干扰。
-- **界面**：6 套皮肤（经典 / 月蚀 / 夜航 / 墨岩 / 柔光 / 雾蓝），也可以跟随系统深浅色；左右两栏宽度能拖，尺寸会记住。
+- **多图库**：左侧栏顶部「存照」旁边的 ⇄ 按钮可以新建 / 切换图库，每个图库各自独立，互不干扰。
+- **界面**：4 套外观（默认 / 深色 / 浅色 / 高对比），默认跟随系统深浅色；左右两栏宽度能拖，尺寸会记住。
 - **缩略图**：工具栏右侧的「缩略图」滑杆可调大小；清晰度默认「自动」，按卡片尺寸和屏幕像素密度挑档，也能手动锁定低 / 中 / 高。
 - **拖出去**：按住 Alt 把卡片拖到资源管理器或微信、邮件里，可以直接当文件用。
 - **自动分类**：建好语义索引后，可以让它给照片打上「人像 / 风景 / 街拍」这类普通标签，阈值可调，也能一键清除。
@@ -193,7 +193,7 @@ macOS 上把 `Ctrl` 换成 `Cmd`；删除也可以直接按 `Backspace`。
 把整个图库目录拷过去，在新机器上点「打开已有图库」。如果照片路径变了，用「维护 → 重新定位」，会按目录、文件名、画面指纹逐层帮你找回来。
 
 **RAW 能调色吗？**
-不能。月相只读 RAW 内嵌的预览图，负责看和挑，不代替 Lightroom / Capture One。
+不能。存照只读 RAW 内嵌的预览图，负责看和挑，不代替 Lightroom / Capture One。
 
 **会偷偷上传照片吗？**
 不会。除了你主动开启并手动点击的 AI 功能，所有处理都在本机完成。
@@ -242,7 +242,7 @@ docs/           方案与实测文档
 ### 打包
 
 ```bash
-npm run dist      # Windows：release/月相 Setup <版本>.exe + latest.yml + .exe.blockmap
+npm run dist      # Windows：release/存照 Setup <版本>.exe + latest.yml + .exe.blockmap
 npm run dist:mac  # macOS：需要在 macOS 上执行
 ```
 
@@ -271,9 +271,9 @@ LUNARIS_UPDATE_URL=https://你的更新地址/lunaris
 
 每次发版上传三个文件到该地址：
 
-1. `月相 Setup <版本>.exe`
+1. `存照 Setup <版本>.exe`
 2. `latest.yml`
-3. `月相 Setup <版本>.exe.blockmap`
+3. `存照 Setup <版本>.exe.blockmap`
 
 记得先把 `latest.yml` 里的版本号改成新版本。打包配置里的 `publish.url` 只是让 electron-builder 生成 `latest.yml` 的占位地址，运行时以 `LUNARIS_UPDATE_URL` 为准。
 

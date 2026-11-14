@@ -72,7 +72,7 @@ export async function createBackup(
 export function restoreBackup(zipPath: string, targetDir: string): { files: number } {
   const entries = listZipEntries(zipPath)
   const hasDb = entries.some((entry) => entry.name === 'library.db')
-  if (!hasDb) throw new Error('备份包里没有图库的数据文件，可能不是月相的备份')
+  if (!hasDb) throw new Error('备份包里没有图库的数据文件，可能不是存照的备份')
 
   const metaEntry = entries.find((entry) => entry.name === 'meta.json')
   if (metaEntry) {
@@ -83,11 +83,11 @@ export function restoreBackup(zipPath: string, targetDir: string): { files: numb
       }
       const app = String(meta.app ?? '')
       if (app && app !== 'lunaris' && app !== 'image-nest') {
-        throw new Error('这不是月相的备份')
+        throw new Error('这不是存照的备份')
       }
       const version = Number(meta.userVersion ?? 0)
       if (Number.isFinite(version) && version > CURRENT_SCHEMA) {
-        throw new Error(`备份来自更新版本（结构 ${version}），请先升级月相再恢复`)
+        throw new Error(`备份来自更新版本（结构 ${version}），请先升级存照再恢复`)
       }
     } catch (error) {
       if (error instanceof SyntaxError) {

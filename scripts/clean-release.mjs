@@ -23,8 +23,9 @@ const compare = (a, b) => {
 }
 
 const entries = readdirSync(dir)
+// 不写死产品名：改名后（月相 → 片匣 → 砚白 → 存照）旧版本也要能被识别并清理
 const installers = entries
-  .filter((name) => /^月相 Setup \d+\.\d+\.\d+\.exe$/.test(name))
+  .filter((name) => /^.+ Setup \d+\.\d+\.\d+\.exe$/.test(name))
   .sort(compare)
 
 if (installers.length <= 2) {

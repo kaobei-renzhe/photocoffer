@@ -165,7 +165,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
                     onClick={() => toggleCategory(category.name)}
                     className={`inline-flex items-center gap-1.5 h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
                       active
-                        ? 'border-[var(--accent)] text-[var(--text)] bg-[var(--accent-soft)]'
+                        ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
                         : 'border-[var(--border)] text-[var(--faint)] bg-[var(--panel-2)]'
                     }`}
                   >

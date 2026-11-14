@@ -110,7 +110,7 @@ export default function FacetTab({
               {assigned.map((value) => (
                 <button
                   key={value.id}
-                  className="inline-flex h-[21px] items-center gap-1 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] px-1.5 text-[10.5px]"
+                  className="inline-flex h-[21px] items-center gap-1 rounded-md border border-[var(--accent-border)] bg-[var(--accent-soft)] px-1.5 text-[10.5px] text-[var(--accent-text)]"
                   onClick={() => void applyValue(facet, value, false)}
                   title="点一下移除"
                 >

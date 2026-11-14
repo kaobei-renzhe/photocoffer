@@ -111,7 +111,7 @@ export default function PerfTab({
       )}
 
       <div className="mt-3 text-[10px] leading-4 text-[var(--faint)]">
-        评分和评语只存在月相里，不会写进 XMP；写进照片旁边的是你自己打的星级、旗标和标签。
+        评分和评语只存在存照里，不会写进 XMP；写进照片旁边的是你自己打的星级、旗标和标签。
       </div>
     </div>
   )

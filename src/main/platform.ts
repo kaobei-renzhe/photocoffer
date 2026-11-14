@@ -1,4 +1,4 @@
-import { Menu } from 'electron'
+import { Menu, app } from 'electron'
 
 /**
  * 平台差异只在这里出现一次。
@@ -30,5 +30,6 @@ export function installAppMenu(): void {
 
 /** 数据目录的用户可读说明，用于「关于」页 */
 export function dataDirHint(): string {
-  return isMac ? '~/Library/Application Support/lunaris' : '%APPDATA%\\lunaris'
+  const name = app.getName()
+  return isMac ? `~/Library/Application Support/${name}` : `%APPDATA%\\${name}`
 }

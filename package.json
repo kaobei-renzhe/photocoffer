@@ -9,8 +9,8 @@
     "node": ">=22"
   },
   "build": {
-    "appId": "com.silvermoon.lunaris",
-    "productName": "月相",
+    "appId": "com.silvermoon.cunzhao",
+    "productName": "存照",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -44,7 +44,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.png",
+      "icon": "build/icon-win.png",
       "files": [
         "out/**/*",
         "package.json",
@@ -62,7 +62,7 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "月相",
+      "shortcutName": "存照",
       "deleteAppDataOnUninstall": false
     },
     "mac": {
@@ -76,7 +76,7 @@
         }
       ],
       "category": "public.app-category.photography",
-      "icon": "build/icon.png",
+      "icon": "build/icon-mac.png",
       "identity": null,
       "files": [
         "out/**/*",

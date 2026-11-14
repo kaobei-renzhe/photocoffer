@@ -1187,7 +1187,11 @@ export default function Sidebar({
       </div>
 
       <div className="relative flex items-center gap-1.5 p-2 border-t border-[var(--border)]">
-        <button className="btn btn-primary flex-1 justify-center" onClick={onImportFiles}>
+        <button
+          className={`btn flex-1 justify-center ${stats.total === 0 ? 'btn-primary' : ''}`}
+          onClick={onImportFiles}
+          title={stats.total === 0 ? '导入第一张照片' : '继续导入图片'}
+        >
           <Upload size={14} /> 导入图片
         </button>
         <button

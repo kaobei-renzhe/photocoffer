@@ -20,16 +20,24 @@ describe('皮肤表', () => {
 describe('isSkinId', () => {
   it('只认表里有的 id', () => {
     expect(isSkinId('classic')).toBe(true)
-    expect(isSkinId('aurora')).toBe(true)
+    expect(isSkinId('night')).toBe(true)
     expect(isSkinId('nope')).toBe(false)
     expect(isSkinId(undefined)).toBe(false)
     expect(isSkinId(42)).toBe(false)
+  })
+
+  it('被砍掉的旧皮肤 id 不再合法，迁移依赖 findSkin 回落', () => {
+    expect(isSkinId('eclipse')).toBe(false)
+    expect(isSkinId('aurora')).toBe(false)
+    expect(isSkinId('graphite')).toBe(false)
+    expect(isSkinId('mist')).toBe(false)
+    expect(findSkin('eclipse').id).toBe(DEFAULT_SKIN)
   })
 })
 
 describe('findSkin', () => {
   it('找到就返回对应皮肤', () => {
-    expect(findSkin('mist').id).toBe('mist')
+    expect(findSkin('paper').id).toBe('paper')
   })
 
   it('找不到退回默认皮肤，不返回空', () => {

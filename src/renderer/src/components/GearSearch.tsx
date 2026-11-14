@@ -182,7 +182,7 @@ export default function GearSearch({
             <button
               className={`h-[24px] px-2 rounded-md border text-[11px] ${
                 category === 'all'
-                  ? 'border-[var(--accent)] text-[var(--accent-2)] bg-[var(--accent-soft)]'
+                  ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
                   : 'border-[var(--border)] text-[var(--muted)] bg-[var(--panel-2)]'
               }`}
               onClick={() => setCategory('all')}
@@ -193,8 +193,8 @@ export default function GearSearch({
               <button
                 key={entry}
                 className={`h-[24px] px-2 rounded-md border text-[11px] ${
-                  category === entry
-                    ? 'border-[var(--accent)] text-[var(--accent-2)] bg-[var(--accent-soft)]'
+                    category === entry
+                    ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
                     : 'border-[var(--border)] text-[var(--muted)] bg-[var(--panel-2)]'
                 }`}
                 onClick={() => setCategory(entry)}

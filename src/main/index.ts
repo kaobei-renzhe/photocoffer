@@ -106,11 +106,11 @@ function currentSkin() {
   return SKINS.find((skin) => skin.id === getSkin()) ?? SKINS[0]
 }
 
-/** 首帧窗口底色：固定风格用皮肤底色，经典跟随深浅 */
+/** 首帧窗口底色：固定风格用皮肤底色，默认（auto）跟随系统深浅 */
 function windowBackground(): string {
   const skin = currentSkin()
   if (skin.mode !== 'auto') return skin.base
-  return nativeTheme.shouldUseDarkColors ? '#0b0d11' : '#f6f7fa'
+  return nativeTheme.shouldUseDarkColors ? '#14161B' : '#F0F3F7'
 }
 
 /**
@@ -128,7 +128,7 @@ function createWindow(): void {
     minHeight: 680,
     backgroundColor: windowBackground(),
     autoHideMenuBar: true,
-    title: '月相',
+    title: '存照',
     show: !headless,
     // 隐藏态也要出帧，否则调试端口截到的是空白
     paintWhenInitiallyHidden: true,
@@ -154,11 +154,11 @@ if (debugPort) app.commandLine.appendSwitch('remote-debugging-port', debugPort)
 const customUserData = process.env.IMAGENEST_USER_DATA ?? process.env.LUNARIS_USER_DATA
 
 /**
- * 改名（月巢 / image-nest → 月相 / lunaris）后 Electron 的 userData 目录跟着变了，
+ * 改名（月巢 / image-nest → 月相 / lunaris → 片匣 → 砚白 → 存照）后 Electron 的 userData 目录跟着变了，
  * 首次启动时把旧目录里的配置、装备库与日志搬过来，老图库不用重新配置一遍。
  * 只在目标目录还没有 config.json（即没配过）时执行，搬完就不管了。
  */
-const LEGACY_APP_DIRS = ['image-nest', 'moonnest', '月巢']
+const LEGACY_APP_DIRS = ['砚白', '片匣', '月相', 'lunaris', '月巢', 'moonnest', 'image-nest']
 
 function migrateLegacyUserData(): void {
   const target = app.getPath('userData')

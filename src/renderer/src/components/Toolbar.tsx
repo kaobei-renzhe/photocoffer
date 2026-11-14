@@ -558,7 +558,7 @@ export default function Toolbar({
                   className={`h-[24px] px-2 rounded-md border text-[11px] transition-colors ${
                     filter.colorFamily
                       ? 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
-                      : 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]'
+                      : 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                   }`}
                   onClick={() => patch({ colorFamily: null })}
                 >
@@ -592,7 +592,10 @@ export default function Toolbar({
       )}
 
       {selectedIds.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 mt-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2.5 py-1.5">
+        <div
+          className="flex flex-wrap items-center gap-2 mt-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5"
+          style={{ boxShadow: 'inset 2px 0 0 var(--accent)' }}
+        >
           <span className="text-[12px] text-[var(--accent-text)]">已选 {selectedIds.length} 张</span>
           {trashView ? (
             <div className="ml-auto flex items-center gap-1">
@@ -613,7 +616,7 @@ export default function Toolbar({
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-0.5 pl-2 border-l border-[var(--accent-border)]">
+              <div className="flex items-center gap-0.5 pl-2 border-l border-[var(--border)]">
                 <Star size={12} className="text-[var(--muted)]" />
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
@@ -635,7 +638,7 @@ export default function Toolbar({
                 <NotebookPen size={12} /> 备注
               </button>
               {folders.length > 0 && (
-                <div className="flex items-center gap-1 pl-2 border-l border-[var(--accent-border)]">
+                <div className="flex items-center gap-1 pl-2 border-l border-[var(--border)]">
                   <FolderPlus size={12} className="text-[var(--muted)]" />
                   <select
                     className="input h-6 text-[11px] bg-transparent border-0"
@@ -653,7 +656,7 @@ export default function Toolbar({
                   </select>
                 </div>
               )}
-              <div className="flex items-center gap-1 pl-2 border-l border-[var(--accent-border)]">
+              <div className="flex items-center gap-1 pl-2 border-l border-[var(--border)]">
                 <button
                   className="w-[20px] text-[12px] text-[var(--success)] hover:text-[var(--text)]"
                   title="标为留用"
@@ -727,7 +730,7 @@ export default function Toolbar({
             </>
           )}
           {noteOpen && !trashView && (
-            <div className="flex w-full items-center gap-2 border-t border-[var(--accent-border)] pt-1.5">
+            <div className="flex w-full items-center gap-2 border-t border-[var(--border)] pt-1.5">
               <input
                 className="input h-7 min-w-[160px] flex-1 text-[11.5px]"
                 placeholder={`写给这 ${selectedIds.length} 张的备注…`}

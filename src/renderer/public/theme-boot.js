@@ -2,7 +2,7 @@
 // 必须是阻塞式外链脚本（放在 head 里），不能改成 module，否则会延后到解析完成才执行
 ;(function () {
   try {
-    // 兼容改名前的旧键（月巢 moonnest → 月相 lunaris），老用户升级后首屏也不会闪
+    // 兼容改名前的旧键（月巢 moonnest → 月相 lunaris → 片匣 → 砚白 → 存照）；内部键始终为 lunaris，不改以保证兼容
     var read = function (key, legacy) {
       var value = localStorage.getItem(key)
       return value !== null ? value : localStorage.getItem(legacy)

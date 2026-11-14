@@ -285,7 +285,7 @@ export default function DraftPhotoPicker({
               <div
                 className={`mt-2 rounded-lg border border-dashed px-3 py-2 text-center text-[10.5px] transition ${
                   overEnd
-                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-2)]'
+                    ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                     : 'border-[var(--border)] text-[var(--faint)]'
                 }`}
                 onDragOver={(event) => {

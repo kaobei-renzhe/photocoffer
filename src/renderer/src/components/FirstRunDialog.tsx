@@ -13,7 +13,7 @@ export default function FirstRunDialog({ onChoose }: FirstRunDialogProps) {
   return (
     <div className="fixed inset-0 z-[70] grid place-items-center bg-[var(--overlay)] backdrop-blur-sm">
       <div className="w-[560px] max-w-[92vw] rounded-xl border border-[var(--border)] bg-[var(--panel)] p-6 shadow-2xl">
-        <div className="text-[17px] font-medium text-[var(--text)]">你主要用月相做什么？</div>
+        <div className="text-[17px] font-medium text-[var(--text)]">你主要用存照做什么？</div>
         <div className="mt-1.5 text-[12px] leading-5 text-[var(--muted)]">
           这决定侧栏先露出哪些功能，不会限制你能用的东西，以后随时能改。
         </div>

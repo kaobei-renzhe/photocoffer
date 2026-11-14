@@ -58,7 +58,7 @@ describe('备份与恢复', () => {
   it('拒绝别的应用的备份', () => {
     const zip = join(root, 'other.zip')
     makeZip(zip, { app: 'other-app', userVersion: 1 }, Buffer.from('db'))
-    expect(() => restoreBackup(zip, join(root, 'Other'))).toThrow(/不是月相的备份/)
+    expect(() => restoreBackup(zip, join(root, 'Other'))).toThrow(/不是存照的备份/)
   })
 
   it('兼容旧版 image-nest 标记', () => {

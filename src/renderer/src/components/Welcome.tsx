@@ -241,7 +241,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
           <div className="mx-auto mb-6 w-[64px] h-[64px]">
             <Logo size={64} />
           </div>
-          <h1 className="text-[22px] font-semibold tracking-wide m-0">月相</h1>
+          <h1 className="text-[22px] font-semibold tracking-wide m-0">存照</h1>
           <p className="text-[13px] text-[var(--muted)] mt-2 mb-8">
             本地优先的图片素材库 · 照片、相机与文字都归在这里
           </p>
@@ -291,7 +291,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
             <Logo size={44} />
           </div>
           <div>
-            <div className="text-[20px] font-semibold tracking-wide text-[var(--text)]">月相</div>
+            <div className="text-[20px] font-semibold tracking-wide text-[var(--text)]">存照</div>
             <div className="mt-0.5 text-[12px] text-[var(--muted)]">选择一个图库，或新建一个</div>
           </div>
         </div>

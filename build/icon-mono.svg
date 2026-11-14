@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs><filter id="sh2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7.17"/></filter><linearGradient id="bg2" x1="0.1" y1="0" x2="0.9" y2="1"><stop offset="0" stop-color="#F7FAFC"/><stop offset="0.55" stop-color="#E8EEF4"/><stop offset="1" stop-color="#D3DCE6"/></linearGradient></defs>
+  <rect width="512" height="512" rx="87.04" fill="#14161B"/>
+  <rect x="53.760000000000005" y="58.368" width="409.6" height="409.6" rx="38.4" fill="#000" opacity="0.4" filter="url(#sh2)"/><rect x="51.2" y="51.2" width="409.6" height="409.6" rx="38.4" fill="url(#bg2)"/><rect x="59.392" y="59.392" width="393.216" height="393.216" rx="34.304" fill="none" stroke="#FFFDF7" stroke-width="2.56" stroke-opacity="0.45"/><rect x="79.36" y="79.36" width="353.28000000000003" height="353.28000000000003" rx="16.384" fill="#2A2E36"/><g transform="rotate(-17 199.68 220.16)">
+    <rect x="97.28" y="97.28" width="204.8" height="245.76" rx="6.144" fill="#F7FAFC"/>
+    <rect x="110.592" y="110.592" width="178.17600000000002" height="171.51999999999998" rx="3.072" fill="#9AA0AA"/>
+    <path d="M 110.592 282.11199999999997 L 181.8624 182.6304 L 221.06112000000002 230.65599999999998 L 253.13280000000003 192.92159999999998 L 288.76800000000003 282.11199999999997 Z" fill="#14161B" opacity="0.24"/>
+  </g><g transform="rotate(14 261.12 209.92000000000002)">
+    <rect x="158.72" y="87.04" width="204.8" height="245.76" rx="6.144" fill="#F7FAFC"/>
+    <rect x="172.032" y="100.352" width="178.17600000000002" height="171.51999999999998" rx="3.072" fill="#9AA0AA"/>
+    <path d="M 172.032 271.87199999999996 L 243.30240000000003 172.3904 L 282.50112 220.416 L 314.57280000000003 182.6816 L 350.208 271.87199999999996 Z" fill="#14161B" opacity="0.24"/>
+  </g><g transform="rotate(-1 235.52 250.88)">
+    <rect x="133.12" y="128" width="204.8" height="245.76" rx="6.144" fill="#F7FAFC"/>
+    <rect x="146.43200000000002" y="141.312" width="178.17600000000002" height="171.51999999999998" rx="3.072" fill="#9AA0AA"/>
+    <path d="M 146.43200000000002 312.832 L 217.7024 213.3504 L 256.90112 261.376 L 288.9728 223.64159999999998 L 324.60800000000006 312.832 Z" fill="#14161B" opacity="0.24"/>
+  </g><rect x="79.36" y="79.36" width="353.28000000000003" height="23.04" rx="9.216" fill="#000" opacity="0.2"/>
+</svg>

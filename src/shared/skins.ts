@@ -1,4 +1,4 @@
-export type SkinId = 'classic' | 'eclipse' | 'aurora' | 'paper' | 'graphite' | 'mist'
+export type SkinId = 'classic' | 'night' | 'paper' | 'contrast'
 
 export interface SkinDefinition {
   id: SkinId
@@ -15,51 +15,35 @@ export interface SkinDefinition {
 export const SKINS: SkinDefinition[] = [
   {
     id: 'classic',
-    name: '经典',
-    hint: '当前外观，跟随系统深浅',
+    name: '默认',
+    hint: '跟随系统深浅 · 匣色',
     mode: 'auto',
-    base: '#0b0d11',
-    swatches: ['#0b0d11', '#101319', '#7aa2f7']
+    base: '#14161B',
+    swatches: ['#14161B', '#2A2E36', '#5B9FE8']
   },
   {
-    id: 'eclipse',
-    name: '月蚀',
-    hint: '夜色紫黑 · 月光紫',
+    id: 'night',
+    name: '深色',
+    hint: '常驻深色 · 底板与匣壁',
     mode: 'dark',
-    base: '#09070f',
-    swatches: ['#09070f', '#0d0a15', '#a78bfa']
-  },
-  {
-    id: 'aurora',
-    name: '夜航',
-    hint: '深色玻璃 · 青绿光晕',
-    mode: 'dark',
-    base: '#05080f',
-    swatches: ['#05080f', '#0b1520', '#5eead4']
-  },
-  {
-    id: 'graphite',
-    name: '墨岩',
-    hint: '中性深灰 · 低饱和极简',
-    mode: 'dark',
-    base: '#0f1113',
-    swatches: ['#0f1113', '#17191c', '#9aa7b8']
+    base: '#14161B',
+    swatches: ['#14161B', '#1E2127', '#5B9FE8']
   },
   {
     id: 'paper',
-    name: '柔光',
-    hint: '浅色画册 · 暖白陶土',
+    name: '浅色',
+    hint: '常驻浅色 · 冷白纸感',
     mode: 'light',
-    base: '#f6f4f0',
-    swatches: ['#f6f4f0', '#fbfaf8', '#b4764a']
+    base: '#F0F3F7',
+    swatches: ['#F0F3F7', '#E8EEF4', '#2F6CB8']
   },
   {
-    id: 'mist',
-    name: '雾蓝',
-    hint: '冷调浅色 · 清透蓝灰',
-    mode: 'light',
-    base: '#f2f6fb',
-    swatches: ['#f2f6fb', '#ffffff', '#4f7fd4']
+    id: 'contrast',
+    name: '高对比',
+    hint: '无障碍 · 高辨识度',
+    mode: 'dark',
+    base: '#0A0C0F',
+    swatches: ['#0A0C0F', '#14171C', '#82B4F2']
   }
 ]
 

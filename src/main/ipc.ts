@@ -306,8 +306,8 @@ function applySkinNative(id: SkinId): void {
   const background =
     def.mode === 'auto'
       ? nativeTheme.shouldUseDarkColors
-        ? '#0b0d11'
-        : '#f6f7fa'
+        ? '#14161B'
+        : '#F0F3F7'
       : def.base
   for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(background)
 }
@@ -1115,7 +1115,7 @@ export function registerIpc(): void {
   ipcMain.handle('library:restore', async () => {
     if (isImportRunning()) throw new Error('正在导入图片，等导入结束后再恢复图库')
     const picked = await dialog.showOpenDialog({
-      title: '选择月相备份文件',
+      title: '选择存照备份文件',
       properties: ['openFile'],
       filters: [{ name: 'Zip 压缩包', extensions: ['zip'] }]
     })

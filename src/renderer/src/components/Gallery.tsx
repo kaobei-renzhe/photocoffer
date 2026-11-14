@@ -161,7 +161,10 @@ const Card = memo(function Card({
         </span>
       )}
       {selected && (
-        <span className="absolute right-1.5 top-1.5 z-10 grid h-[17px] w-[17px] place-items-center rounded-full bg-[var(--accent)] text-[var(--on-accent)] shadow">
+        <span
+          className="absolute right-1.5 top-1.5 z-10 grid h-[18px] w-[18px] place-items-center rounded-full border border-white/20 text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)]"
+          style={{ background: 'rgba(10,12,16,0.72)', backdropFilter: 'blur(6px)' }}
+        >
           <Check size={11} strokeWidth={3} />
         </span>
       )}

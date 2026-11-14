@@ -517,7 +517,7 @@ export default function SettingsDialog({
       }
       const ok = await window.api.confirm(
         `发现 ${result.conflicts.length} 张在别的软件里改过，要导入吗？`,
-        '会覆盖星级、旗标、备注，标签只增不减；不导入就保持月相现在的判断。'
+        '会覆盖星级、旗标、备注，标签只增不减；不导入就保持存照现在的判断。'
       )
       if (!ok) {
         setXmpMsg(`发现 ${result.conflicts.length} 张外部修改，已跳过`)
@@ -1014,7 +1014,7 @@ export default function SettingsDialog({
                           key={value}
                           className={`rounded-lg border px-2.5 py-2.5 text-left transition-colors ${
                             active
-                              ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                              ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
                           }`}
                           disabled={saving}
@@ -1028,7 +1028,13 @@ export default function SettingsDialog({
                               {label}
                             </span>
                           </div>
-                          <div className="mt-1 text-[10.5px] leading-4 text-[var(--faint)]">{hint}</div>
+                          <div
+                            className={`mt-1 text-[10.5px] leading-4 ${
+                              active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'
+                            }`}
+                          >
+                            {hint}
+                          </div>
                         </button>
                       )
                     })}
@@ -1048,7 +1054,7 @@ export default function SettingsDialog({
                           key={item.id}
                           className={`rounded-lg border p-2 text-left transition-colors ${
                             active
-                              ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                              ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
                           }`}
                           disabled={skinSaving}
@@ -1071,13 +1077,15 @@ export default function SettingsDialog({
                             </span>
                             {active && <Check size={12} color="var(--accent-2)" />}
                           </div>
-                          <div className="mt-0.5 text-[10.5px] leading-4 text-[var(--faint)]">{item.hint}</div>
+                          <div className={`mt-0.5 text-[10.5px] leading-4 ${active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'}`}>
+                            {item.hint}
+                          </div>
                         </button>
                       )
                     })}
                   </div>
                   <div className="mt-2 text-[11px] leading-4 text-[var(--faint)]">
-                    「{activeSkin.name}」已应用。除「经典」外，其余风格会固定深/浅，上方的主题开关对它们不起作用。
+                    「{activeSkin.name}」已应用。除「默认」外，其余风格会固定深/浅，上方的主题开关对它们不起作用。
                   </div>
                 </div>
 
@@ -1091,7 +1099,7 @@ export default function SettingsDialog({
                           key={item.id}
                           className={`w-full flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors ${
                             active
-                              ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                              ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
                           }`}
                           onClick={() => onThumbQuality(item.id)}
@@ -1107,7 +1115,9 @@ export default function SettingsDialog({
                             >
                               {item.label}
                             </span>
-                            <div className="mt-0.5 text-[10.5px] leading-4 text-[var(--faint)]">{item.hint}</div>
+                            <div className={`mt-0.5 text-[10.5px] leading-4 ${active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'}`}>
+                              {item.hint}
+                            </div>
                           </div>
                           {active && <Check size={13} color="var(--accent-2)" className="mt-0.5 shrink-0" />}
                         </button>
@@ -1130,7 +1140,7 @@ export default function SettingsDialog({
                           key={value}
                           className={`rounded-lg border px-2.5 py-2.5 text-left transition-colors ${
                             active
-                              ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                              ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
                           }`}
                           onClick={() => onUseCase(value)}
@@ -1143,7 +1153,13 @@ export default function SettingsDialog({
                               {label}
                             </span>
                           </div>
-                          <div className="mt-1 text-[10.5px] leading-4 text-[var(--faint)]">{hint}</div>
+                          <div
+                            className={`mt-1 text-[10.5px] leading-4 ${
+                              active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'
+                            }`}
+                          >
+                            {hint}
+                          </div>
                         </button>
                       )
                     })}
@@ -1528,7 +1544,7 @@ export default function SettingsDialog({
                             key={option.value}
                             className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
                               active
-                                ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]'
+                                ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                                 : 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
                             }`}
                             disabled={scoreBusy || scoreMinRating === null}
@@ -1558,7 +1574,7 @@ export default function SettingsDialog({
                     <button
                       className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
                         (scopeFolders ?? []).length === 0
-                          ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]'
+                          ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                           : 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
                       }`}
                       onClick={() => void changeScopeFolders([])}
@@ -1573,7 +1589,7 @@ export default function SettingsDialog({
                           key={folder.id}
                           className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
                             active
-                              ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--text)]'
+                              ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                               : 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
                           }`}
                           onClick={() => void changeScopeFolders(toggleFolder(folder.id))}
@@ -1746,7 +1762,7 @@ export default function SettingsDialog({
                           <div className="min-w-0">
                             <div className="text-[12px]">忽略外部修改</div>
                             <div className="mt-0.5 text-[10.5px] leading-4 text-[var(--faint)]">
-                              Lightroom 等软件改过 .xmp 时不再提示导入，月相保持自己的判断。
+                              Lightroom 等软件改过 .xmp 时不再提示导入，存照保持自己的判断。
                             </div>
                           </div>
                           <button
@@ -1837,7 +1853,7 @@ export default function SettingsDialog({
             {tab === 'about' && (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium">月相</span>
+                  <span className="text-[13px] font-medium">存照</span>
                   <span className="text-[11px] text-[var(--faint)]">
                     {appInfo ? `版本 ${appInfo.version}` : '读取版本中…'}
                   </span>
@@ -1912,7 +1928,7 @@ export default function SettingsDialog({
                 )}
 
                 <div className="text-[11px] leading-5 text-[var(--faint)]">
-                  卸载月相不会删除以上任何文件。整理成果（标签、分类、笔记、评分）保存在图库索引里，备份图库目录就等于备份了全部整理结果。
+                  卸载存照不会删除以上任何文件。整理成果（标签、分类、笔记、评分）保存在图库索引里，备份图库目录就等于备份了全部整理结果。
                 </div>
 
                 <div>

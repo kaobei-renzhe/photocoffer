@@ -71,12 +71,12 @@ function DirRows({ nodes, depth, current, expanded, onToggle, onPick }: DirRowsP
                     onToggle(node.path)
                   }}
                 >
-                  {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  {open ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
                 </button>
               ) : (
                 <span className="w-[12px] shrink-0" />
               )}
-              <Folder size={13} />
+              <Folder size={14} strokeWidth={1.75} />
               <span className="truncate">{node.name}</span>
               <span className="count">{node.total}</span>
             </div>
@@ -414,7 +414,7 @@ export default function Sidebar({
               }}
               title={open ? '折叠子文件夹' : '展开子文件夹'}
             >
-              {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+              {open ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
             </button>
           ) : (
             <span className="w-3 shrink-0" />
@@ -430,12 +430,12 @@ export default function Sidebar({
               }}
             />
           ) : (
-            <Folder size={14} />
+            <Folder size={14} strokeWidth={1.75} />
           )}
           {isRenaming ? (
             <input
               autoFocus
-              className="input h-5 min-w-0 flex-1 text-[11.5px]"
+              className="input h-5 min-w-0 flex-1 text-[12px]"
               value={renaming.name}
               onChange={(event) => setRenaming({ id: folder.id, name: event.target.value })}
               onClick={(event) => event.stopPropagation()}
@@ -458,7 +458,7 @@ export default function Sidebar({
                 onFilter({ sort: filter.sort })
               }}
             >
-              <X size={12} />
+              <X size={14} strokeWidth={1.75} />
             </button>
           )}
         </div>
@@ -657,7 +657,7 @@ export default function Sidebar({
               }}
               title={collapsed ? '展开子标签' : '折叠子标签'}
             >
-              {collapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
+              {collapsed ? <ChevronRight size={14} strokeWidth={1.75} /> : <ChevronDown size={14} strokeWidth={1.75} />}
             </button>
           ) : (
             <span className="w-3 shrink-0" />
@@ -673,7 +673,7 @@ export default function Sidebar({
                 unselectTag(tag.id)
               }}
             >
-              <X size={12} />
+              <X size={14} strokeWidth={1.75} />
             </button>
           )}
         </div>
@@ -707,9 +707,9 @@ export default function Sidebar({
             }}
             title={open ? '收起取值' : '展开取值'}
           >
-            {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+            {open ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
           </button>
-          <Layers size={12} />
+          <Layers size={14} strokeWidth={1.75} />
           <span className="truncate">{facet.name}</span>
           <span className={`count ${picked.length > 0 ? 'text-[var(--accent-2)]' : ''}`}>
             {picked.length > 0 ? `${picked.length}/${values.length}` : values.length}
@@ -741,7 +741,7 @@ export default function Sidebar({
                       }}
                       title={collapsed ? '展开子标签' : '折叠子标签'}
                     >
-                      {collapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
+                      {collapsed ? <ChevronRight size={14} strokeWidth={1.75} /> : <ChevronDown size={14} strokeWidth={1.75} />}
                     </button>
                   ) : (
                     <span className="w-3 shrink-0" />
@@ -754,7 +754,7 @@ export default function Sidebar({
             )
           })}
         {open && values.length === 0 && (
-          <div className="px-2 py-1 pl-[18px] text-[11px] text-[var(--faint)]">
+          <div className="px-2 py-1 pl-[18px] text-[12px] text-[var(--faint)]">
             还没有取值，可在人像工作台里添加
           </div>
         )}
@@ -768,7 +768,7 @@ export default function Sidebar({
       key: 'portrait' as GrownFeature,
       label: '人像工作台',
       title: '按景别、光线、氛围等人像分类筛选与打标',
-      icon: <Camera size={14} />,
+      icon: <Camera size={14} strokeWidth={1.75} />,
       count: 0,
       active: false,
       visible: true,
@@ -778,7 +778,7 @@ export default function Sidebar({
       key: 'clientPicked' as GrownFeature,
       label: '浏览页已选',
       title: '最近一次浏览页里「要的 + 要修的」照片',
-      icon: <UserCheck size={14} />,
+      icon: <UserCheck size={14} strokeWidth={1.75} />,
       count: stats.clientPicked,
       active: Boolean(filter.pickAction),
       visible: stats.clientPicked > 0,
@@ -788,7 +788,7 @@ export default function Sidebar({
       key: 'delivery' as GrownFeature,
       label: '选片交付',
       title: '从选片到交付在一屏走完：生成浏览页、粘贴反馈、导出成品',
-      icon: <Send size={14} />,
+      icon: <Send size={14} strokeWidth={1.75} />,
       count: 0,
       active: false,
       visible: true,
@@ -813,17 +813,17 @@ export default function Sidebar({
       <div className="px-4 pt-3.5 pb-3 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12.5px] font-medium" title={library}>
+            <div className="truncate text-[13.5px] font-bold" title={library}>
               {libraryName}
             </div>
             {filter.dir && !samePath(filter.dir, library) && (
-              <div className="mt-0.5 truncate text-[10.5px] text-[var(--faint)]" title={filter.dir}>
+              <div className="mt-0.5 truncate text-[11px] text-[var(--faint)]" title={filter.dir}>
                 {folderName(filter.dir)}
               </div>
             )}
           </div>
           <button className="btn btn-ghost h-6 px-1.5 shrink-0" title="切换图库" onClick={onSwitch}>
-            <ArrowLeftRight size={13} />
+            <ArrowLeftRight size={14} strokeWidth={1.75} />
           </button>
         </div>
       </div>
@@ -833,7 +833,7 @@ export default function Sidebar({
           className={`side-item ${isAll ? 'active' : ''}`}
           onClick={() => onFilter({ sort: filter.sort })}
         >
-          <Images size={14} />
+          <Images size={14} strokeWidth={1.75} />
           全部图片
           <span className="count">{stats.total}</span>
         </div>
@@ -857,7 +857,7 @@ export default function Sidebar({
             onClick={() => onFilter({ sort: filter.sort, missing: true })}
             title="原文件已经不在记录里的路径了，可以重新定位接回"
           >
-            <TriangleAlert size={14} />
+            <TriangleAlert size={14} strokeWidth={1.75} />
             文件丢失
             <span className="count">{stats.missing}</span>
           </div>
@@ -869,7 +869,7 @@ export default function Sidebar({
             onClick={() => onFilter({ sort: filter.sort, errors: true })}
             title="损坏或无法识别的文件，修好后重新导入即可"
           >
-            <TriangleAlert size={14} />
+            <TriangleAlert size={14} strokeWidth={1.75} />
             导入异常
             <span className="count">{stats.errors}</span>
           </div>
@@ -881,7 +881,7 @@ export default function Sidebar({
             onClick={() => onFilter({ sort: filter.sort, trashed: true })}
             title="软删除的照片还能恢复；彻底删除只删记录和缩略图，不动原图"
           >
-            <Trash2 size={14} />
+            <Trash2 size={14} strokeWidth={1.75} />
             回收站
             <span className="count">{stats.trashed}</span>
           </div>
@@ -897,9 +897,9 @@ export default function Sidebar({
               onClick={() => setMoreFeaturesOpen((open) => !open)}
               title={moreFeaturesOpen ? '收起更多功能' : '展开：人像工作台、选片交付等'}
             >
-              {moreFeaturesOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+              {moreFeaturesOpen ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
               <span className="ml-1">更多</span>
-              <span className="ml-auto text-[10px]">{moreNav.length}</span>
+              <span className="ml-auto text-[11px]">{moreNav.length}</span>
             </div>
             {moreFeaturesOpen &&
               moreNav.map((entry) => (
@@ -926,13 +926,13 @@ export default function Sidebar({
           onClick={() => setDirsOpen((open) => !open)}
           title={dirsOpen ? '折叠源目录' : '展开源目录'}
         >
-          {dirsOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          {dirsOpen ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
           <span className="ml-1">源目录</span>
-          <span className="ml-auto text-[10px]">{dirTree.length}</span>
+          <span className="ml-auto text-[11px]">{dirTree.length}</span>
         </div>
         {dirsOpen &&
           (dirTree.length === 0 ? (
-            <div className="px-2 py-1 text-[11px] text-[var(--faint)]">
+            <div className="px-2 py-1 text-[12px] text-[var(--faint)]">
               导入文件夹后按原目录归档
             </div>
           ) : (
@@ -957,9 +957,9 @@ export default function Sidebar({
           onDragOver={dragOverFolderRoot}
           onDrop={dropFolderRoot}
         >
-          {openSections.folders ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          {openSections.folders ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
           <span className="ml-1">文件夹</span>
-          <span className="ml-auto text-[10px]">{folders.length}</span>
+          <span className="ml-auto text-[11px]">{folders.length}</span>
           <button
             className="btn btn-ghost h-5 px-1 ml-1"
             onClick={(event) => {
@@ -969,7 +969,7 @@ export default function Sidebar({
             }}
             title="新建文件夹"
           >
-            <Plus size={12} />
+            <Plus size={14} strokeWidth={1.75} />
           </button>
         </div>
 
@@ -993,7 +993,7 @@ export default function Sidebar({
             />
             {addingParent !== null && (
               <button
-                className="mt-1 text-[10.5px] text-[var(--faint)] hover:text-[var(--text)]"
+                className="mt-1 text-[11px] text-[var(--faint)] hover:text-[var(--text)]"
                 onMouseDown={(event) => {
                   // 别让输入框先 blur 提交，再取消
                   event.preventDefault()
@@ -1009,7 +1009,7 @@ export default function Sidebar({
         {openSections.folders && foldersOf(null).map((folder) => renderFolderTree(folder, 0))}
 
         {openSections.folders && folders.length === 0 && !adding && (
-          <div className="px-2 py-1 text-[11px] text-[var(--faint)]">还没有文件夹</div>
+          <div className="px-2 py-1 text-[12px] text-[var(--faint)]">还没有文件夹</div>
         )}
 
         <div
@@ -1026,9 +1026,9 @@ export default function Sidebar({
           onDragLeave={dragLeave('tag-root')}
           onDrop={dropTagOn(null)}
         >
-          {openSections.tags ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          {openSections.tags ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
           <span className="ml-1">标签</span>
-          <span className="ml-auto text-[10px]">
+          <span className="ml-auto text-[11px]">
             {(showFacets ? facets.length : 0) + subTagsOf(0).length}
           </span>
         </div>
@@ -1037,7 +1037,7 @@ export default function Sidebar({
         {openSections.tags && shownTags.map((tag) => renderTagTree(tag, 0))}
         {openSections.tags && topTags.length > 10 && (
           <button
-            className="mt-1 w-full px-2 py-0.5 text-left text-[11px] text-[var(--faint)] hover:text-[var(--accent-2)]"
+            className="mt-1 w-full px-2 py-0.5 text-left text-[12px] text-[var(--faint)] hover:text-[var(--accent-2)]"
             onClick={() => setTagsExpanded((open) => !open)}
             title={tagsExpanded ? '收起标签' : '展开全部标签'}
           >
@@ -1046,12 +1046,12 @@ export default function Sidebar({
         )}
         {openSections.tags && showFacets && facets.map((facet) => renderFacetNode(facet))}
         {openSections.tags && !showFacets && facets.length > 0 && (
-          <div className="px-2 py-1 text-[11px] text-[var(--faint)]">
+          <div className="px-2 py-1 text-[12px] text-[var(--faint)]">
             人像分类已收进「更多」
           </div>
         )}
         {openSections.tags && tags.length === 0 && facets.length === 0 && (
-          <div className="px-2 py-1 text-[11px] text-[var(--faint)]">在右侧详情里给图片打标签</div>
+          <div className="px-2 py-1 text-[12px] text-[var(--faint)]">在右侧详情里给图片打标签</div>
         )}
 
         <div
@@ -1059,9 +1059,9 @@ export default function Sidebar({
           onClick={() => toggleSection('smarts')}
           title={openSections.smarts ? '折叠智能文件夹' : '展开智能文件夹'}
         >
-          {openSections.smarts ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          {openSections.smarts ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
           <span className="ml-1">智能文件夹</span>
-          <span className="ml-auto text-[10px]">{smarts.length}</span>
+          <span className="ml-auto text-[11px]">{smarts.length}</span>
         </div>
         {openSections.smarts &&
           smarts.map((smart) => (
@@ -1080,7 +1080,7 @@ export default function Sidebar({
                 })
               }}
             >
-              <Sparkles size={13} />
+              <Sparkles size={14} strokeWidth={1.75} />
               <span className="truncate">{smart.name}</span>
               {activeSmartId === smart.id && (
                 <button
@@ -1091,13 +1091,13 @@ export default function Sidebar({
                     onFilter({ sort: filter.sort })
                   }}
                 >
-                  <X size={12} />
+                  <X size={14} strokeWidth={1.75} />
                 </button>
               )}
             </div>
           ))}
         {openSections.smarts && smarts.length === 0 && (
-          <div className="px-2 py-1 text-[11px] text-[var(--faint)]">筛选后可在顶部保存</div>
+          <div className="px-2 py-1 text-[12px] text-[var(--faint)]">筛选后可在顶部保存</div>
         )}
         {/* 工具段：低频入口全部收在这里，默认不展开 */}
         <div className="my-2.5 border-t border-[var(--border)]" />
@@ -1106,9 +1106,9 @@ export default function Sidebar({
           onClick={() => setToolsOpen((open) => !open)}
           title={toolsOpen ? '收起工具' : '展开工具：装备、备份、语义索引等'}
         >
-          {toolsOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+          {toolsOpen ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
           <span className="ml-1">工具</span>
-          <Wrench size={11} className="ml-auto opacity-70" />
+          <Wrench size={14} strokeWidth={1.75} className="ml-auto opacity-70" />
         </div>
         {toolsOpen && (
           <>
@@ -1117,7 +1117,7 @@ export default function Sidebar({
               onClick={onEquipment}
               title="管理机身、镜头、三脚架等设备，按拍摄场景挑搭配"
             >
-              <Camera size={13} />
+              <Camera size={14} strokeWidth={1.75} />
               设备与搭配
             </div>
             <div
@@ -1125,9 +1125,9 @@ export default function Sidebar({
               onClick={onIndexClip}
               title="为图片建立本地语义向量，用于自然语言搜图和找相似"
             >
-              <Sparkles size={13} />
+              <Sparkles size={14} strokeWidth={1.75} />
               语义索引
-              <span className="ml-auto text-[10.5px] text-[var(--faint)] tabular-nums">
+              <span className="ml-auto text-[11px] text-[var(--faint)] tabular-nums">
                 {!clipStatus
                   ? ''
                   : !clipStatus.modelReady
@@ -1142,7 +1142,7 @@ export default function Sidebar({
               onClick={onAutoTag}
               title="用本地模型把图片自动归到风景、人像等分类标签"
             >
-              <TagIcon size={13} />
+              <TagIcon size={14} strokeWidth={1.75} />
               自动分类
             </div>
             <div
@@ -1154,32 +1154,32 @@ export default function Sidebar({
                   : '文件搬家后，按目录结构和内容接回丢失的图片'
               }
             >
-              <TriangleAlert size={13} />
+              <TriangleAlert size={14} strokeWidth={1.75} />
               重新定位
               {lastRelocateDir && (
-                <span className="ml-auto max-w-[96px] truncate text-[10.5px] text-[var(--faint)]">
+                <span className="ml-auto max-w-[96px] truncate text-[11px] text-[var(--faint)]">
                   {folderName(lastRelocateDir)}
                 </span>
               )}
             </div>
             <div className="side-item" onClick={onBackup} title="把图库的数据文件打包成 zip">
-              <Archive size={13} />
+              <Archive size={14} strokeWidth={1.75} />
               备份图库
             </div>
             <div className="side-item" onClick={onRestore} title="从 zip 备份恢复到一个新文件夹">
-              <RefreshCw size={13} />
+              <RefreshCw size={14} strokeWidth={1.75} />
               从备份恢复
             </div>
             <div className="side-item" onClick={onAutoBackup} title="设置定时自动备份">
-              <Clock size={13} />
+              <Clock size={14} strokeWidth={1.75} />
               自动备份
             </div>
             <div className="side-item" onClick={onExport} title="导出 CSV 素材清单">
-              <FileSpreadsheet size={13} />
+              <FileSpreadsheet size={14} strokeWidth={1.75} />
               导出素材清单
             </div>
             <div className="side-item" onClick={onSettings} title="外观、大模型、语义索引与存储位置">
-              <SettingsIcon size={13} />
+              <SettingsIcon size={14} strokeWidth={1.75} />
               设置
             </div>
           </>
@@ -1192,60 +1192,60 @@ export default function Sidebar({
           onClick={onImportFiles}
           title={stats.total === 0 ? '导入第一张照片' : '继续导入图片'}
         >
-          <Upload size={14} /> 导入图片
+          <Upload size={16} strokeWidth={1.75} /> 导入图片
         </button>
         <button
           className={`btn px-2 ${moreOpen ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''}`}
           onClick={() => setMoreOpen((open) => !open)}
           title="更多操作"
         >
-          <MoreHorizontal size={15} />
+          <MoreHorizontal size={16} strokeWidth={1.75} />
         </button>
 
         {moreOpen && (
           <>
             <div className="fixed inset-0 z-[60]" onClick={() => setMoreOpen(false)} />
-            <div className="absolute bottom-[46px] left-2 right-2 z-[61] rounded-lg border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl">
+            <div className="absolute bottom-[46px] left-2 right-2 z-[61] rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl">
               {[
                 {
                   key: 'sync',
                   label: '刷新图库',
                   title: '重新扫描源目录：补上新照片、标记已删除、刷新被覆盖修改的照片',
-                  icon: <RefreshCw size={13} />,
+                  icon: <RefreshCw size={14} strokeWidth={1.75} />,
                   run: onSync
                 },
                 {
                   key: 'folder',
                   label: '导入文件夹',
                   title: '选择一个文件夹导入',
-                  icon: <FolderPlus size={13} />,
+                  icon: <FolderPlus size={14} strokeWidth={1.75} />,
                   run: onImportFolder
                 },
                 {
                   key: 'rescan',
                   label: '扫描',
                   title: '重新扫描当前图库',
-                  icon: <RefreshCw size={13} />,
+                  icon: <RefreshCw size={14} strokeWidth={1.75} />,
                   run: onRescan
                 },
                 {
                   key: 'duplicates',
                   label: '查找重复',
                   title: '按内容找出重复照片',
-                  icon: <Copy size={13} />,
+                  icon: <Copy size={14} strokeWidth={1.75} />,
                   run: onDuplicates
                 },
                 {
                   key: 'settings',
                   label: '设置',
                   title: '外观、大模型、语义索引与存储位置',
-                  icon: <SettingsIcon size={13} />,
+                  icon: <SettingsIcon size={14} strokeWidth={1.75} />,
                   run: onSettings
                 }
               ].map((entry) => (
                 <button
                   key={entry.key}
-                  className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-[12px] text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12px] text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
                   onClick={() => {
                     setMoreOpen(false)
                     entry.run()
@@ -1256,7 +1256,7 @@ export default function Sidebar({
                   {entry.label}
                 </button>
               ))}
-              <div className="mt-1 border-t border-[var(--border)] px-2.5 py-1.5 text-[10px] text-[var(--faint)]">
+              <div className="mt-1 border-t border-[var(--border)] px-2.5 py-1.5 text-[11px] text-[var(--faint)]">
                 {stats.tags} 个标签 · {stats.folders} 个文件夹
               </div>
             </div>
@@ -1275,14 +1275,14 @@ export default function Sidebar({
           }}
         >
           <div
-            className="absolute min-w-[172px] rounded-lg border border-[var(--border)] bg-[var(--panel)] py-1 shadow-2xl"
+            className="absolute min-w-[172px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] py-1 shadow-2xl"
             style={{
               left: Math.min(folderMenu.x, Math.max(8, window.innerWidth - 188)),
               top: Math.min(folderMenu.y, Math.max(8, window.innerHeight - 176))
             }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="px-3 py-1 text-[10.5px] text-[var(--faint)]">{folderMenu.folder.name}</div>
+            <div className="px-3 py-1 text-[11px] text-[var(--faint)]">{folderMenu.folder.name}</div>
             <button
               className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--text)] hover:bg-[var(--panel-2)]"
               onClick={() => {
@@ -1338,11 +1338,11 @@ export default function Sidebar({
           }}
         >
           <div
-            className="absolute min-w-[150px] rounded-lg border border-[var(--border)] bg-[var(--panel)] py-1 shadow-2xl"
+            className="absolute min-w-[150px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] py-1 shadow-2xl"
             style={{ left: menu.x, top: menu.y }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="px-3 py-1 text-[10.5px] text-[var(--faint)]">× 只取消选中</div>
+            <div className="px-3 py-1 text-[11px] text-[var(--faint)]">× 只取消选中</div>
             <button
               className="w-full text-left px-3 py-1.5 text-[12px] text-[var(--danger-text)] hover:bg-[var(--panel-2)]"
               onClick={() => {

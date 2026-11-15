@@ -219,7 +219,7 @@ export default function Toolbar({
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-[420px]">
           <Search
-            size={14}
+            size={16} strokeWidth={1.75}
             className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--faint)] pointer-events-none"
           />
           <input
@@ -232,7 +232,7 @@ export default function Toolbar({
             onChange={(e) => patch({ query: e.target.value })}
           />
           <button
-            className={`absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md transition-colors ${
+            className={`absolute right-1 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-lg transition-colors ${
               semanticMode
                 ? 'bg-[var(--accent-soft)] text-[var(--accent-2)]'
                 : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -241,7 +241,7 @@ export default function Toolbar({
             title={semanticTitle}
             aria-pressed={semanticMode}
           >
-            <Sparkles size={13} />
+            <Sparkles size={16} strokeWidth={1.75} />
           </button>
         </div>
 
@@ -254,18 +254,18 @@ export default function Toolbar({
           onClick={() => setFiltersOpen((open) => !open)}
           title={filtersOpen ? '收起筛选条件' : '展开筛选条件'}
         >
-          <SlidersHorizontal size={13} /> 筛选
+          <SlidersHorizontal size={16} strokeWidth={1.75} /> 筛选
           {activeCount > 0 && (
-            <span className="ml-1 grid h-[16px] min-w-[16px] place-items-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-medium tabular-nums text-[var(--on-accent)]">
+            <span className="ml-1 grid h-[16px] min-w-[16px] place-items-center rounded-full bg-[var(--accent)] px-1 text-[11px] font-normal tabular-nums text-[var(--on-accent)]">
               {activeCount}
             </span>
           )}
-          {filtersOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {filtersOpen ? <ChevronUp size={16} strokeWidth={1.75} /> : <ChevronDown size={16} strokeWidth={1.75} />}
         </button>
 
         {aiReady && aiVisionBlocked && (
           <span
-            className="rounded border border-[var(--warn)]/40 px-2 py-[3px] text-[10.5px] leading-4 text-[var(--warn)]"
+            className="rounded-lg border border-[var(--warn)]/40 px-2 py-[3px] text-[11px] leading-4 text-[var(--warn)]"
             title="当前模型看不了图。到设置 → 大模型里换一个视觉模型后，AI 入口会恢复。"
           >
             当前模型看不了图
@@ -273,7 +273,7 @@ export default function Toolbar({
         )}
 
         <select
-          className="input h-8 shrink-0 text-[12.5px]"
+          className="input h-8 shrink-0 text-[13.5px]"
           value={filter.sort ?? 'added'}
           onChange={(e) => patch({ sort: e.target.value as FilterState['sort'] })}
           title="排序方式"
@@ -296,14 +296,14 @@ export default function Toolbar({
             onClick={() => setViewOpen((open) => !open)}
             title="视图设置：缩略图大小与连拍展开"
           >
-            <LayoutGrid size={13} /> 视图
-            {viewOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            <LayoutGrid size={16} strokeWidth={1.75} /> 视图
+            {viewOpen ? <ChevronUp size={16} strokeWidth={1.75} /> : <ChevronDown size={16} strokeWidth={1.75} />}
           </button>
           {viewOpen && (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setViewOpen(false)} />
-              <div className="absolute right-0 top-9 z-40 w-[226px] rounded-lg border border-[var(--border)] bg-[var(--panel)] p-3 shadow-2xl">
-                <label className="block text-[10.5px] text-[var(--faint)]">缩略图大小</label>
+              <div className="absolute right-0 top-9 z-40 w-[226px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-3 shadow-2xl">
+                <label className="block text-[11px] text-[var(--faint)]">缩略图大小</label>
                 <input
                   type="range"
                   min={150}
@@ -314,7 +314,7 @@ export default function Toolbar({
                   className="mt-1.5 w-full accent-[var(--accent)]"
                 />
                 <button
-                  className={`btn mt-3 h-7 w-full justify-center text-[11.5px] ${
+                  className={`btn mt-3 h-7 w-full justify-center text-[12px] ${
                     filter.expandBursts ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
                   }`}
                   onClick={() => patch({ expandBursts: !filter.expandBursts })}
@@ -327,23 +327,23 @@ export default function Toolbar({
           )}
         </div>
 
-        <span className="ml-auto text-[11.5px] text-[var(--muted)] tabular-nums">
+        <span className="ml-auto text-[12px] text-[var(--muted)] tabular-nums">
           {loading ? '加载中…' : `${total} 张`}
         </span>
       </div>
 
       {trashView && (
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5 text-[11.5px] text-[var(--muted)]">
-          <Trash2 size={12} className="shrink-0 text-[var(--faint)]" />
+        <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5 text-[12px] text-[var(--muted)]">
+          <Trash2 size={16} strokeWidth={1.75} className="shrink-0 text-[var(--faint)]" />
           回收站里的照片可以恢复；彻底删除只删记录和缩略图，原图不动。
-          <button className="btn h-6 px-2 text-[11px] ml-auto" onClick={onPurgeAllTrashed}>
+          <button className="btn h-6 px-2 text-[12px] ml-auto" onClick={onPurgeAllTrashed}>
             清空回收站
           </button>
         </div>
       )}
 
       {filtersOpen && (
-        <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+        <div className="mt-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-2">
         <select
           className="input h-7 text-[12px]"
@@ -403,28 +403,28 @@ export default function Toolbar({
 
         {filter.missing && (
           <button
-            className="btn h-7 px-2 text-[11.5px]"
+            className="btn h-7 px-2 text-[12px]"
             onClick={onClearMissing}
             title="把文件已丢失的索引记录移出图库；磁盘上的原图不受影响，可撤销"
           >
-            <Trash2 size={12} /> 清理丢失记录
+            <Trash2 size={16} strokeWidth={1.75} /> 清理丢失记录
           </button>
         )}
 
         {aiReady && canSmartFilter && (
           <button
-            className={`btn h-7 px-2 text-[11.5px] ${
+            className={`btn h-7 px-2 text-[12px] ${
               aiRule ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
             }`}
             onClick={onOpenSmartFilter}
             title="用一句话描述要挑哪些图，让大模型帮你筛（会调用模型）"
           >
-            <Sparkles size={12} /> AI 筛选
+            <Sparkles size={16} strokeWidth={1.75} /> AI 筛选
           </button>
         )}
 
         <button
-          className={`btn h-7 px-2 text-[11.5px] ${
+          className={`btn h-7 px-2 text-[12px] ${
             filter.colorFamily ? 'border-[var(--accent-border)] text-[var(--accent-2)]' : ''
           }`}
           onClick={() => setColorOpen((open) => !open)}
@@ -439,30 +439,30 @@ export default function Toolbar({
             }}
           />
           主色
-          {colorOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          {colorOpen ? <ChevronUp size={16} strokeWidth={1.75} /> : <ChevronDown size={16} strokeWidth={1.75} />}
         </button>
 
         {filter.dir && (
           <button
-            className="btn h-7 px-2 text-[11.5px] max-w-[260px]"
+            className="btn h-7 px-2 text-[12px] max-w-[260px]"
             onClick={() => patch({ dir: null })}
             title={filter.dir}
           >
-            <FolderIcon size={12} />
+            <FolderIcon size={16} strokeWidth={1.75} />
             <span className="truncate">{filter.dir.split(/[\\/]/).filter(Boolean).pop()}</span>
-            <X size={11} />
+            <X size={16} strokeWidth={1.75} />
           </button>
         )}
 
         {aiRule && (
           <button
-            className="btn h-7 px-2 text-[11.5px] max-w-[260px] border-[var(--accent-border)] text-[var(--accent-2)]"
+            className="btn h-7 px-2 text-[12px] max-w-[260px] border-[var(--accent-border)] text-[var(--accent-2)]"
             onClick={onClearAi}
             title={`AI 筛选：${aiRule}（点击取消）`}
           >
-            <Sparkles size={11} />
+            <Sparkles size={16} strokeWidth={1.75} />
             <span className="truncate">{aiRule}</span>
-            <X size={11} />
+            <X size={16} strokeWidth={1.75} />
           </button>
         )}
 
@@ -470,26 +470,26 @@ export default function Toolbar({
           <>
             {total > 0 && (
               <button
-                className="btn h-7 px-2 text-[11.5px]"
+                className="btn h-7 px-2 text-[12px]"
                 onClick={onRetryErrors}
                 title="重新读取这批文件，修好的会自动回到图库"
               >
-                <RefreshCw size={12} /> 重试这 {total} 张
+                <RefreshCw size={16} strokeWidth={1.75} /> 重试这 {total} 张
               </button>
             )}
             <button
-              className="btn h-7 px-2 text-[11.5px] border-[var(--danger-border)] text-[var(--danger-text)]"
+              className="btn h-7 px-2 text-[12px] border-[var(--danger-border)] text-[var(--danger-text)]"
               onClick={() => patch({ errors: false })}
             >
               导入异常
-              <X size={11} />
+              <X size={16} strokeWidth={1.75} />
             </button>
           </>
         )}
 
         {hasFilter && (
           <button
-            className="btn btn-ghost h-7 px-2 text-[11.5px]"
+            className="btn btn-ghost h-7 px-2 text-[12px]"
             onClick={() => {
               onClearAi()
               onFilter({
@@ -512,7 +512,7 @@ export default function Toolbar({
               })
             }}
           >
-            <X size={12} /> 清除筛选
+            <X size={16} strokeWidth={1.75} /> 清除筛选
           </button>
         )}
 
@@ -533,29 +533,29 @@ export default function Toolbar({
                   }
                 }}
               />
-              <button className="btn h-7 px-2 text-[11.5px]" onClick={commitSmart}>
+              <button className="btn h-7 px-2 text-[12px]" onClick={commitSmart}>
                 保存
               </button>
             </>
           ) : (
             <button
-              className="btn btn-ghost h-7 px-2 text-[11.5px]"
+              className="btn btn-ghost h-7 px-2 text-[12px]"
               disabled={!hasFilter}
               onClick={() => setSaving(true)}
               title="把当前筛选条件保存成智能文件夹"
             >
-              <Save size={12} /> 保存筛选
+              <Save size={16} strokeWidth={1.75} /> 保存筛选
             </button>
           )}
         </div>
           </div>
 
           {colorOpen && (
-            <div className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-3 py-2">
+            <div className="mt-2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10.5px] text-[var(--faint)]">按照片画面的主色筛图：</span>
+                <span className="text-[11px] text-[var(--faint)]">按照片画面的主色筛图：</span>
                 <button
-                  className={`h-[24px] px-2 rounded-md border text-[11px] transition-colors ${
+                  className={`h-[24px] px-2 rounded-lg border text-[12px] transition-colors ${
                     filter.colorFamily
                       ? 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
                       : 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
@@ -583,7 +583,7 @@ export default function Toolbar({
                   )
                 })}
               </div>
-              <div className="mt-1.5 text-[10.5px] leading-4 text-[var(--faint)]">
+              <div className="mt-1.5 text-[11px] leading-4 text-[var(--faint)]">
                 主色是导入照片时从画面里提取的。点一个色块，只留下以这个色系为主的照片；再点同一个色块或「不限」就取消。这个条件也会一起存进智能文件夹。
               </div>
             </div>
@@ -593,35 +593,35 @@ export default function Toolbar({
 
       {selectedIds.length > 0 && (
         <div
-          className="flex flex-wrap items-center gap-2 mt-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5"
+          className="flex flex-wrap items-center gap-2 mt-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5"
           style={{ boxShadow: 'inset 2px 0 0 var(--accent)' }}
         >
           <span className="text-[12px] text-[var(--accent-text)]">已选 {selectedIds.length} 张</span>
           {trashView ? (
             <div className="ml-auto flex items-center gap-1">
               <button
-                className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                className="btn btn-ghost h-6 px-2 text-[12px]"
                 onClick={onRestoreSelected}
                 title="把选中的照片恢复到主图库"
               >
-                <RefreshCw size={12} /> 恢复
+                <RefreshCw size={16} strokeWidth={1.75} /> 恢复
               </button>
               <button
-                className="btn btn-ghost btn-danger h-6 px-2 text-[11.5px]"
+                className="btn btn-ghost btn-danger h-6 px-2 text-[12px]"
                 onClick={onPurgeSelected}
                 title="删除记录与缩略图缓存；磁盘上的原图不受影响，且无法撤销"
               >
-                <Trash2 size={12} /> 彻底删除
+                <Trash2 size={16} strokeWidth={1.75} /> 彻底删除
               </button>
             </div>
           ) : (
             <>
               <div className="flex items-center gap-0.5 pl-2 border-l border-[var(--border)]">
-                <Star size={12} className="text-[var(--muted)]" />
+                <Star size={16} strokeWidth={1.75} className="text-[var(--muted)]" />
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button
                     key={n}
-                    className="w-[16px] text-[12px] text-[var(--muted)] hover:text-amber-300"
+                    className="w-[16px] text-[12px] text-[var(--muted)] hover:text-[var(--star)]"
                     onClick={() => onRateSelected(n)}
                   >
                     {n}
@@ -629,19 +629,19 @@ export default function Toolbar({
                 ))}
               </div>
               <button
-                className={`btn btn-ghost h-6 px-2 text-[11.5px] ${
+                className={`btn btn-ghost h-6 px-2 text-[12px] ${
                   noteOpen ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
                 }`}
                 onClick={() => setNoteOpen((open) => !open)}
                 title="给选中的照片批量写备注"
               >
-                <NotebookPen size={12} /> 备注
+                <NotebookPen size={16} strokeWidth={1.75} /> 备注
               </button>
               {folders.length > 0 && (
                 <div className="flex items-center gap-1 pl-2 border-l border-[var(--border)]">
-                  <FolderPlus size={12} className="text-[var(--muted)]" />
+                  <FolderPlus size={16} strokeWidth={1.75} className="text-[var(--muted)]" />
                   <select
-                    className="input h-6 text-[11px] bg-transparent border-0"
+                    className="input h-6 text-[12px] bg-transparent border-0"
                     value=""
                     onChange={(e) => {
                       if (e.target.value) onAddToFolder(Number(e.target.value))
@@ -681,50 +681,50 @@ export default function Toolbar({
               </div>
               <div className="ml-auto flex items-center gap-1">
                 <button
-                  className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                  className="btn btn-ghost h-6 px-2 text-[12px]"
                   onClick={onSaveDraft}
                   title="先存成「待交付」，之后在侧栏「选片交付」里生成浏览页"
                 >
-                  <Archive size={12} /> 存为待交付
+                  <Archive size={16} strokeWidth={1.75} /> 存为待交付
                 </button>
                 <button
-                  className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                  className="btn btn-ghost h-6 px-2 text-[12px]"
                   onClick={onExportPick}
                   title="把选中的照片生成一个能直接点开的浏览页"
                 >
-                  <FileImage size={12} /> 生成浏览页
+                  <FileImage size={16} strokeWidth={1.75} /> 生成浏览页
                 </button>
                 <button
-                  className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                  className="btn btn-ghost h-6 px-2 text-[12px]"
                   onClick={onExportFinals}
                   title="按尺寸/质量导出 JPEG，或原样复制原件到文件夹"
                 >
-                  <Download size={12} /> 导出成品
+                  <Download size={16} strokeWidth={1.75} /> 导出成品
                 </button>
                 {aiReady && canScore && (
                   <button
-                    className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                    className="btn btn-ghost h-6 px-2 text-[12px]"
                     disabled={aiScoring}
                     onClick={onScoreSelected}
                     title="用大模型给选中的图评分（一次最多 12 张），结果会存进图库，每次都会调用模型"
                   >
-                    <Sparkles size={12} /> {aiScoring ? '评分中…' : 'AI 评分'}
+                    <Sparkles size={16} strokeWidth={1.75} /> {aiScoring ? '评分中…' : 'AI 评分'}
                   </button>
                 )}
                 {selectedIds.length >= 2 && (
                   <button
-                    className="btn btn-ghost h-6 px-2 text-[11.5px]"
+                    className="btn btn-ghost h-6 px-2 text-[12px]"
                     onClick={onStackSelected}
                     title="把选中的图片堆成一组"
                   >
-                    <Layers size={12} /> 堆叠
+                    <Layers size={16} strokeWidth={1.75} /> 堆叠
                   </button>
                 )}
                 <button
-                  className="btn btn-ghost btn-danger h-6 px-2 text-[11.5px]"
+                  className="btn btn-ghost btn-danger h-6 px-2 text-[12px]"
                   onClick={onDeleteSelected}
                 >
-                  <Trash2 size={12} /> 移除
+                  <Trash2 size={16} strokeWidth={1.75} /> 移除
                 </button>
               </div>
             </>
@@ -732,7 +732,7 @@ export default function Toolbar({
           {noteOpen && !trashView && (
             <div className="flex w-full items-center gap-2 border-t border-[var(--border)] pt-1.5">
               <input
-                className="input h-7 min-w-[160px] flex-1 text-[11.5px]"
+                className="input h-7 min-w-[160px] flex-1 text-[12px]"
                 placeholder={`写给这 ${selectedIds.length} 张的备注…`}
                 value={noteText}
                 onChange={(event) => setNoteText(event.target.value)}
@@ -751,14 +751,14 @@ export default function Toolbar({
                 autoFocus
                 disabled={noteBusy}
               />
-              <div className="flex shrink-0 rounded-md border border-[var(--border)] p-0.5">
+              <div className="flex shrink-0 rounded-lg border border-[var(--border)] p-0.5">
                 {[
                   { value: true, label: '追加' },
                   { value: false, label: '替换' }
                 ].map((entry) => (
                   <button
                     key={entry.label}
-                    className={`h-6 rounded px-2 text-[11px] transition-colors ${
+                    className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
                       noteAppend === entry.value
                         ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                         : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -772,7 +772,7 @@ export default function Toolbar({
                 ))}
               </div>
               <button
-                className="btn h-7 shrink-0 px-2.5 text-[11.5px]"
+                className="btn h-7 shrink-0 px-2.5 text-[12px]"
                 disabled={!noteText.trim() || noteBusy}
                 onClick={() => void applyNote()}
               >
@@ -781,7 +781,7 @@ export default function Toolbar({
             </div>
           )}
           <button className="btn btn-ghost h-6 px-1.5" onClick={onClearSelection} title="取消选择">
-            <X size={13} />
+            <X size={16} strokeWidth={1.75} />
           </button>
         </div>
       )}

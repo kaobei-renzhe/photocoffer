@@ -66,15 +66,15 @@ function listTimestamp(session: PickSessionSummary): string {
 
 function ActionBadge({ action }: { action: PickSessionItem['action'] }) {
   if (action === 'keep') {
-    return <span className="rounded bg-[var(--success)] px-1.5 py-0.5 text-[10px] text-white">要</span>
+    return <span className="rounded-lg bg-[var(--accent)] px-1.5 py-0.5 text-[11px] text-[var(--on-accent)]">✓ 要</span>
   }
   if (action === 'fix') {
-    return <span className="rounded bg-[var(--warn)] px-1.5 py-0.5 text-[10px] text-white">要修</span>
+    return <span className="rounded-lg bg-[var(--panel-3)] px-1.5 py-0.5 text-[11px] text-[var(--text)]">要修</span>
   }
   if (action === 'reject') {
-    return <span className="rounded bg-[var(--panel-3)] px-1.5 py-0.5 text-[10px] text-[var(--faint)]">不要</span>
+    return <span className="rounded-lg bg-[var(--panel-3)] px-1.5 py-0.5 text-[11px] text-[var(--faint)]">不要</span>
   }
-  return <span className="rounded bg-[var(--panel-3)] px-1.5 py-0.5 text-[10px] text-[var(--faint)]">待定</span>
+  return <span className="rounded-lg bg-[var(--panel-3)] px-1.5 py-0.5 text-[11px] text-[var(--faint)]">待定</span>
 }
 
 /** 流程线上的一个节点：编号 + 当前状态 + 可选操作 */
@@ -98,9 +98,9 @@ function FlowStep({
         ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
         : 'border-[var(--border)] bg-[var(--panel-2)]'
   return (
-    <div className={`min-w-[148px] flex-1 rounded-lg border px-3 py-2 ${toneClass}`}>
-      <div className="flex items-center gap-1.5 text-[10px] text-[var(--faint)]">
-        <span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--panel-3)] text-[9px] tabular-nums">
+    <div className={`min-w-[148px] flex-1 rounded-2xl border px-3 py-2 ${toneClass}`}>
+      <div className="flex items-center gap-1.5 text-[11px] text-[var(--faint)]">
+        <span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--panel-3)] text-[11px] tabular-nums">
           {index}
         </span>
         {title}
@@ -268,17 +268,17 @@ export default function PickDelivery({
         <button className="btn btn-ghost h-8 px-2" onClick={onBack} title="返回图库">
           <ArrowLeft size={14} /> 返回图库
         </button>
-        <div className="text-[14px] font-medium">选片交付</div>
-        <span className="text-[11px] text-[var(--faint)]">
+        <div className="text-[15px] font-bold">选片交付</div>
+        <span className="text-[12px] text-[var(--faint)]">
           {sessions === null ? '读取中…' : `共 ${sessions.length} 单`}
         </span>
         <button className="btn btn-primary ml-auto h-8 px-3" onClick={onPickNew}>
-          <Images size={13} /> 去图库选片
+          <Images size={14} /> 去图库选片
         </button>
       </header>
 
       {error && (
-        <div className="shrink-0 border-b border-[var(--danger-border)] bg-[var(--danger-soft)] px-4 py-2 text-[11px] text-[var(--danger-text)]">
+        <div className="shrink-0 border-b border-[var(--danger-border)] bg-[var(--danger-soft)] px-4 py-2 text-[12px] text-[var(--danger-text)]">
           {error}
         </div>
       )}
@@ -286,18 +286,18 @@ export default function PickDelivery({
       <div className="flex min-h-0 flex-1">
         <aside className="w-[272px] shrink-0 overflow-y-auto border-r border-[var(--border)] bg-[var(--panel)]">
           {sessions === null ? (
-            <div className="flex items-center gap-2 px-3 py-4 text-[11.5px] text-[var(--muted)]">
-              <Loader2 size={13} className="animate-spin" /> 读取中…
+            <div className="flex items-center gap-2 px-3 py-4 text-[12px] text-[var(--muted)]">
+              <Loader2 size={14} className="animate-spin" /> 读取中…
             </div>
           ) : (
             groups.map((group) => (
               <div key={group.key}>
-                <div className="flex items-center gap-2 px-3 pb-1 pt-3 text-[10.5px] font-medium uppercase tracking-[0.08em] text-[var(--faint)]">
+                <div className="flex items-center gap-2 px-3 pb-1 pt-3 text-[11px] font-normal text-[var(--faint)]">
                   {group.label}
                   <span className="ml-auto tabular-nums">{group.items.length}</span>
                 </div>
                 {group.items.length === 0 ? (
-                  <div className="px-3 pb-2 text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="px-3 pb-2 text-[11px] leading-4 text-[var(--faint)]">
                     {group.hint}
                   </div>
                 ) : (
@@ -314,15 +314,15 @@ export default function PickDelivery({
                         <div className="flex items-center gap-1.5">
                           <span className="truncate text-[12px] text-[var(--text)]">{session.title}</span>
                           {session.receivedAt && (
-                            <CheckCheck size={12} className="shrink-0 text-[var(--success)]" />
+                            <CheckCheck size={14} className="shrink-0 text-[var(--success)]" />
                           )}
                         </div>
-                        <div className="mt-0.5 truncate text-[10.5px] text-[var(--faint)]">
+                        <div className="mt-0.5 truncate text-[11px] text-[var(--faint)]">
                           {session.client || '未填称呼'} · {session.photoCount} 张 ·{' '}
                           {listTimestamp(session)}
                         </div>
-                        <div className="mt-1 flex items-center gap-2 text-[10px] tabular-nums">
-                          <span className="text-[var(--success)]">要 {session.keep}</span>
+                        <div className="mt-1 flex items-center gap-2 text-[11px] tabular-nums">
+                          <span className="text-[var(--success)]">✓ 要 {session.keep}</span>
                           <span className="text-[var(--warn)]">修 {session.fix}</span>
                           <span className="text-[var(--faint)]">待 {session.pending}</span>
                         </div>
@@ -340,13 +340,13 @@ export default function PickDelivery({
             <div className="grid h-full place-items-center">
               <div className="max-w-[360px] text-center">
                 <Send size={28} className="mx-auto mb-3 text-[var(--faint)]" />
-                <div className="text-[14px] text-[var(--text)]">还没有选片单</div>
-                <div className="mt-1.5 text-[11.5px] leading-5 text-[var(--faint)]">
+                <div className="text-[15px] text-[var(--text)]">还没有选片单</div>
+                <div className="mt-1.5 text-[12px] leading-5 text-[var(--faint)]">
                   回主图库选中一批照片，点「生成浏览页」，这一单就会出现在这里。
                   回传结果后，也能在这条线上直接导出成品。
                 </div>
                 <button className="btn btn-primary mt-4 h-8 px-3" onClick={onPickNew}>
-                  <Images size={13} /> 去图库选片
+                  <Images size={14} /> 去图库选片
                 </button>
               </div>
             </div>
@@ -355,9 +355,9 @@ export default function PickDelivery({
               <div className="flex items-start gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h1 className="truncate text-[16px] text-[var(--text)]">{selected.title}</h1>
+                    <h1 className="truncate text-[18px] text-[var(--text)]">{selected.title}</h1>
                     <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] ${
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] ${
                         selectedState === 'done'
                           ? 'bg-[var(--success-soft)] text-[var(--success)]'
                           : selectedState === 'sent'
@@ -368,10 +368,10 @@ export default function PickDelivery({
                       {selectedState ? STATE_LABEL[selectedState] : ''}
                     </span>
                   </div>
-                  <div className="mt-1 text-[11px] text-[var(--muted)]">
+                  <div className="mt-1 text-[12px] text-[var(--muted)]">
                     {selected.client || '未填称呼'} · {selected.photoCount} 张 · 短码 {selected.token}
                   </div>
-                  <div className="mt-1 text-[10.5px] text-[var(--faint)]">
+                  <div className="mt-1 text-[11px] text-[var(--faint)]">
                     {selected.sentAt
                       ? `导出 ${formatDate(selected.sentAt)}`
                       : `更新 ${formatDate(selected.updatedAt)}`}{' '}
@@ -382,56 +382,56 @@ export default function PickDelivery({
                 <div className="ml-auto flex shrink-0 items-center gap-1.5">
                   {selected.filePath && (
                     <button
-                      className="btn btn-ghost h-7 px-2 text-[11px]"
+                      className="btn btn-ghost h-7 px-2 text-[12px]"
                       onClick={() => void window.api.showInFolder(selected.filePath as string)}
                       title={selected.filePath}
                     >
-                      <FolderOpen size={12} /> 文件夹
+                      <FolderOpen size={14} /> 文件夹
                     </button>
                   )}
                   {selectedState === 'draft' && (
                     <button
-                      className="btn h-7 px-2 text-[11px]"
+                      className="btn h-7 px-2 text-[12px]"
                       onClick={() => setPhotoOpen(true)}
                       title="从图库添加照片，或把照片移出这一单"
                     >
-                      <Images size={12} /> 管理照片
+                      <Images size={14} /> 管理照片
                     </button>
                   )}
                   {selectedState === 'draft' && !editing && (
                     <button
-                      className="btn h-7 px-2 text-[11px]"
+                      className="btn h-7 px-2 text-[12px]"
                       onClick={startEdit}
                       title="改标题和称呼"
                     >
-                      <Pencil size={12} /> 编辑
+                      <Pencil size={14} /> 编辑
                     </button>
                   )}
                   <button
-                    className="btn btn-ghost btn-danger h-7 px-2 text-[11px]"
+                    className="btn btn-ghost btn-danger h-7 px-2 text-[12px]"
                     onClick={() => void remove()}
                     title="只删除这单记录，不动照片"
                   >
-                    <Trash2 size={12} /> 删除
+                    <Trash2 size={14} /> 删除
                   </button>
                   <button
-                    className="btn h-7 px-2 text-[11px]"
+                    className="btn h-7 px-2 text-[12px]"
                     disabled={pickedIds.length === 0}
                     onClick={() => onViewSession(selected.id)}
                     title="回到主图库，只看这一单要的 + 要修的"
                   >
-                    <Images size={12} /> 看这一单
+                    <Images size={14} /> 看这一单
                   </button>
                 </div>
               </div>
 
               {editing && selectedState === 'draft' && (
-                <div className="mt-3 flex flex-wrap items-end gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+                <div className="mt-3 flex flex-wrap items-end gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                   <label className="min-w-[240px] flex-1">
-                    <span className="text-[10.5px] text-[var(--faint)]">标题</span>
+                    <span className="text-[11px] text-[var(--faint)]">标题</span>
                     <input
                       autoFocus
-                      className="input mt-1 h-7 w-full text-[11.5px]"
+                      className="input mt-1 h-7 w-full text-[12px]"
                       maxLength={80}
                       value={draftTitle}
                       onChange={(event) => setDraftTitle(event.target.value)}
@@ -442,9 +442,9 @@ export default function PickDelivery({
                     />
                   </label>
                   <label className="w-[180px]">
-                    <span className="text-[10.5px] text-[var(--faint)]">发给谁</span>
+                    <span className="text-[11px] text-[var(--faint)]">发给谁</span>
                     <input
-                      className="input mt-1 h-7 w-full text-[11.5px]"
+                      className="input mt-1 h-7 w-full text-[12px]"
                       placeholder="可留空"
                       maxLength={40}
                       value={draftClient}
@@ -456,14 +456,14 @@ export default function PickDelivery({
                     />
                   </label>
                   <button
-                    className="btn btn-primary h-7 px-2.5 text-[11.5px]"
+                    className="btn btn-primary h-7 px-2.5 text-[12px]"
                     disabled={savingEdit || !draftTitle.trim()}
                     onClick={() => void saveDraftEdit()}
                   >
                     {savingEdit ? '保存中…' : '保存'}
                   </button>
                   <button
-                    className="btn btn-ghost h-7 px-2.5 text-[11.5px]"
+                    className="btn btn-ghost h-7 px-2.5 text-[12px]"
                     onClick={() => setEditing(false)}
                   >
                     取消
@@ -487,14 +487,14 @@ export default function PickDelivery({
                   action={
                     selected.filePath ? (
                       <button
-                        className="btn h-6 px-2 text-[10.5px]"
+                        className="btn h-6 px-2 text-[11px]"
                         onClick={() => void window.api.showInFolder(selected.filePath as string)}
                       >
-                        <FolderOpen size={11} /> 打开位置
+                        <FolderOpen size={14} /> 打开位置
                       </button>
                     ) : (
                       <button
-                        className="btn h-6 px-2 text-[10.5px]"
+                        className="btn h-6 px-2 text-[11px]"
                         disabled={items.length === 0}
                         onClick={() =>
                           onExportDraft(
@@ -504,7 +504,7 @@ export default function PickDelivery({
                         }
                         title="给这单生成能直接打开的浏览页"
                       >
-                        <Send size={11} /> 生成浏览页
+                        <Send size={14} /> 生成浏览页
                       </button>
                     )
                   }
@@ -531,10 +531,10 @@ export default function PickDelivery({
                   action={
                     selectedState === 'draft' ? undefined : (
                       <button
-                        className="btn h-6 px-2 text-[10.5px]"
+                        className="btn h-6 px-2 text-[11px]"
                         onClick={() => onOpenImport(selected.id)}
                       >
-                        <Upload size={11} /> {selected.receivedAt ? '更新反馈' : '粘贴反馈'}
+                        <Upload size={14} /> {selected.receivedAt ? '更新反馈' : '粘贴反馈'}
                       </button>
                     )
                   }
@@ -546,53 +546,53 @@ export default function PickDelivery({
                   tone={pickedIds.length ? 'active' : 'idle'}
                   action={
                     <button
-                      className="btn h-6 px-2 text-[10.5px]"
+                      className="btn h-6 px-2 text-[11px]"
                       disabled={pickedIds.length === 0}
                       onClick={() => onExportFinals(pickedIds)}
                       title="把要的 + 要修的照片按尺寸/质量导出"
                     >
-                      <Download size={11} /> 导出成品
+                      <Download size={14} /> 导出成品
                     </button>
                   }
                 />
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px]">
-                <span className="text-[var(--success)]">要 {selected.keep}</span>
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px]">
+                <span className="text-[var(--success)]">✓ 要 {selected.keep}</span>
                 <span className="text-[var(--warn)]">要修 {selected.fix}</span>
                 <span className="text-[var(--faint)]">不要 {selected.reject}</span>
                 <span className="text-[var(--faint)]">待定 {selected.pending}</span>
                 {selected.watermark && (
-                  <span className="truncate text-[10.5px] text-[var(--faint)]">
+                  <span className="truncate text-[11px] text-[var(--faint)]">
                     水印：{selected.watermark}
                   </span>
                 )}
               </div>
 
               {selected.clientNote && (
-                <div className="mt-3 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-2 text-[11.5px] leading-5 whitespace-pre-wrap text-[var(--text)]">
-                  <span className="text-[10.5px] text-[var(--muted)]">对方备注：</span>
+                <div className="mt-3 rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-2 text-[12px] leading-5 whitespace-pre-wrap text-[var(--text)]">
+                  <span className="text-[11px] text-[var(--muted)]">对方备注：</span>
                   {selected.clientNote}
                 </div>
               )}
 
               {!selected.receivedAt && (
-                <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[11px] text-[var(--muted)]">
+                <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2 text-[12px] text-[var(--muted)]">
                   对方还没回传。收到文字后点「粘贴反馈」，粘进来就会自动按编号打标。
                 </div>
               )}
 
               <div className="mt-4">
                 {loadingItems ? (
-                  <div className="flex items-center gap-2 py-6 text-[11.5px] text-[var(--muted)]">
-                    <Loader2 size={13} className="animate-spin" /> 读取照片…
+                  <div className="flex items-center gap-2 py-6 text-[12px] text-[var(--muted)]">
+                    <Loader2 size={14} className="animate-spin" /> 读取照片…
                   </div>
                 ) : (
                   <div className="grid grid-cols-6 gap-2">
                     {items.map((item) => (
                       <div
                         key={item.seq}
-                        className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)]"
+                        className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]"
                         title={`${pad3(item.seq)} · ${item.name}`}
                       >
                         <div className="relative aspect-square bg-[var(--panel-3)]">
@@ -602,14 +602,14 @@ export default function PickDelivery({
                             className="h-full w-full object-cover"
                             loading="lazy"
                           />
-                          <span className="absolute left-1 top-1 rounded bg-black/55 px-1 py-0.5 text-[9.5px] tabular-nums text-white">
+                          <span className="absolute left-1 top-1 rounded-lg bg-black/55 px-1 py-0.5 text-[11px] tabular-nums text-white">
                             {pad3(item.seq)}
                           </span>
                           <span className="absolute bottom-1 right-1">
                             <ActionBadge action={item.action} />
                           </span>
                         </div>
-                        <div className="truncate px-1.5 py-1 text-[9.5px] text-[var(--faint)]">
+                        <div className="truncate px-1.5 py-1 text-[11px] text-[var(--faint)]">
                           {item.name}
                         </div>
                       </div>

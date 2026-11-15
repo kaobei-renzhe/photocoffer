@@ -121,7 +121,7 @@ export default function PhotoInspector({
           return (
             <button
               key={id}
-              className={`flex h-7 flex-1 items-center justify-center gap-1 rounded-md px-1.5 text-[11.5px] transition-colors ${
+              className={`flex h-7 flex-1 items-center justify-center gap-1 rounded-lg px-1.5 text-[12px] transition-colors ${
                 active
                   ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                   : 'text-[var(--faint)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]'
@@ -129,7 +129,7 @@ export default function PhotoInspector({
               onClick={() => setTab(id)}
               title={label}
             >
-              <Icon size={12} />
+              <Icon size={14} />
               {label}
             </button>
           )

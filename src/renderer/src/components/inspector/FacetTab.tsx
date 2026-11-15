@@ -65,18 +65,18 @@ export default function FacetTab({
 
   return (
     <div className={compact ? 'space-y-2 p-2.5' : 'space-y-3 p-3'}>
-      <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+      <div className="text-[11px] leading-4 text-[var(--faint)]">
         分类本质是带归属的标签，和主图库的标签筛选共用一套数据。
       </div>
 
       {targets.length > 1 && (
-        <div className="rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2 py-1.5 text-[10.5px] leading-4 text-[var(--accent-text)]">
+        <div className="rounded-2xl border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2 py-1.5 text-[11px] leading-4 text-[var(--accent-text)]">
           已选 {targets.length} 张，下面的操作会批量应用。
         </div>
       )}
 
       {facets.length === 0 && (
-        <div className="text-[11px] text-[var(--faint)]">还没有分类，可在人像工作台左侧新建。</div>
+        <div className="text-[12px] text-[var(--faint)]">还没有分类，可在人像工作台左侧新建。</div>
       )}
 
       {facets.map((facet) => {
@@ -88,29 +88,29 @@ export default function FacetTab({
         return (
           <div
             key={facet.id}
-            className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2"
+            className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2"
           >
             <div className="flex items-center gap-2">
-              <span className="text-[10.5px] text-[var(--faint)]">{facet.name}</span>
-              <span className="text-[9.5px] text-[var(--faint)] opacity-70">
+              <span className="text-[11px] text-[var(--faint)]">{facet.name}</span>
+              <span className="text-[11px] text-[var(--faint)] opacity-70">
                 {facet.multi ? '多选' : '单选'}
               </span>
               <button
-                className="ml-auto grid h-5 w-5 place-items-center rounded text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--text)]"
+                className="ml-auto grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--text)]"
                 onClick={() => setOpenPicker(open ? null : facet.id)}
                 title="添加取值"
               >
-                <Plus size={12} />
+                <Plus size={14} />
               </button>
             </div>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {assigned.length === 0 && (
-                <span className="text-[10.5px] text-[var(--faint)]">未标注</span>
+                <span className="text-[11px] text-[var(--faint)]">未标注</span>
               )}
               {assigned.map((value) => (
                 <button
                   key={value.id}
-                  className="inline-flex h-[21px] items-center gap-1 rounded-md border border-[var(--accent-border)] bg-[var(--accent-soft)] px-1.5 text-[10.5px] text-[var(--accent-text)]"
+                  className="inline-flex h-[21px] items-center gap-1 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-1.5 text-[11px] text-[var(--accent-text)]"
                   onClick={() => void applyValue(facet, value, false)}
                   title="点一下移除"
                 >
@@ -119,7 +119,7 @@ export default function FacetTab({
                     style={{ background: value.color }}
                   />
                   {value.name}
-                  <X size={9} />
+                  <X size={14} />
                 </button>
               ))}
             </div>
@@ -128,7 +128,7 @@ export default function FacetTab({
                 {remaining.map((value) => (
                   <button
                     key={value.id}
-                    className="inline-flex h-[21px] items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--panel)] px-1.5 text-[10.5px] text-[var(--faint)] hover:text-[var(--text)]"
+                    className="inline-flex h-[21px] items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-1.5 text-[11px] text-[var(--faint)] hover:text-[var(--text)]"
                     onClick={() => void applyValue(facet, value, true)}
                   >
                     <span
@@ -139,7 +139,7 @@ export default function FacetTab({
                   </button>
                 ))}
                 {remaining.length === 0 && (
-                  <span className="text-[10.5px] text-[var(--faint)]">这个分类没有更多取值</span>
+                  <span className="text-[11px] text-[var(--faint)]">这个分类没有更多取值</span>
                 )}
               </div>
             )}
@@ -148,7 +148,7 @@ export default function FacetTab({
       })}
 
       {message && (
-        <div className="text-[10.5px] leading-4 text-[var(--danger-text)]">{message}</div>
+        <div className="text-[11px] leading-4 text-[var(--danger-text)]">{message}</div>
       )}
     </div>
   )

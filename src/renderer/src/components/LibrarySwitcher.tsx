@@ -156,17 +156,17 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="flex w-[560px] max-h-[76vh] flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="flex w-[560px] max-h-[76vh] flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex h-[46px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
-          <ArrowLeftRight size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">切换图库</span>
-          <span className="text-[11px] text-[var(--faint)]">
+          <ArrowLeftRight size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">切换图库</span>
+          <span className="text-[12px] text-[var(--faint)]">
             {libraries ? `${libraries.length} 个` : '读取中…'}
           </span>
           <button className="btn btn-ghost ml-auto h-7 px-1.5" onClick={onClose} title="关闭（Esc）">
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
@@ -189,10 +189,10 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
         <div className="min-h-[160px] flex-1 overflow-y-auto p-2">
           {libraries === null ? (
             <div className="flex items-center gap-2 px-3 py-6 text-[12px] text-[var(--muted)]">
-              <Loader2 size={13} className="animate-spin" /> 正在读取图库…
+              <Loader2 size={14} className="animate-spin" /> 正在读取图库…
             </div>
           ) : filtered.length === 0 ? (
-            <div className="px-3 py-8 text-center text-[11.5px] text-[var(--faint)]">
+            <div className="px-3 py-8 text-center text-[12px] text-[var(--faint)]">
               {query.trim() ? '没有匹配的图库' : '还没有其他图库'}
             </div>
           ) : (
@@ -202,7 +202,7 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
               return (
                 <div
                   key={entry.id}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 ${
+                  className={`flex cursor-pointer items-center gap-2 rounded-2xl px-3 py-2 ${
                     index === activeIndex ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--panel-2)]'
                   } ${missing ? 'opacity-75' : ''}`}
                   onMouseEnter={() => setActiveIndex(index)}
@@ -210,38 +210,38 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate text-[12.5px] text-[var(--text)]">
+                      <span className="truncate text-[13.5px] text-[var(--text)]">
                         {entry.name}
                       </span>
                       {isCurrent && (
-                        <span className="rounded bg-[var(--accent-soft)] px-1 py-0.5 text-[9.5px] text-[var(--accent-text)]">
+                        <span className="rounded-lg bg-[var(--accent-soft)] px-1 py-0.5 text-[11px] text-[var(--accent-text)]">
                           当前
                         </span>
                       )}
                       {entry.status === 'missing' && (
-                        <span className="flex items-center gap-0.5 text-[9.5px] text-[var(--danger-text)]">
-                          <AlertTriangle size={9} />{' '}
+                        <span className="flex items-center gap-0.5 text-[11px] text-[var(--danger-text)]">
+                          <AlertTriangle size={14} />{' '}
                           {entry.driveMissing ? '磁盘未连接' : '目录不见了'}
                         </span>
                       )}
                       {entry.status === 'index-missing' && (
-                        <span className="flex items-center gap-0.5 text-[9.5px] text-[var(--danger-text)]">
-                          <AlertTriangle size={9} /> 索引丢失
+                        <span className="flex items-center gap-0.5 text-[11px] text-[var(--danger-text)]">
+                          <AlertTriangle size={14} /> 索引丢失
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 truncate text-[10px] text-[var(--faint)]" title={entry.path}>
+                    <div className="mt-0.5 truncate text-[11px] text-[var(--faint)]" title={entry.path}>
                       {entry.path}
                     </div>
                   </div>
-                  <span className="shrink-0 text-[10.5px] tabular-nums text-[var(--faint)]">
+                  <span className="shrink-0 text-[11px] tabular-nums text-[var(--faint)]">
                     {entry.itemCount} 张 · {formatRelative(entry.lastOpened)}
                   </span>
                   {busy === entry.id ? (
-                    <Loader2 size={13} className="shrink-0 animate-spin text-[var(--muted)]" />
+                    <Loader2 size={14} className="shrink-0 animate-spin text-[var(--muted)]" />
                   ) : missing ? (
                     <button
-                      className="btn btn-ghost h-6 shrink-0 px-1.5 text-[10.5px]"
+                      className="btn btn-ghost h-6 shrink-0 px-1.5 text-[11px]"
                       onClick={(event) => {
                         event.stopPropagation()
                         void relocate(entry)
@@ -257,30 +257,30 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
         </div>
 
         {error && (
-          <div className="shrink-0 border-t border-[var(--danger-border)] bg-[var(--danger-soft)] px-4 py-2 text-[11px] text-[var(--danger-text)]">
+          <div className="shrink-0 border-t border-[var(--danger-border)] bg-[var(--danger-soft)] px-4 py-2 text-[12px] text-[var(--danger-text)]">
             {error}
           </div>
         )}
 
         <div className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] px-3 py-2.5">
           <button
-            className="btn btn-ghost h-7 px-2 text-[11.5px]"
+            className="btn btn-ghost h-7 px-2 text-[12px]"
             onClick={() => void createNew()}
             disabled={busy !== null}
           >
-            {busy === 'new' ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+            {busy === 'new' ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             新建图库
           </button>
-          <span className="text-[10px] text-[var(--faint)]">↑↓ 选择 · Enter 切换 · Esc 关闭</span>
+          <span className="text-[11px] text-[var(--faint)]">↑↓ 选择 · Enter 切换 · Esc 关闭</span>
           <button
-            className="btn ml-auto h-7 px-2 text-[11.5px]"
+            className="btn ml-auto h-7 px-2 text-[12px]"
             onClick={() => void openOther()}
             disabled={busy !== null}
           >
             {busy === 'open' ? (
-              <Loader2 size={12} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
             ) : (
-              <FolderOpen size={12} />
+              <FolderOpen size={14} />
             )}
             打开其他图库…
           </button>

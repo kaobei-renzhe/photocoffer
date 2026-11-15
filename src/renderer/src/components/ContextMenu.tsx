@@ -83,7 +83,7 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
     return (
       <div key={entry.id} className="relative">
         <button
-          className={`flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-left text-[12px] transition-colors ${
+          className={`flex w-full items-center gap-2 rounded-lg px-2 py-[5px] text-left text-[12px] transition-colors ${
             entry.disabled
               ? 'cursor-default text-[var(--faint)] opacity-55'
               : entry.danger
@@ -103,18 +103,18 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
           }}
         >
           <span className="grid w-[14px] shrink-0 place-items-center text-[var(--muted)]">
-            {entry.checked ? <Check size={12} /> : entry.icon}
+            {entry.checked ? <Check size={14} /> : entry.icon}
           </span>
           <span className="min-w-0 flex-1 truncate">{entry.label}</span>
           {entry.hint && (
-            <span className="shrink-0 text-[10.5px] text-[var(--faint)]">{entry.hint}</span>
+            <span className="shrink-0 text-[11px] text-[var(--faint)]">{entry.hint}</span>
           )}
-          {hasChildren && <ChevronRight size={12} className="shrink-0 text-[var(--faint)]" />}
+          {hasChildren && <ChevronRight size={14} className="shrink-0 text-[var(--faint)]" />}
         </button>
 
         {hasChildren && active && (
           <div
-            className={`absolute top-[-5px] z-10 min-w-[168px] max-w-[260px] rounded-lg border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl ${
+            className={`absolute top-[-5px] z-10 min-w-[168px] max-w-[260px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl ${
               sub?.flip ? 'right-full mr-1' : 'left-full ml-1'
             }`}
             style={{ maxHeight: '60vh', overflowY: 'auto' }}
@@ -139,7 +139,7 @@ export default function ContextMenu({ x, y, items, onClose }: ContextMenuProps) 
       <div
         ref={menuRef}
         data-context-menu="true"
-        className="absolute min-w-[190px] rounded-lg border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl"
+        className="absolute min-w-[190px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl"
         style={{ left: pos.x, top: pos.y }}
         onPointerDown={(event) => event.stopPropagation()}
         onContextMenu={(event) => event.preventDefault()}

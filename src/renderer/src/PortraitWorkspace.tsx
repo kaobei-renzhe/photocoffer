@@ -350,21 +350,21 @@ export default function PortraitWorkspace({
   return (
     <div className="h-full flex flex-col bg-[var(--bg)]">
       <header className="h-[52px] shrink-0 px-3 flex items-center gap-2 border-b border-[var(--border)] bg-[var(--chrome)]">
-        <button className="btn btn-ghost h-7 px-2 text-[11.5px]" onClick={onBack}>
-          <ArrowLeft size={13} /> 返回图库
+        <button className="btn btn-ghost h-7 px-2 text-[12px]" onClick={onBack}>
+          <ArrowLeft size={14} /> 返回图库
         </button>
-        <Camera size={15} color="var(--accent-2)" />
-        <span className="text-[13.5px] font-medium">人像工作台</span>
+        <Camera size={16} color="var(--accent-2)" />
+        <span className="text-[13.5px] font-bold">人像工作台</span>
         <div className="flex items-center gap-1 ml-3 flex-wrap">
           {activeFolder && (
             <button
-              className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[11px] text-[var(--accent-text)]"
+              className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[12px] text-[var(--accent-text)]"
               onClick={() => setFolderId(null)}
               title="移除文件夹条件"
             >
-              <FolderIcon size={11} />
+              <FolderIcon size={14} />
               {activeFolder.name}
-              <X size={10} />
+              <X size={14} />
             </button>
           )}
           {facets.flatMap((facet) =>
@@ -374,29 +374,29 @@ export default function PortraitWorkspace({
               return (
                 <button
                   key={`${facet.id}-${valueId}`}
-                  className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[11px] text-[var(--accent-text)]"
+                  className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[12px] text-[var(--accent-text)]"
                   onClick={() => toggleFilter(facet.id, valueId)}
                   title="移除这个条件"
                 >
                   <span className="w-[6px] h-[6px] rounded-full" style={{ background: value.color }} />
                   {value.name}
-                  <X size={10} />
+                  <X size={14} />
                 </button>
               )
             })
           )}
           {pickedCount > 0 && (
-            <button className="text-[11px] text-[var(--faint)] hover:text-[var(--text)]" onClick={() => setPicked({})}>
+            <button className="text-[12px] text-[var(--faint)] hover:text-[var(--text)]" onClick={() => setPicked({})}>
               清空条件
             </button>
           )}
         </div>
-        <span className="ml-auto text-[11.5px] text-[var(--faint)] tabular-nums">
+        <span className="ml-auto text-[12px] text-[var(--faint)] tabular-nums">
           {loading ? '读取中…' : `${portraitOnly ? shownItems.length : items.length} / ${total} 张`}
         </span>
-        <div className="flex items-center rounded-md border border-[var(--border)] bg-[var(--card)] p-0.5">
+        <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5">
           <button
-            className={`h-6 rounded px-2 text-[11px] transition-colors ${
+            className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
               portraitOnly
                 ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                 : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -411,7 +411,7 @@ export default function PortraitWorkspace({
             仅人像
           </button>
           <button
-            className={`h-6 rounded px-2 text-[11px] transition-colors ${
+            className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
               !portraitOnly
                 ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                 : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -427,7 +427,7 @@ export default function PortraitWorkspace({
           </button>
         </div>
         <div className="flex items-center gap-1.5" title="调整瀑布流卡片大小">
-          <span className="text-[10.5px] text-[var(--faint)]">大小</span>
+          <span className="text-[11px] text-[var(--faint)]">大小</span>
           <input
             type="range"
             min={PORTRAIT_THUMB.min}
@@ -439,16 +439,16 @@ export default function PortraitWorkspace({
           />
         </div>
         <button
-          className="btn h-7 px-2 text-[11.5px]"
+          className="btn h-7 px-2 text-[12px]"
           onClick={() => void Promise.all([loadItems(), loadFacets(), loadFolders()])}
           title="重新读取文件夹、分类与照片"
         >
-          <RefreshCw size={12} /> 刷新
+          <RefreshCw size={14} /> 刷新
         </button>
       </header>
 
       {message && (
-        <div className="shrink-0 px-3 py-1.5 text-[11.5px] text-[var(--danger-text)] bg-[var(--danger-soft)] border-b border-[var(--danger-border)]">
+        <div className="shrink-0 px-3 py-1.5 text-[12px] text-[var(--danger-text)] bg-[var(--danger-soft)] border-b border-[var(--danger-border)]">
           {message}
         </div>
       )}
@@ -458,21 +458,21 @@ export default function PortraitWorkspace({
         <aside className="w-[228px] shrink-0 border-r border-[var(--border)] overflow-y-auto px-2 py-3">
           <div className="mb-3">
             <div className="flex items-center gap-1.5 px-1 mb-1.5">
-              <FolderIcon size={12} className="text-[var(--faint)]" />
-              <span className="text-[11.5px] text-[var(--text)]">文件夹</span>
-              <span className="ml-auto text-[10px] text-[var(--faint)] tabular-nums">
+              <FolderIcon size={14} className="text-[var(--faint)]" />
+              <span className="text-[12px] text-[var(--text)]">文件夹</span>
+              <span className="ml-auto text-[11px] text-[var(--faint)] tabular-nums">
                 {folders.length}
               </span>
             </div>
             <button
-              className={`w-full flex items-center gap-1.5 h-[26px] px-1.5 rounded-md text-[11.5px] transition-colors ${
+              className={`w-full flex items-center gap-1.5 h-[26px] px-1.5 rounded-lg text-[12px] transition-colors ${
                 folderId === null
                   ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                   : 'text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]'
               }`}
               onClick={() => setFolderId(null)}
             >
-              <Images size={12} />
+              <Images size={14} />
               全部照片
             </button>
             {folders.map((folder) => {
@@ -480,7 +480,7 @@ export default function PortraitWorkspace({
               return (
                 <button
                   key={folder.id}
-                  className={`w-full flex items-center gap-1.5 h-[26px] px-1.5 rounded-md text-[11.5px] transition-colors ${
+                  className={`w-full flex items-center gap-1.5 h-[26px] px-1.5 rounded-lg text-[12px] transition-colors ${
                     active
                       ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                       : 'text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]'
@@ -488,16 +488,16 @@ export default function PortraitWorkspace({
                   onClick={() => setFolderId(active ? null : folder.id)}
                   title={folder.name}
                 >
-                  <FolderIcon size={12} />
+                  <FolderIcon size={14} />
                   <span className="truncate">{folder.name}</span>
-                  <span className="ml-auto text-[10px] text-[var(--faint)] tabular-nums">
+                  <span className="ml-auto text-[11px] text-[var(--faint)] tabular-nums">
                     {folder.count}
                   </span>
                 </button>
               )
             })}
             {folders.length === 0 && (
-              <div className="px-1 py-0.5 text-[10.5px] text-[var(--faint)]">
+              <div className="px-1 py-0.5 text-[11px] text-[var(--faint)]">
                 还没有文件夹，可在图库里新建
               </div>
             )}
@@ -509,24 +509,24 @@ export default function PortraitWorkspace({
             return (
               <div key={facet.id} className="mb-4">
                 <div className="flex items-center gap-1.5 px-1 mb-1.5">
-                  <span className="text-[11.5px] text-[var(--text)]">{facet.name}</span>
-                  <span className="text-[10px] text-[var(--faint)]">{facet.multi ? '多选' : '单选'}</span>
+                  <span className="text-[12px] text-[var(--text)]">{facet.name}</span>
+                  <span className="text-[11px] text-[var(--faint)]">{facet.multi ? '多选' : '单选'}</span>
                   <button
-                    className="ml-auto w-5 h-5 rounded grid place-items-center text-[var(--faint)] hover:text-[var(--text)] hover:bg-[var(--panel-2)]"
+                    className="ml-auto w-5 h-5 rounded-lg grid place-items-center text-[var(--faint)] hover:text-[var(--text)] hover:bg-[var(--panel-2)]"
                     onClick={() => {
                       setAddingValueFor(addingValueFor === facet.id ? null : facet.id)
                       setValueDraft('')
                     }}
                     title="新增取值"
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                   </button>
                   <button
-                    className="w-5 h-5 rounded grid place-items-center text-[var(--faint)] hover:text-[var(--danger-text)] hover:bg-[var(--panel-2)]"
+                    className="w-5 h-5 rounded-lg grid place-items-center text-[var(--faint)] hover:text-[var(--danger-text)] hover:bg-[var(--panel-2)]"
                     onClick={() => void removeFacet(facet)}
                     title="删除分类"
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -535,7 +535,7 @@ export default function PortraitWorkspace({
                     return (
                       <button
                         key={value.id}
-                        className={`inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md border text-[11px] transition-colors ${
+                        className={`inline-flex items-center gap-1 h-[22px] px-1.5 rounded-lg border text-[12px] transition-colors ${
                           on
                             ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                             : 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--faint)] hover:text-[var(--text)]'
@@ -552,13 +552,13 @@ export default function PortraitWorkspace({
                     )
                   })}
                   {facet.values.length === 0 && (
-                    <span className="text-[10.5px] text-[var(--faint)] px-1">还没有取值</span>
+                    <span className="text-[11px] text-[var(--faint)] px-1">还没有取值</span>
                   )}
                 </div>
                 {addingValueFor === facet.id && (
                   <div className="flex items-center gap-1 mt-1.5">
                     <input
-                      className="input h-6 text-[11px] min-w-0 flex-1"
+                      className="input h-6 text-[12px] min-w-0 flex-1"
                       value={valueDraft}
                       autoFocus
                       placeholder="新取值"
@@ -568,7 +568,7 @@ export default function PortraitWorkspace({
                         if (e.key === 'Escape') setAddingValueFor(null)
                       }}
                     />
-                    <button className="btn h-6 px-1.5 text-[11px]" onClick={() => void addValue(facet.id)}>
+                    <button className="btn h-6 px-1.5 text-[12px]" onClick={() => void addValue(facet.id)}>
                       加
                     </button>
                   </div>
@@ -580,7 +580,7 @@ export default function PortraitWorkspace({
           {creatingFacet ? (
             <div className="flex items-center gap-1 px-1">
               <input
-                className="input h-6 text-[11px] min-w-0 flex-1"
+                className="input h-6 text-[12px] min-w-0 flex-1"
                 value={facetDraft}
                 autoFocus
                 placeholder="分类名，如 道具"
@@ -590,16 +590,16 @@ export default function PortraitWorkspace({
                   if (e.key === 'Escape') setCreatingFacet(false)
                 }}
               />
-              <button className="btn h-6 px-1.5 text-[11px]" onClick={() => void addFacet()}>
+              <button className="btn h-6 px-1.5 text-[12px]" onClick={() => void addFacet()}>
                 建
               </button>
             </div>
           ) : (
             <button
-              className="btn btn-ghost h-7 px-2 text-[11.5px] w-full justify-center"
+              className="btn btn-ghost h-7 px-2 text-[12px] w-full justify-center"
               onClick={() => setCreatingFacet(true)}
             >
-              <Plus size={12} /> 新建分类
+              <Plus size={14} /> 新建分类
             </button>
           )}
         </aside>
@@ -609,15 +609,15 @@ export default function PortraitWorkspace({
           {portraitOnly && portraitStatus && !portraitStatus.modelReady ? (
             <div className="h-full grid place-items-center">
               <div className="max-w-[360px] text-center">
-                <div className="text-[13px] text-[var(--text)]">人像识别需要本地检测模型</div>
-                <div className="mt-1.5 text-[11.5px] leading-5 text-[var(--faint)]">
+                <div className="text-[13.5px] text-[var(--text)]">人像识别需要本地检测模型</div>
+                <div className="mt-1.5 text-[12px] leading-5 text-[var(--faint)]">
                   DETR-ResNet-50 · 约 41 MB · 只下载一次。下载后会自动识别人像，结果缓存在当前图库。
                 </div>
                 {modelDownload ? (
                   <div className="mt-3">
-                    <div className="h-1 overflow-hidden rounded bg-[var(--border)]">
+                    <div className="h-1 overflow-hidden rounded-lg bg-[var(--border)]">
                       <div
-                        className="h-full rounded bg-[var(--accent)] transition-[width]"
+                        className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
                         style={{
                           width: `${
                             modelDownload.total
@@ -627,7 +627,7 @@ export default function PortraitWorkspace({
                         }}
                       />
                     </div>
-                    <div className="mt-1 text-[10.5px] text-[var(--faint)] tabular-nums">
+                    <div className="mt-1 text-[11px] text-[var(--faint)] tabular-nums">
                       {modelDownload.total
                         ? `${Math.round((modelDownload.received / modelDownload.total) * 100)}%`
                         : '准备下载…'}
@@ -642,10 +642,10 @@ export default function PortraitWorkspace({
                   </button>
                 )}
                 {portraitMsg && (
-                  <div className="mt-2 text-[11px] leading-4 text-[var(--danger-text)]">{portraitMsg}</div>
+                  <div className="mt-2 text-[12px] leading-4 text-[var(--danger-text)]">{portraitMsg}</div>
                 )}
                 <button
-                  className="btn btn-ghost mt-3 h-7 px-2 text-[11.5px]"
+                  className="btn btn-ghost mt-3 h-7 px-2 text-[12px]"
                   onClick={() => setPortraitOnly(false)}
                 >
                   先看全部照片
@@ -668,7 +668,7 @@ export default function PortraitWorkspace({
                 {portraitMsg || '读取人像模型状态…'}
                 <div className="mt-2">
                   <button
-                    className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                    className="btn btn-ghost h-7 px-2 text-[12px]"
                     onClick={() => void loadPortraitStatus()}
                   >
                     重试
@@ -691,16 +691,16 @@ export default function PortraitWorkspace({
           ) : (
             <>
               {portraitOnly && portraitScanning && portraitProgress && (
-                <div className="mb-2 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-2">
-                  <div className="flex items-center justify-between text-[11px] text-[var(--muted)]">
+                <div className="mb-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-2">
+                  <div className="flex items-center justify-between text-[12px] text-[var(--muted)]">
                     <span>正在识别人像</span>
                     <span className="tabular-nums">
                       {portraitProgress.done} / {portraitProgress.total}
                     </span>
                   </div>
-                  <div className="mt-1 h-1 overflow-hidden rounded bg-[var(--border)]">
+                  <div className="mt-1 h-1 overflow-hidden rounded-lg bg-[var(--border)]">
                     <div
-                      className="h-full rounded bg-[var(--accent)] transition-[width]"
+                      className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
                       style={{
                         width: `${Math.round(
                           (portraitProgress.done / Math.max(1, portraitProgress.total)) * 100
@@ -711,7 +711,7 @@ export default function PortraitWorkspace({
                 </div>
               )}
               {portraitMsg && (
-                <div className="mb-2 text-[11px] text-[var(--danger-text)]">{portraitMsg}</div>
+                <div className="mb-2 text-[12px] text-[var(--danger-text)]">{portraitMsg}</div>
               )}
               <div style={{ columnWidth: thumbSize, columnGap: 10 }}>
                 {shownItems.map((item, index) => {
@@ -723,7 +723,7 @@ export default function PortraitWorkspace({
                     <button
                       key={item.id}
                       data-gallery-id={item.id}
-                      className={`block w-full mb-2.5 break-inside-avoid text-left rounded-lg overflow-hidden border transition-colors ${
+                      className={`block w-full mb-2.5 break-inside-avoid text-left rounded-2xl overflow-hidden border transition-colors ${
                         on
                           ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]'
                           : 'border-[var(--border)] hover:border-[var(--border-strong)]'
@@ -744,7 +744,7 @@ export default function PortraitWorkspace({
                           {marks.map((tag) => (
                             <span
                               key={tag.id}
-                              className="inline-flex items-center gap-1 text-[9.5px] text-[var(--faint)]"
+                              className="inline-flex items-center gap-1 text-[11px] text-[var(--faint)]"
                             >
                               <span
                                 className="w-[5px] h-[5px] rounded-full"
@@ -766,7 +766,7 @@ export default function PortraitWorkspace({
         {/* 右：详情 */}
         <aside className="flex w-[306px] min-h-0 shrink-0 flex-col border-l border-[var(--border)]">
           {!current ? (
-            <div className="p-3 text-[11.5px] leading-5 text-[var(--faint)]">
+            <div className="p-3 text-[12px] leading-5 text-[var(--faint)]">
               点一张照片查看细节，{modLabel} 点可选多张。
               <br />
               选中后在下方按分类打标，多选时批量生效。
@@ -774,7 +774,7 @@ export default function PortraitWorkspace({
           ) : (
             <>
               <div className="shrink-0 space-y-3 px-3 pt-3">
-                <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)]">
+                <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
                   <img
                     src={photoUrl(current.id)}
                     alt={current.name}
@@ -784,9 +784,16 @@ export default function PortraitWorkspace({
                 </div>
                 <div>
                   <div className="truncate text-[12px] text-[var(--text)]">{current.name}</div>
-                  <div className="mt-0.5 text-[10.5px] tabular-nums text-[var(--faint)]">
+                  <div className="mt-0.5 text-[11px] tabular-nums text-[var(--faint)]">
                     {current.width} × {current.height}
-                    {current.rating > 0 ? ` · ${'★'.repeat(current.rating)}` : ''}
+                    {current.rating > 0 ? (
+                      <>
+                        {' · '}
+                        <span className="text-[var(--star)]">{'★'.repeat(current.rating)}</span>
+                      </>
+                    ) : (
+                      ''
+                    )}
                   </div>
                 </div>
               </div>

@@ -203,14 +203,14 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
 
   const backButton = onBack ? (
     <div className="flex justify-start mb-4">
-      <button className="btn btn-ghost h-7 px-2 text-[11.5px]" onClick={onBack}>
-        <ArrowLeft size={13} /> 返回{backLabel ? `「${backLabel}」` : '当前图库'}
+      <button className="btn btn-ghost h-7 px-2 text-[12px]" onClick={onBack}>
+        <ArrowLeft size={14} /> 返回{backLabel ? `「${backLabel}」` : '当前图库'}
       </button>
     </div>
   ) : null
 
   const noticeBlock = notice ? (
-    <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 text-left text-[11.5px] leading-5 text-[var(--danger-text)]">
+    <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 text-left text-[12px] leading-5 text-[var(--danger-text)]">
       找不到这个图库的数据文件：
       <span className="break-all">{notice}</span>
       <div className="mt-1 text-[var(--muted)]">
@@ -241,8 +241,8 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
           <div className="mx-auto mb-6 w-[64px] h-[64px]">
             <Logo size={64} />
           </div>
-          <h1 className="text-[22px] font-semibold tracking-wide m-0">存照</h1>
-          <p className="text-[13px] text-[var(--muted)] mt-2 mb-8">
+          <h1 className="text-[26px] font-bold m-0">存照</h1>
+          <p className="text-[13.5px] text-[var(--muted)] mt-2 mb-8">
             本地优先的图片素材库 · 照片、相机与文字都归在这里
           </p>
 
@@ -272,7 +272,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
           {noticeBlock}
           {errorBlock}
 
-          <p className="mt-8 text-[11.5px] text-[var(--faint)] leading-5">
+          <p className="mt-8 text-[12px] text-[var(--faint)] leading-5">
             图库就是一个普通文件夹
             <br />
             里面保存图库的数据文件与缩略图缓存，原图仍留在原位置
@@ -291,7 +291,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
             <Logo size={44} />
           </div>
           <div>
-            <div className="text-[20px] font-semibold tracking-wide text-[var(--text)]">存照</div>
+            <div className="text-[18px] font-bold text-[var(--text)]">存照</div>
             <div className="mt-0.5 text-[12px] text-[var(--muted)]">选择一个图库，或新建一个</div>
           </div>
         </div>
@@ -300,10 +300,10 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
           {libraries.map((entry) => (
             <div
               key={entry.id}
-              className="relative rounded-xl border border-[var(--border)] bg-[var(--panel)]"
+              className="relative rounded-2xl border border-[var(--border)] bg-[var(--panel)]"
             >
               <div
-                className={`overflow-hidden rounded-xl ${
+                className={`overflow-hidden rounded-2xl ${
                   entry.status === 'ok' ? 'cursor-pointer' : 'cursor-default opacity-80'
                 }`}
                 onClick={() => void openEntry(entry)}
@@ -323,37 +323,37 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/20" />
                     </>
                   ) : (
-                    <span className="absolute bottom-2 left-3 text-[26px] font-semibold text-white/90">
+                    <span className="absolute bottom-2 left-3 text-[26px] font-bold text-white/90">
                       {initial(entry.name)}
                     </span>
                   )}
                   {entry.status !== 'ok' && (
-                    <span className="absolute right-2 top-2 rounded bg-black/35 px-1.5 py-0.5 text-[10px] text-white/90">
+                    <span className="absolute right-2 top-2 rounded-lg bg-black/35 px-1.5 py-0.5 text-[11px] text-white/90">
                       !
                     </span>
                   )}
                 </div>
                 <div className="px-3 py-2.5">
-                  <div className="truncate text-[12.5px] text-[var(--text)]" title={entry.path}>
+                  <div className="truncate text-[13.5px] text-[var(--text)]" title={entry.path}>
                     {entry.name}
                   </div>
-                  <div className="mt-0.5 text-[10.5px] tabular-nums text-[var(--faint)]">
+                  <div className="mt-0.5 text-[11px] tabular-nums text-[var(--faint)]">
                     {entry.itemCount} 张 · {formatRelative(entry.lastOpened)}
                   </div>
                   {entry.status === 'missing' && (
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--danger-text)]">
-                      <AlertTriangle size={10} />{' '}
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-[var(--danger-text)]">
+                      <AlertTriangle size={14} />{' '}
                       {entry.driveMissing ? '所在磁盘未连接，接上后重试' : '目录不见了'}
                     </div>
                   )}
                   {entry.status === 'index-missing' && (
-                    <div className="mt-1 flex items-center gap-1 text-[10px] text-[var(--danger-text)]">
-                      <AlertTriangle size={10} /> 索引丢失（原图还在）
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-[var(--danger-text)]">
+                      <AlertTriangle size={14} /> 索引丢失（原图还在）
                     </div>
                   )}
                   {entry.status !== 'ok' && (
                     <button
-                      className="mt-1 text-[10.5px] text-[var(--accent-2)] hover:underline"
+                      className="mt-1 text-[11px] text-[var(--accent-2)] hover:underline"
                       onClick={(event) => {
                         event.stopPropagation()
                         void relocate(entry)
@@ -374,14 +374,14 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
                 title="图库操作"
               >
                 {busy === entry.id ? (
-                  <Loader2 size={13} className="animate-spin" />
+                  <Loader2 size={14} className="animate-spin" />
                 ) : (
                   <MoreHorizontal size={14} />
                 )}
               </button>
 
               {editingId === entry.id && (
-                <div className="absolute inset-x-2 top-1/2 z-20 -translate-y-1/2 rounded-lg border border-[var(--border)] bg-[var(--panel)] p-2 shadow-xl">
+                <div className="absolute inset-x-2 top-1/2 z-20 -translate-y-1/2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-2 shadow-xl">
                   <input
                     className="input h-7 w-full text-[12px]"
                     value={draftName}
@@ -399,32 +399,32 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
               {menuId === entry.id && (
                 <div
                   ref={menuRef}
-                  className="absolute right-2 top-9 z-30 w-[156px] rounded-lg border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl"
+                  className="absolute right-2 top-9 z-30 w-[156px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl"
                 >
                   <button
-                    className="flex h-7 w-full items-center gap-2 rounded px-2 text-left text-[11.5px] text-[var(--text)] hover:bg-[var(--panel-2)]"
+                    className="flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-[12px] text-[var(--text)] hover:bg-[var(--panel-2)]"
                     onClick={() => startRename(entry)}
                   >
-                    <Pencil size={12} /> 重命名
+                    <Pencil size={14} /> 重命名
                   </button>
                   <button
-                    className="flex h-7 w-full items-center gap-2 rounded px-2 text-left text-[11.5px] text-[var(--text)] hover:bg-[var(--panel-2)]"
+                    className="flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-[12px] text-[var(--text)] hover:bg-[var(--panel-2)]"
                     onClick={() => void relocate(entry)}
                   >
-                    <MapPin size={12} /> 重新定位
+                    <MapPin size={14} /> 重新定位
                   </button>
                   <button
-                    className="flex h-7 w-full items-center gap-2 rounded px-2 text-left text-[11.5px] text-[var(--text)] hover:bg-[var(--panel-2)]"
+                    className="flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-[12px] text-[var(--text)] hover:bg-[var(--panel-2)]"
                     onClick={() => void forget(entry, false)}
                   >
-                    <Trash2 size={12} /> 从列表移除
+                    <Trash2 size={14} /> 从列表移除
                   </button>
                   {entry.status === 'ok' && (
                     <button
-                      className="flex h-7 w-full items-center gap-2 rounded px-2 text-left text-[11.5px] text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"
+                      className="flex h-7 w-full items-center gap-2 rounded-lg px-2 text-left text-[12px] text-[var(--danger-text)] hover:bg-[var(--danger-soft)]"
                       onClick={() => void forget(entry, true)}
                     >
-                      <Trash2 size={12} /> 删除索引数据
+                      <Trash2 size={14} /> 删除索引数据
                     </button>
                   )}
                 </div>
@@ -432,7 +432,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
             </div>
           ))}
 
-          <div className="grid min-h-[150px] place-items-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--panel-2)]/40">
+          <div className="grid min-h-[150px] place-items-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--panel-2)]/40">
             <div className="flex w-[150px] flex-col gap-2">
               <button
                 className="btn h-8 justify-center text-[12px]"
@@ -465,7 +465,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
         {noticeBlock}
         {errorBlock}
 
-        <p className="mt-8 text-[11.5px] leading-5 text-[var(--faint)]">
+        <p className="mt-8 text-[12px] leading-5 text-[var(--faint)]">
           图库就是一个普通文件夹，里面保存图库的数据文件与缩略图缓存，原图仍留在原位置。
         </p>
       </div>

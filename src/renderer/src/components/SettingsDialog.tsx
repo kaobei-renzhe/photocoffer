@@ -114,8 +114,8 @@ function PathRow({
   return (
     <div className="flex items-start gap-2 px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <div className="text-[10.5px] text-[var(--faint)]">{label}</div>
-        <div className="break-all text-[11px] leading-4 text-[var(--text)]">
+        <div className="text-[11px] text-[var(--faint)]">{label}</div>
+        <div className="break-all text-[12px] leading-4 text-[var(--text)]">
           {path ?? emptyHint}
         </div>
       </div>
@@ -125,7 +125,7 @@ function PathRow({
           title="打开这个目录"
           onClick={() => onOpen(path)}
         >
-          <FolderOpen size={12} />
+          <FolderOpen size={14} />
         </button>
       )}
     </div>
@@ -740,9 +740,9 @@ export default function SettingsDialog({
     <div className="space-y-2">
       {llmEditing === 'new' && (
         <label className="block">
-          <span className="text-[10.5px] text-[var(--faint)]">厂商预设</span>
+          <span className="text-[11px] text-[var(--faint)]">厂商预设</span>
           <select
-            className="input h-7 text-[11.5px] w-full mt-1"
+            className="input h-7 text-[12px] w-full mt-1"
             value={LLM_MODEL_PRESETS.find((preset) => preset.baseUrl === llmForm.baseUrl)?.id ?? ''}
             onChange={(event) => {
               const preset = LLM_MODEL_PRESETS.find((entry) => entry.id === event.target.value)
@@ -771,18 +771,18 @@ export default function SettingsDialog({
 
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
-          <span className="text-[10.5px] text-[var(--faint)]">显示名称</span>
+          <span className="text-[11px] text-[var(--faint)]">显示名称</span>
           <input
-            className="input h-7 text-[11.5px] w-full mt-1"
+            className="input h-7 text-[12px] w-full mt-1"
             value={llmForm.name}
             onChange={(event) => patchForm({ name: event.target.value })}
             placeholder="例如 DeepSeek V3"
           />
         </label>
         <label className="block">
-          <span className="text-[10.5px] text-[var(--faint)]">模型名</span>
+          <span className="text-[11px] text-[var(--faint)]">模型名</span>
           <input
-            className="input h-7 text-[11.5px] w-full mt-1"
+            className="input h-7 text-[12px] w-full mt-1"
             value={llmForm.model}
             onChange={(event) => patchForm({ model: event.target.value })}
             placeholder="例如 gpt-4o-mini / qwen-vl-max"
@@ -792,21 +792,21 @@ export default function SettingsDialog({
 
       <div className="grid grid-cols-[1fr_90px] gap-2">
         <label className="block">
-          <span className="text-[10.5px] text-[var(--faint)]">接口地址</span>
+          <span className="text-[11px] text-[var(--faint)]">接口地址</span>
           <input
-            className="input h-7 text-[11.5px] w-full mt-1"
+            className="input h-7 text-[12px] w-full mt-1"
             value={llmForm.baseUrl}
             onChange={(event) => patchForm({ baseUrl: event.target.value })}
             placeholder="https://api.example.com/v1"
           />
         </label>
         <label className="block">
-          <span className="text-[10.5px] text-[var(--faint)]">超时（秒）</span>
+          <span className="text-[11px] text-[var(--faint)]">超时（秒）</span>
           <input
             type="number"
             min={5}
             max={300}
-            className="input h-7 text-[11.5px] w-full mt-1"
+            className="input h-7 text-[12px] w-full mt-1"
             value={llmForm.timeoutSeconds}
             onChange={(event) => patchForm({ timeoutSeconds: event.target.value })}
           />
@@ -815,26 +815,26 @@ export default function SettingsDialog({
 
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
-          <span className="text-[10.5px] text-[var(--faint)]">温度（留空用推荐值）</span>
+          <span className="text-[11px] text-[var(--faint)]">温度（留空用推荐值）</span>
           <input
             type="number"
             min={0}
             max={2}
             step={0.05}
-            className="input h-7 text-[11.5px] w-full mt-1"
+            className="input h-7 text-[12px] w-full mt-1"
             value={llmForm.temperature}
             onChange={(event) => patchForm({ temperature: event.target.value })}
             placeholder="评分 0.2 / 研读 0.65"
           />
         </label>
         <label className="block">
-          <span className="text-[10.5px] text-[var(--faint)]">单次回复长度（留空用推荐值）</span>
+          <span className="text-[11px] text-[var(--faint)]">单次回复长度（留空用推荐值）</span>
           <input
             type="number"
             min={16}
             max={32000}
             step={64}
-            className="input h-7 text-[11.5px] w-full mt-1"
+            className="input h-7 text-[12px] w-full mt-1"
             value={llmForm.maxOutputTokens}
             onChange={(event) => patchForm({ maxOutputTokens: event.target.value })}
             placeholder="评分 400 / 建议 800"
@@ -850,7 +850,7 @@ export default function SettingsDialog({
             checked={llmForm.vision}
             onChange={(event) => patchForm({ vision: event.target.checked })}
           />
-          <span className="text-[11px]">能看图</span>
+          <span className="text-[12px]">能看图</span>
         </label>
         <label className="flex cursor-pointer items-center gap-1.5">
           <input
@@ -859,13 +859,13 @@ export default function SettingsDialog({
             checked={llmForm.jsonMode}
             onChange={(event) => patchForm({ jsonMode: event.target.checked })}
           />
-          <span className="text-[11px]">支持 JSON 模式</span>
+          <span className="text-[12px]">支持 JSON 模式</span>
         </label>
         <div className="ml-auto flex items-center gap-1.5">
-          <button className="btn btn-ghost h-7 px-2 text-[11.5px]" onClick={() => setLlmEditing(null)}>
+          <button className="btn btn-ghost h-7 px-2 text-[12px]" onClick={() => setLlmEditing(null)}>
             取消
           </button>
-          <button className="btn h-7 px-2.5 text-[11.5px]" onClick={() => void commitModel()}>
+          <button className="btn h-7 px-2.5 text-[12px]" onClick={() => void commitModel()}>
             保存模型
           </button>
         </div>
@@ -961,14 +961,14 @@ export default function SettingsDialog({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[760px] h-[560px] max-h-[86vh] flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="w-[760px] h-[560px] max-h-[86vh] flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-[48px] px-4 flex items-center gap-2 border-b border-[var(--border)] shrink-0">
-          <SettingsIcon size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">设置</span>
+          <SettingsIcon size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">设置</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
@@ -979,7 +979,7 @@ export default function SettingsDialog({
               return (
                 <button
                   key={id}
-                  className={`w-full text-left rounded-lg px-2.5 py-2 transition-colors ${
+                  className={`w-full text-left rounded-2xl px-2.5 py-2 transition-colors ${
                     active
                       ? 'settings-nav-active'
                       : 'hover:bg-[var(--panel-2)]'
@@ -990,12 +990,12 @@ export default function SettingsDialog({
                   <div className="flex items-center gap-2">
                     <Icon size={14} color={active ? 'var(--accent-2)' : 'var(--muted)'} />
                     <span
-                      className={`text-[12.5px] ${active ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'}`}
+                      className={`text-[13.5px] ${active ? 'text-[var(--accent-text)]' : 'text-[var(--text)]'}`}
                     >
                       {label}
                     </span>
                   </div>
-                  <div className="mt-0.5 pl-[22px] text-[10px] leading-4 text-[var(--faint)]">{hint}</div>
+                  <div className="mt-0.5 pl-[22px] text-[11px] leading-4 text-[var(--faint)]">{hint}</div>
                 </button>
               )
             })}
@@ -1005,14 +1005,14 @@ export default function SettingsDialog({
             {tab === 'appearance' && (
               <>
                 <div>
-                  <div className="text-[12.5px] mb-2">主题</div>
+                  <div className="text-[13.5px] mb-2">主题</div>
                   <div className="grid grid-cols-3 gap-1.5">
                     {THEME_OPTIONS.map(({ value, label, hint, Icon }) => {
                       const active = theme === value
                       return (
                         <button
                           key={value}
-                          className={`rounded-lg border px-2.5 py-2.5 text-left transition-colors ${
+                          className={`rounded-2xl border px-2.5 py-2.5 text-left transition-colors ${
                             active
                               ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
@@ -1029,7 +1029,7 @@ export default function SettingsDialog({
                             </span>
                           </div>
                           <div
-                            className={`mt-1 text-[10.5px] leading-4 ${
+                            className={`mt-1 text-[11px] leading-4 ${
                               active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'
                             }`}
                           >
@@ -1039,20 +1039,20 @@ export default function SettingsDialog({
                       )
                     })}
                   </div>
-                  <div className="mt-2 text-[11px] leading-4 text-[var(--faint)]">
+                  <div className="mt-2 text-[12px] leading-4 text-[var(--faint)]">
                     选择后会立刻生效，下次启动也沿用这次的选择。
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-[12.5px] mb-2">界面风格</div>
+                  <div className="text-[13.5px] mb-2">界面风格</div>
                   <div className="grid grid-cols-3 gap-2">
                     {SKINS.map((item) => {
                       const active = item.id === skin
                       return (
                         <button
                           key={item.id}
-                          className={`rounded-lg border p-2 text-left transition-colors ${
+                          className={`rounded-2xl border p-2 text-left transition-colors ${
                             active
                               ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
@@ -1075,29 +1075,29 @@ export default function SettingsDialog({
                             >
                               {item.name}
                             </span>
-                            {active && <Check size={12} color="var(--accent-2)" />}
+                            {active && <Check size={14} color="var(--accent-2)" />}
                           </div>
-                          <div className={`mt-0.5 text-[10.5px] leading-4 ${active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'}`}>
+                          <div className={`mt-0.5 text-[11px] leading-4 ${active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'}`}>
                             {item.hint}
                           </div>
                         </button>
                       )
                     })}
                   </div>
-                  <div className="mt-2 text-[11px] leading-4 text-[var(--faint)]">
+                  <div className="mt-2 text-[12px] leading-4 text-[var(--faint)]">
                     「{activeSkin.name}」已应用。除「默认」外，其余风格会固定深/浅，上方的主题开关对它们不起作用。
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-[12.5px] mb-2">照片清晰度</div>
+                  <div className="text-[13.5px] mb-2">照片清晰度</div>
                   <div className="space-y-1.5">
                     {THUMB_QUALITY_OPTIONS.map((item) => {
                       const active = item.id === thumbQuality
                       return (
                         <button
                           key={item.id}
-                          className={`w-full flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors ${
+                          className={`w-full flex items-start gap-2 rounded-2xl border px-2.5 py-2 text-left transition-colors ${
                             active
                               ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
@@ -1115,30 +1115,30 @@ export default function SettingsDialog({
                             >
                               {item.label}
                             </span>
-                            <div className={`mt-0.5 text-[10.5px] leading-4 ${active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'}`}>
+                            <div className={`mt-0.5 text-[11px] leading-4 ${active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'}`}>
                               {item.hint}
                             </div>
                           </div>
-                          {active && <Check size={13} color="var(--accent-2)" className="mt-0.5 shrink-0" />}
+                          {active && <Check size={14} color="var(--accent-2)" className="mt-0.5 shrink-0" />}
                         </button>
                       )
                     })}
                   </div>
-                  <div className="mt-2 text-[11px] leading-4 text-[var(--faint)]">
+                  <div className="mt-2 text-[12px] leading-4 text-[var(--faint)]">
                     只影响瀑布流里的小图，点开来看的始终是原图。选「自动」会按卡片大小和屏幕像素密度挑档，
                     缩略图拉大或竖构图自动上高清；切换后立刻重新加载，偏好自动记住。
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-[12.5px] mb-2">使用方式</div>
+                  <div className="text-[13.5px] mb-2">使用方式</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {USE_CASE_OPTIONS.map(({ value, label, hint, Icon }) => {
                       const active = useCase === value
                       return (
                         <button
                           key={value}
-                          className={`rounded-lg border px-2.5 py-2.5 text-left transition-colors ${
+                          className={`rounded-2xl border px-2.5 py-2.5 text-left transition-colors ${
                             active
                               ? 'border-[var(--accent-border)] bg-[var(--accent-soft)]'
                               : 'border-[var(--border)] bg-[var(--panel-2)] hover:border-[var(--border-strong)]'
@@ -1154,7 +1154,7 @@ export default function SettingsDialog({
                             </span>
                           </div>
                           <div
-                            className={`mt-1 text-[10.5px] leading-4 ${
+                            className={`mt-1 text-[11px] leading-4 ${
                               active ? 'text-[var(--muted)]' : 'text-[var(--faint)]'
                             }`}
                           >
@@ -1164,7 +1164,7 @@ export default function SettingsDialog({
                       )
                     })}
                   </div>
-                  <div className="mt-2 text-[11px] leading-4 text-[var(--faint)]">
+                  <div className="mt-2 text-[12px] leading-4 text-[var(--faint)]">
                     「整理照片」只是把摄影入口收进侧栏的「更多」，用过一次后自动回到导航，功能不会少。
                   </div>
                 </div>
@@ -1174,23 +1174,23 @@ export default function SettingsDialog({
             {tab === 'llm' && (
               <>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[12.5px]">模型服务</span>
+                  <span className="text-[13.5px]">模型服务</span>
                   {llm && (
-                    <span className="ml-auto text-[10.5px] text-[var(--faint)]">
+                    <span className="ml-auto text-[11px] text-[var(--faint)]">
                       {llm.encryption === 'os' ? '密钥由系统加密保存' : '系统加密不可用'}
                     </span>
                   )}
                 </div>
 
                 {!llm ? (
-                  <div className="text-[11px] text-[var(--faint)]">读取配置中…</div>
+                  <div className="text-[12px] text-[var(--faint)]">读取配置中…</div>
                 ) : (
                   <>
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
                       <div className="flex items-start gap-3">
                         <div className="min-w-0">
-                          <div className="text-[12.5px]">启用大模型能力</div>
-                          <div className="text-[10.5px] leading-4 text-[var(--faint)] mt-0.5">
+                          <div className="text-[13.5px]">启用大模型能力</div>
+                          <div className="text-[11px] leading-4 text-[var(--faint)] mt-0.5">
                             默认关闭。关闭后相册里不会出现 AI
                             按钮，也不会联网；开启后只有你点 AI 按钮才会调用。
                           </div>
@@ -1215,14 +1215,14 @@ export default function SettingsDialog({
                     </div>
 
                     {llm.encryption === 'unavailable' && (
-                      <div className="text-[10.5px] leading-4 text-[var(--danger-text)]">
+                      <div className="text-[11px] leading-4 text-[var(--danger-text)]">
                         系统加密不可用，已拒绝保存明文密钥；请先在系统里启用凭据保护。
                       </div>
                     )}
 
                     <div className="space-y-2">
                       {llm.settings.models.length === 0 && (
-                        <div className="text-[11px] text-[var(--faint)]">
+                        <div className="text-[12px] text-[var(--faint)]">
                           还没有模型，点下面的「添加模型」加一个。
                         </div>
                       )}
@@ -1233,17 +1233,17 @@ export default function SettingsDialog({
                         return (
                           <div
                             key={model.id}
-                            className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2"
+                            className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2"
                           >
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-[12.5px] text-[var(--text)]">{model.name}</span>
+                              <span className="text-[13.5px] text-[var(--text)]">{model.name}</span>
                               {isDefault && (
-                                <span className="rounded border border-[var(--accent-border)] bg-[var(--accent-soft)] px-1.5 py-[1px] text-[9.5px] text-[var(--accent-text)]">
+                                <span className="rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] px-1.5 py-[1px] text-[11px] text-[var(--accent-text)]">
                                   默认
                                 </span>
                               )}
                               <span
-                                className={`rounded border px-1.5 py-[1px] text-[9.5px] ${
+                                className={`rounded-lg border px-1.5 py-[1px] text-[11px] ${
                                   model.vision
                                     ? 'border-[var(--success)]/40 text-[var(--success)]'
                                     : 'border-[var(--warn)]/40 text-[var(--warn)]'
@@ -1251,12 +1251,12 @@ export default function SettingsDialog({
                               >
                                 {model.vision ? '视觉 ✓' : '视觉不可用'}
                               </span>
-                              <span className="rounded border border-[var(--border)] px-1.5 py-[1px] text-[9.5px] text-[var(--faint)]">
+                              <span className="rounded-lg border border-[var(--border)] px-1.5 py-[1px] text-[11px] text-[var(--faint)]">
                                 {hint ? '已存 Key' : '未存 Key'}
                               </span>
                               <div className="ml-auto flex items-center gap-1">
                                 <button
-                                  className="btn btn-ghost h-6 px-2 text-[11px]"
+                                  className="btn btn-ghost h-6 px-2 text-[12px]"
                                   disabled={testingId !== null || !hint}
                                   onClick={() => void testModel(model.id)}
                                   title="先测文本，再发一张 32×32 图片确认能不能看图"
@@ -1265,20 +1265,20 @@ export default function SettingsDialog({
                                 </button>
                                 {!isDefault && (
                                   <button
-                                    className="btn btn-ghost h-6 px-2 text-[11px]"
+                                    className="btn btn-ghost h-6 px-2 text-[12px]"
                                     onClick={() => void setDefaultModel(model.id)}
                                   >
                                     设为默认
                                   </button>
                                 )}
                                 <button
-                                  className="btn btn-ghost h-6 px-2 text-[11px]"
+                                  className="btn btn-ghost h-6 px-2 text-[12px]"
                                   onClick={() => startEditModel(model)}
                                 >
                                   编辑
                                 </button>
                                 <button
-                                  className="btn btn-ghost btn-danger h-6 px-2 text-[11px]"
+                                  className="btn btn-ghost btn-danger h-6 px-2 text-[12px]"
                                   onClick={() => void removeModel(model)}
                                 >
                                   删除
@@ -1286,21 +1286,22 @@ export default function SettingsDialog({
                               </div>
                             </div>
 
-                            <div className="break-all text-[10px] leading-4 text-[var(--faint)]">
+                            <div className="break-all text-[11px] leading-4 text-[var(--faint)]">
                               {model.vendor} ·{' '}
                               {model.provider === 'anthropic' ? 'Anthropic' : 'OpenAI 兼容'} ·{' '}
                               {model.model || '未填模型名'}
                             </div>
-                            <div className="break-all text-[10px] leading-4 text-[var(--faint)]">
+                            <div className="break-all text-[11px] leading-4 text-[var(--faint)]">
                               {model.baseUrl}
                             </div>
 
                             {test && (
                               <div
-                                className={`text-[10.5px] leading-4 ${
+                                className={`text-[11px] leading-4 ${
                                   test.ok ? 'text-[var(--success)]' : 'text-[var(--danger-text)]'
                                 }`}
                               >
+                                {test.ok ? '✓ ' : ''}
                                 {test.message}（{test.latencyMs} ms）
                               </div>
                             )}
@@ -1308,7 +1309,7 @@ export default function SettingsDialog({
                             <div className="flex items-center gap-2">
                               <input
                                 type="password"
-                                className="input h-7 flex-1 text-[11.5px]"
+                                className="input h-7 flex-1 text-[12px]"
                                 placeholder={hint ? `已保存 ${hint}` : '粘贴 API Key'}
                                 value={keyDrafts[model.id] ?? ''}
                                 onChange={(event) =>
@@ -1322,7 +1323,7 @@ export default function SettingsDialog({
                                 }}
                               />
                               <button
-                                className="btn h-7 px-2 text-[11.5px]"
+                                className="btn h-7 px-2 text-[12px]"
                                 disabled={
                                   !(keyDrafts[model.id] ?? '').trim() ||
                                   keyBusyId !== null ||
@@ -1334,7 +1335,7 @@ export default function SettingsDialog({
                               </button>
                               {hint && (
                                 <button
-                                  className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                                  className="btn btn-ghost h-7 px-2 text-[12px]"
                                   disabled={keyBusyId !== null}
                                   onClick={() => void clearModelKey(model.id)}
                                 >
@@ -1350,12 +1351,12 @@ export default function SettingsDialog({
                     </div>
 
                     {llmEditing === 'new' ? (
-                      <div className="rounded-lg border border-[var(--accent-border)] bg-[var(--panel-2)] p-3">
+                      <div className="rounded-2xl border border-[var(--accent-border)] bg-[var(--panel-2)] p-3">
                         {renderModelForm()}
                       </div>
                     ) : (
                       <button
-                        className="btn h-7 px-2 text-[11.5px]"
+                        className="btn h-7 px-2 text-[12px]"
                         onClick={startAddModel}
                       >
                         + 添加模型
@@ -1363,39 +1364,39 @@ export default function SettingsDialog({
                     )}
 
                     {llmMsg && (
-                      <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">
+                      <div className="text-[11px] leading-4 text-[var(--accent-text)]">
                         {llmMsg}
                       </div>
                     )}
 
-                    <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2">
-                      <div className="text-[11.5px]">功能分配</div>
-                      <div className="text-[10px] leading-4 text-[var(--faint)]">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2">
+                      <div className="text-[12px]">功能分配</div>
+                      <div className="text-[11px] leading-4 text-[var(--faint)]">
                         默认全部跟随默认模型；需要时给单个功能换模型。看不了图的模型会被标出来。
                       </div>
                       {llm.capabilities.map((capability) => (
                         <div key={capability.id} className="flex items-start gap-2">
                           <div className="min-w-0 flex-1">
-                            <div className="text-[11.5px] text-[var(--text)]">
+                            <div className="text-[12px] text-[var(--text)]">
                               {capability.title}
                               {capability.maxItems ? (
-                                <span className="text-[10px] text-[var(--faint)]">
+                                <span className="text-[11px] text-[var(--faint)]">
                                   {' '}
                                   · 一次最多 {capability.maxItems} 张
                                 </span>
                               ) : null}
                             </div>
-                            <div className="text-[10px] leading-4 text-[var(--faint)]">
+                            <div className="text-[11px] leading-4 text-[var(--faint)]">
                               {capability.description}
                             </div>
                             {!capability.vision && capability.modelName && (
-                              <div className="text-[10px] leading-4 text-[var(--warn)]">
+                              <div className="text-[11px] leading-4 text-[var(--warn)]">
                                 「{capability.modelName}」看不了图，这个功能会不可用
                               </div>
                             )}
                           </div>
                           <select
-                            className="input h-7 w-[150px] shrink-0 text-[11px]"
+                            className="input h-7 w-[150px] shrink-0 text-[12px]"
                             value={llm.settings.routing[capability.id] ?? ''}
                             onChange={(event) => void setRouting(capability.id, event.target.value)}
                           >
@@ -1428,14 +1429,14 @@ export default function SettingsDialog({
                     </div>
 
                     {llm.lastCall && (
-                      <div className="text-[10.5px] text-[var(--faint)]">
+                      <div className="text-[11px] text-[var(--faint)]">
                         上次调用：{llm.lastCall.ok ? '成功' : '失败'} · {llm.lastCall.latencyMs} ms
                       </div>
                     )}
                   </>
                 )}
 
-                <div className="text-[11px] leading-4 text-[var(--faint)]">
+                <div className="text-[12px] leading-4 text-[var(--faint)]">
                   支持 OpenAI 兼容接口与 Anthropic。请求在主进程发出，界面拿不到密钥和原图。
                 </div>
               </>
@@ -1443,38 +1444,38 @@ export default function SettingsDialog({
 
             {tab === 'semantic' && (
               <>
-                <div className="text-[12.5px]">语义模型</div>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] divide-y divide-[var(--border)]">
+                <div className="text-[13.5px]">语义模型</div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] divide-y divide-[var(--border)]">
                   {embeddingModels ? (
                     embeddingModels.map((model) => (
                       <div key={model.id} className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-[12.5px]">{model.label}</span>
+                          <span className="text-[13.5px]">{model.label}</span>
                           {model.active && (
-                            <span className="text-[9.5px] px-1.5 py-[1px] rounded border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]">
+                            <span className="text-[11px] px-1.5 py-[1px] rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]">
                               使用中
                             </span>
                           )}
                           {!model.ready && (
-                            <span className="text-[9.5px] px-1.5 py-[1px] rounded border border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]">
+                            <span className="text-[11px] px-1.5 py-[1px] rounded-lg border border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]">
                               未下载
                             </span>
                           )}
-                          <span className="ml-auto text-[10.5px] text-[var(--faint)] tabular-nums">
+                          <span className="ml-auto text-[11px] text-[var(--faint)] tabular-nums">
                             {formatBytes(model.bytes)} · {model.dim} 维
                           </span>
                         </div>
-                        <div className="text-[10.5px] text-[var(--faint)] mt-0.5 leading-4">
+                        <div className="text-[11px] text-[var(--faint)] mt-0.5 leading-4">
                           {model.note}
                         </div>
                         <div className="flex items-center gap-2 mt-1.5">
-                          <span className="text-[10.5px] text-[var(--faint)] tabular-nums">
+                          <span className="text-[11px] text-[var(--faint)] tabular-nums">
                             已索引 {model.indexed}/{model.total}
                           </span>
                           <div className="ml-auto">
                             {model.active && model.ready ? null : model.ready ? (
                               <button
-                                className="btn h-6 px-2 text-[11px]"
+                                className="btn h-6 px-2 text-[12px]"
                                 disabled={modelBusy !== null}
                                 onClick={() => void useExistingModel(model)}
                               >
@@ -1482,7 +1483,7 @@ export default function SettingsDialog({
                               </button>
                             ) : (
                               <button
-                                className="btn h-6 px-2 text-[11px]"
+                                className="btn h-6 px-2 text-[12px]"
                                 disabled={modelBusy !== null}
                                 onClick={() => void downloadAndSwitchModel(model)}
                               >
@@ -1494,21 +1495,21 @@ export default function SettingsDialog({
                       </div>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-[11px] text-[var(--faint)]">读取中…</div>
+                    <div className="px-3 py-2 text-[12px] text-[var(--faint)]">读取中…</div>
                   )}
                 </div>
                 {modelMsg && (
-                  <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">{modelMsg}</div>
+                  <div className="text-[11px] leading-4 text-[var(--accent-text)]">{modelMsg}</div>
                 )}
-                <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                <div className="text-[11px] leading-4 text-[var(--faint)]">
                   换模型不会删旧索引，但要重建后才能搜图和分类。SigLIP 2 的中文分类实测更弱，建议先小范围对比。
                 </div>
 
-                <div className="mt-2 text-[12.5px]">语义索引</div>
-                <div className="flex items-start gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+                <div className="mt-2 text-[13.5px]">语义索引</div>
+                <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                   <div className="min-w-0">
-                    <div className="text-[12.5px]">空闲时自动识图</div>
-                    <div className="text-[10.5px] text-[var(--faint)] mt-0.5 leading-4">
+                    <div className="text-[13.5px]">空闲时自动识图</div>
+                    <div className="text-[11px] text-[var(--faint)] mt-0.5 leading-4">
                       空闲时自动识图 + 插电且空闲 2 分钟后开始，每批 16 张，你一操作就停；只占 2 个 CPU 线程。
                     </div>
                   </div>
@@ -1528,12 +1529,12 @@ export default function SettingsDialog({
                     />
                   </button>
                 </div>
-                <div className="text-[11px] leading-4 text-[var(--faint)]">
+                <div className="text-[12px] leading-4 text-[var(--faint)]">
                   手动点侧栏「语义索引」会一次跑完剩余的，随时可以停。
                 </div>
 
-                <div className="mt-2 text-[12.5px]">AI 作用的照片</div>
-                <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
+                <div className="mt-2 text-[13.5px]">AI 作用的照片</div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {[{ value: 0, label: '全部照片' }]
                       .concat([1, 2, 3, 4, 5].map((n) => ({ value: n, label: '★'.repeat(n) })))
@@ -1542,7 +1543,7 @@ export default function SettingsDialog({
                         return (
                           <button
                             key={option.value}
-                            className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
+                            className={`h-[26px] px-2 rounded-lg border text-[12px] transition-colors ${
                               active
                                 ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                                 : 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
@@ -1556,23 +1557,23 @@ export default function SettingsDialog({
                         )
                       })}
                   </div>
-                  <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="text-[11px] leading-4 text-[var(--faint)]">
                     只处理达到这个星级的照片，默认 ★★★；没标星的算不达标。选「全部照片」就不限星级。
                   </div>
-                  <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="text-[11px] leading-4 text-[var(--faint)]">
                     范围内的照片才会出现 AI 按钮；已有的评分和笔记照常能看。
                   </div>
-                  <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="text-[11px] leading-4 text-[var(--faint)]">
                     当前有 {scoreCounts ? `${scoreCounts.matched} / ${scoreCounts.total} 张` : '读取中…'}在范围内
                     {`（星级：${scoreMinRating ? `≥ ${scoreMinRating} 星` : '不限'}；文件夹：${
                       (scopeFolders ?? []).length > 0 ? `${(scopeFolders ?? []).length} 个` : '全部'
                     }）`}
                   </div>
 
-                  <div className="mt-1 text-[10.5px] leading-4 text-[var(--faint)]">文件夹范围</div>
+                  <div className="mt-1 text-[11px] leading-4 text-[var(--faint)]">文件夹范围</div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
-                      className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
+                      className={`h-[26px] px-2 rounded-lg border text-[12px] transition-colors ${
                         (scopeFolders ?? []).length === 0
                           ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                           : 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
@@ -1587,7 +1588,7 @@ export default function SettingsDialog({
                       return (
                         <button
                           key={folder.id}
-                          className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
+                          className={`h-[26px] px-2 rounded-lg border text-[12px] transition-colors ${
                             active
                               ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                               : 'border-[var(--border)] bg-[var(--panel)] text-[var(--faint)]'
@@ -1601,12 +1602,12 @@ export default function SettingsDialog({
                       )
                     })}
                     {folders.length === 0 && (
-                      <span className="text-[10.5px] text-[var(--faint)]">
+                      <span className="text-[11px] text-[var(--faint)]">
                         还没有文件夹。先在左侧新建文件夹，就能在这里限定范围
                       </span>
                     )}
                   </div>
-                  <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="text-[11px] leading-4 text-[var(--faint)]">
                     不选就是所有文件夹；选了以后，只有这些文件夹里的照片能用到 AI。
                   </div>
                 </div>
@@ -1615,24 +1616,24 @@ export default function SettingsDialog({
 
             {tab === 'storage' && (
               <>
-                <div className="text-[12.5px]">索引与缓存</div>
+                <div className="text-[13.5px]">索引与缓存</div>
                 {!storage ? (
-                  <div className="text-[11px] text-[var(--faint)]">读取中…</div>
+                  <div className="text-[12px] text-[var(--faint)]">读取中…</div>
                 ) : (
-                  <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
                     <div>
-                      <div className="text-[10.5px] text-[var(--faint)]">图库目录（原图所在）</div>
-                      <div className="text-[11px] leading-4 break-all text-[var(--text)]">{storage.library}</div>
+                      <div className="text-[11px] text-[var(--faint)]">图库目录（原图所在）</div>
+                      <div className="text-[12px] leading-4 break-all text-[var(--text)]">{storage.library}</div>
                     </div>
                     <div>
-                      <div className="text-[10.5px] text-[var(--faint)]">
+                      <div className="text-[11px] text-[var(--faint)]">
                         索引与缓存（图库的数据文件、缩略图、预览）
                       </div>
-                      <div className="text-[11px] leading-4 break-all text-[var(--text)]">{storage.indexDir}</div>
+                      <div className="text-[12px] leading-4 break-all text-[var(--text)]">{storage.indexDir}</div>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button
-                        className="btn h-7 px-2 text-[11.5px]"
+                        className="btn h-7 px-2 text-[12px]"
                         disabled={indexBusy}
                         onClick={() => void moveIndex(undefined)}
                         title="把图库的数据文件和缩略图缓存搬到别的文件夹，原图不动"
@@ -1641,7 +1642,7 @@ export default function SettingsDialog({
                       </button>
                       {storage.indexDir !== storage.library && (
                         <button
-                          className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                          className="btn btn-ghost h-7 px-2 text-[12px]"
                           disabled={indexBusy}
                           onClick={() => void moveIndex(null)}
                         >
@@ -1649,20 +1650,20 @@ export default function SettingsDialog({
                         </button>
                       )}
                     </div>
-                    <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                    <div className="text-[11px] leading-4 text-[var(--faint)]">
                       只移动索引和缩略图，原图不动。索引大时要等一会儿，别关程序。
                     </div>
                     {indexMsg && (
-                      <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">{indexMsg}</div>
+                      <div className="text-[11px] leading-4 text-[var(--accent-text)]">{indexMsg}</div>
                     )}
                   </div>
                 )}
 
                 <div className="mt-1">
-                  <div className="text-[12.5px] mb-2">缩略图缓存</div>
-                  <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
+                  <div className="text-[13.5px] mb-2">缩略图缓存</div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
                     {!thumbStats ? (
-                      <div className="text-[11px] text-[var(--faint)]">统计中…</div>
+                      <div className="text-[12px] text-[var(--faint)]">统计中…</div>
                     ) : (
                       <>
                         <div className="grid grid-cols-3 gap-2">
@@ -1672,18 +1673,18 @@ export default function SettingsDialog({
                             { label: '高 1440px', data: thumbStats.high }
                           ].map(({ label, data }) => (
                             <div key={label}>
-                              <div className="text-[10.5px] text-[var(--faint)]">{label}</div>
-                              <div className="text-[11.5px] text-[var(--text)] tabular-nums">
+                              <div className="text-[11px] text-[var(--faint)]">{label}</div>
+                              <div className="text-[12px] text-[var(--text)] tabular-nums">
                                 {formatBytes(data.bytes)}
                               </div>
-                              <div className="text-[10px] text-[var(--faint)] tabular-nums">{data.count} 张</div>
+                              <div className="text-[11px] text-[var(--faint)] tabular-nums">{data.count} 张</div>
                             </div>
                           ))}
                         </div>
                         <div className="flex items-center gap-2 pt-0.5">
-                          <span className="text-[11px] text-[var(--muted)]">高清上限</span>
+                          <span className="text-[12px] text-[var(--muted)]">高清上限</span>
                           <select
-                            className="input h-7 px-1.5 text-[11.5px] ml-auto"
+                            className="input h-7 px-1.5 text-[12px] ml-auto"
                             value={thumbLimit ?? THUMB_CACHE_LIMIT_DEFAULT}
                             onChange={(e) => void changeLimit(Number(e.target.value))}
                             disabled={limitBusy || thumbLimit === null}
@@ -1698,7 +1699,7 @@ export default function SettingsDialog({
                         </div>
                         <div className="flex items-center gap-1.5">
                           <button
-                            className="btn h-7 px-2 text-[11.5px]"
+                            className="btn h-7 px-2 text-[12px]"
                             disabled={thumbBusy || thumbStats.high.count === 0}
                             onClick={() => void clearThumbs('high')}
                             title="只删 1440px 那档，日常浏览不受影响"
@@ -1706,7 +1707,7 @@ export default function SettingsDialog({
                             {thumbBusy ? '清理中…' : '清理高清缓存'}
                           </button>
                           <button
-                            className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                            className="btn btn-ghost h-7 px-2 text-[12px]"
                             disabled={thumbBusy}
                             onClick={() => void clearThumbs('all')}
                             title="三档全删，之后按需重新生成"
@@ -1714,11 +1715,11 @@ export default function SettingsDialog({
                             全部重建
                           </button>
                         </div>
-                        <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                        <div className="text-[11px] leading-4 text-[var(--faint)]">
                           高清档按需生成，清掉最划算；超过上限会自动淘汰最久没看的。原图始终不动。
                         </div>
                         {thumbMsg && (
-                          <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">{thumbMsg}</div>
+                          <div className="text-[11px] leading-4 text-[var(--accent-text)]">{thumbMsg}</div>
                         )}
                       </>
                     )}
@@ -1726,18 +1727,18 @@ export default function SettingsDialog({
                 </div>
 
                 <div className="mt-1">
-                  <div className="mb-2 flex items-center gap-1.5 text-[12.5px]">
-                    <FileText size={13} /> 写入照片信息（.xmp）
+                  <div className="mb-2 flex items-center gap-1.5 text-[13.5px]">
+                    <FileText size={14} /> 写入照片信息（.xmp）
                   </div>
-                  <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+                  <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                     {!xmp ? (
-                      <div className="text-[11px] text-[var(--faint)]">读取中…</div>
+                      <div className="text-[12px] text-[var(--faint)]">读取中…</div>
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
                           <div className="min-w-0">
                             <div className="text-[12px]">启用写入 .xmp</div>
-                            <div className="mt-0.5 text-[10.5px] leading-4 text-[var(--faint)]">
+                            <div className="mt-0.5 text-[11px] leading-4 text-[var(--faint)]">
                               把星级、旗标、标签、短备注写到原图旁边的 .xmp；只写人的判断，不写 AI
                               评分。默认关闭。
                             </div>
@@ -1761,7 +1762,7 @@ export default function SettingsDialog({
                         <div className="flex items-start gap-2 border-t border-[var(--border)] pt-2">
                           <div className="min-w-0">
                             <div className="text-[12px]">忽略外部修改</div>
-                            <div className="mt-0.5 text-[10.5px] leading-4 text-[var(--faint)]">
+                            <div className="mt-0.5 text-[11px] leading-4 text-[var(--faint)]">
                               Lightroom 等软件改过 .xmp 时不再提示导入，存照保持自己的判断。
                             </div>
                           </div>
@@ -1788,7 +1789,7 @@ export default function SettingsDialog({
 
                         <div className="flex flex-wrap items-center gap-1.5 border-t border-[var(--border)] pt-2">
                           <button
-                            className="btn h-7 px-2 text-[11.5px]"
+                            className="btn h-7 px-2 text-[12px]"
                             disabled={xmpBusy}
                             onClick={() => void exportAllXmp()}
                             title="为所有照片生成 .xmp，用于迁移到 Lightroom 等软件"
@@ -1796,21 +1797,21 @@ export default function SettingsDialog({
                             导出全部 XMP
                           </button>
                           <button
-                            className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                            className="btn btn-ghost h-7 px-2 text-[12px]"
                             disabled={xmpBusy || !xmp.enabled}
                             onClick={() => void checkXmp()}
                             title="检查照片信息有没有被别的软件改过"
                           >
                             检查外部修改
                           </button>
-                          <span className="text-[10px] text-[var(--faint)]">
+                          <span className="text-[11px] text-[var(--faint)]">
                             开启后导入新照片会读取同名 XMP
                           </span>
                         </div>
 
                         {xmpProgress && (
                           <div>
-                            <div className="flex items-center justify-between text-[10.5px] text-[var(--faint)]">
+                            <div className="flex items-center justify-between text-[11px] text-[var(--faint)]">
                               <span>
                                 {xmpProgress.phase === 'write'
                                   ? '正在写 XMP'
@@ -1832,14 +1833,14 @@ export default function SettingsDialog({
                                 }}
                               />
                             </div>
-                            <div className="mt-1 truncate text-[10px] text-[var(--faint)]">
+                            <div className="mt-1 truncate text-[11px] text-[var(--faint)]">
                               {xmpProgress.current}
                             </div>
                           </div>
                         )}
 
                         {xmpMsg && (
-                          <div className="text-[10.5px] leading-4 text-[var(--accent-text)]">
+                          <div className="text-[11px] leading-4 text-[var(--accent-text)]">
                             {xmpMsg}
                           </div>
                         )}
@@ -1853,27 +1854,27 @@ export default function SettingsDialog({
             {tab === 'about' && (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-medium">存照</span>
-                  <span className="text-[11px] text-[var(--faint)]">
+                  <span className="text-[13.5px] font-bold">存照</span>
+                  <span className="text-[12px] text-[var(--faint)]">
                     {appInfo ? `版本 ${appInfo.version}` : '读取版本中…'}
                   </span>
                   {updateEnabled &&
                     (update?.state === 'downloaded' ? (
                       <button
-                        className="btn ml-auto h-6 px-2 text-[11px]"
+                        className="btn ml-auto h-6 px-2 text-[12px]"
                         onClick={() => void window.api.updateInstall()}
                       >
-                        <RefreshCw size={11} /> 重启安装
+                        <RefreshCw size={14} /> 重启安装
                       </button>
                     ) : (
                       <button
-                        className="btn ml-auto h-6 px-2 text-[11px]"
+                        className="btn ml-auto h-6 px-2 text-[12px]"
                         onClick={() => void checkUpdate()}
                         disabled={update?.state === 'checking' || update?.state === 'downloading'}
                         title="检查有没有新版本"
                       >
                         <RefreshCw
-                          size={11}
+                          size={14}
                           className={update?.state === 'checking' ? 'animate-spin' : ''}
                         />
                         {update?.state === 'checking' ? '检查中…' : '检查更新'}
@@ -1882,20 +1883,20 @@ export default function SettingsDialog({
                 </div>
 
                 {updateEnabled && updateHintText(update) && (
-                  <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="text-[11px] leading-4 text-[var(--faint)]">
                     {updateHintText(update)}
                   </div>
                 )}
                 {updateEnabled && update?.state === 'downloading' && (
-                  <div className="h-1 overflow-hidden rounded bg-[var(--border)]">
+                  <div className="h-1 overflow-hidden rounded-lg bg-[var(--border)]">
                     <div
-                      className="h-full rounded bg-[var(--accent)] transition-[width]"
+                      className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
                       style={{ width: `${Math.min(100, Math.max(0, update.percent ?? 0))}%` }}
                     />
                   </div>
                 )}
 
-                <div className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--panel-2)]">
+                <div className="divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)] bg-[var(--panel-2)]">
                   <PathRow
                     label="图库目录"
                     path={storage?.library ?? null}
@@ -1924,37 +1925,37 @@ export default function SettingsDialog({
                 </div>
 
                 {openError && (
-                  <div className="text-[10.5px] leading-4 text-[var(--danger-text)]">{openError}</div>
+                  <div className="text-[11px] leading-4 text-[var(--danger-text)]">{openError}</div>
                 )}
 
-                <div className="text-[11px] leading-5 text-[var(--faint)]">
+                <div className="text-[12px] leading-5 text-[var(--faint)]">
                   卸载存照不会删除以上任何文件。整理成果（标签、分类、笔记、评分）保存在图库索引里，备份图库目录就等于备份了全部整理结果。
                 </div>
 
                 <div>
-                  <div className="text-[12.5px] mb-2">配置备份</div>
-                  <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
-                    <div className="text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="text-[13.5px] mb-2">配置备份</div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
+                    <div className="text-[11px] leading-4 text-[var(--faint)]">
                       备份主题、布局、缩略图偏好、AI 能力开关与设备清单。API Key、图库路径和照片不会写进文件。
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <button
-                        className="btn h-7 px-2 text-[11.5px]"
+                        className="btn h-7 px-2 text-[12px]"
                         onClick={() => void exportConfig()}
                         disabled={transferBusy !== null}
                       >
-                        <Download size={12} /> {transferBusy === 'export' ? '导出中…' : '导出配置'}
+                        <Download size={14} /> {transferBusy === 'export' ? '导出中…' : '导出配置'}
                       </button>
                       <button
-                        className="btn h-7 px-2 text-[11.5px]"
+                        className="btn h-7 px-2 text-[12px]"
                         onClick={() => void importConfig()}
                         disabled={transferBusy !== null}
                       >
-                        <Upload size={12} /> {transferBusy === 'import' ? '导入中…' : '导入配置'}
+                        <Upload size={14} /> {transferBusy === 'import' ? '导入中…' : '导入配置'}
                       </button>
                       {needReload && (
                         <button
-                          className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                          className="btn btn-ghost h-7 px-2 text-[12px]"
                           onClick={() => window.location.reload()}
                         >
                           重新载入界面
@@ -1963,7 +1964,7 @@ export default function SettingsDialog({
                     </div>
                     {transferMsg && (
                       <div
-                        className="break-all text-[10.5px] leading-4"
+                        className="break-all text-[11px] leading-4"
                         style={{
                           color: transferError ? 'var(--danger-text)' : 'var(--accent-text)'
                         }}

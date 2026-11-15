@@ -60,7 +60,7 @@ export default function DetailPanel({
       style={{ width: 'var(--detail-w, 320px)' }}
     >
       <div className="flex h-[42px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">
-        <div className="truncate text-[12.5px] font-medium" title={item.name}>
+        <div className="truncate text-[13.5px] font-bold" title={item.name}>
           {item.name}
         </div>
         <button className="btn btn-ghost ml-auto h-6 px-1.5" onClick={onClose} title="关闭">
@@ -69,7 +69,7 @@ export default function DetailPanel({
       </div>
 
       {aiReady && visionBlocked && (
-        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-[10.5px] leading-4 text-[var(--warn)]">
+        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--panel-2)] px-3 py-1.5 text-[11px] leading-4 text-[var(--warn)]">
           当前模型看不了图，AI 入口已停用；可在 设置 → 大模型 里换一个视觉模型。
         </div>
       )}

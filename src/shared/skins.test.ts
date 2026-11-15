@@ -15,6 +15,14 @@ describe('皮肤表', () => {
       expect(['auto', 'dark', 'light']).toContain(skin.mode)
     }
   })
+
+  it('G-neutral 定稿色值', () => {
+    expect(findSkin('classic').base).toBe('#171818')
+    expect(findSkin('night').base).toBe('#171818')
+    expect(findSkin('classic').swatches[2]).toBe('#FDC75D')
+    expect(findSkin('paper').swatches[2]).toBe('#7A5200')
+    expect(findSkin('contrast').base).toBe('#0A0A0A')
+  })
 })
 
 describe('isSkinId', () => {

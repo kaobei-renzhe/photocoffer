@@ -102,20 +102,20 @@ export default function SmartFilterDialog({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[560px] max-h-[84vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="w-[560px] max-h-[84vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="h-[46px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
-          <Sparkles size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">AI 智能筛选</span>
+          <Sparkles size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">AI 智能筛选</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose} title="关闭（Esc）">
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
           <textarea
-            className="input w-full h-[66px] py-2 resize-none leading-5 text-[12.5px]"
+            className="input w-full h-[66px] py-2 resize-none leading-5 text-[13.5px]"
             placeholder="用一句话描述要挑哪些图，比如：画面里有海、低饱和冷色调、主体清晰不手抖"
             value={rule}
             onChange={(event) => {
@@ -132,25 +132,25 @@ export default function SmartFilterDialog({
             }}
           />
 
-          <div className="mt-2 flex items-center gap-2 text-[10.5px] text-[var(--faint)]">
+          <div className="mt-2 flex items-center gap-2 text-[11px] text-[var(--faint)]">
             <span>
               当前视图 {total} 张 · 本次最多看 {MAX_ITEMS} 张
               {items.length < total ? '（从已加载的照片里取前 30 张）' : ''}
               {skipped > 0 && scope ? ` · 已跳过 ${skipped} 张（不在 AI 作用范围）` : ''}
             </span>
             <button
-              className="btn h-7 px-2.5 text-[11.5px] ml-auto"
+              className="btn h-7 px-2.5 text-[12px] ml-auto"
               disabled={!rule.trim() || phase === 'loading' || candidates.length === 0}
               onClick={() => void run()}
               title={`开始筛选（${modLabel}+Enter）`}
             >
-              {phase === 'loading' ? <Loader2 size={12} className="animate-spin" /> : <Search size={12} />}
+              {phase === 'loading' ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
               {phase === 'loading' ? '筛选中…' : '开始筛选'}
             </button>
           </div>
 
           {scope !== null && candidates.length === 0 && (
-            <div className="mt-3 rounded-lg border border-[var(--warn)]/40 bg-[var(--panel-2)] px-3 py-2.5 text-[11px] leading-5 text-[var(--warn)]">
+            <div className="mt-3 rounded-2xl border border-[var(--warn)]/40 bg-[var(--panel-2)] px-3 py-2.5 text-[12px] leading-5 text-[var(--warn)]">
               当前视图里没有符合 AI 作用范围的照片
               {scopeHint ? `（需要${scopeHint}）` : ''}
               。可以先打星，或到「设置 → 语义索引」放宽条件。
@@ -158,12 +158,12 @@ export default function SmartFilterDialog({
           )}
 
           {phase === 'error' && error && (
-            <div className="mt-3 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2.5">
-              <div className="flex items-start gap-1.5 text-[11.5px] leading-5 text-[var(--danger-text)]">
-                <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+            <div className="mt-3 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2.5">
+              <div className="flex items-start gap-1.5 text-[12px] leading-5 text-[var(--danger-text)]">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                 <span>{llmHint(error.code, error.message)}</span>
               </div>
-              <div className="mt-1 text-[10.5px] leading-4 text-[var(--danger-text)] opacity-70">
+              <div className="mt-1 text-[11px] leading-4 text-[var(--danger-text)] opacity-70">
                 {error.message}
               </div>
             </div>
@@ -171,17 +171,17 @@ export default function SmartFilterDialog({
 
           {phase === 'done' && result && (
             <div className="mt-3">
-              <div className="text-[11.5px] text-[var(--muted)]">
+              <div className="text-[12px] text-[var(--muted)]">
                 看了 {result.evaluated} 张，命中 <span className="text-[var(--accent-2)]">{matched.length}</span> 张
               </div>
               {result.errors?.length ? (
-                <div className="mt-1 text-[10.5px] leading-4 text-[var(--warn)]">
+                <div className="mt-1 text-[11px] leading-4 text-[var(--warn)]">
                   {result.errors.join('；')}
                 </div>
               ) : null}
 
               {matched.length === 0 ? (
-                <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-4 text-center text-[11.5px] text-[var(--faint)]">
+                <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-4 text-center text-[12px] text-[var(--faint)]">
                   这批里没有符合规则的图。可以换个说法，或先把候选范围缩小再筛。
                 </div>
               ) : (
@@ -191,16 +191,16 @@ export default function SmartFilterDialog({
                     return (
                       <div
                         key={id}
-                        className="flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1.5"
+                        className="flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2 py-1.5"
                       >
-                        <div className="w-[38px] h-[38px] shrink-0 rounded overflow-hidden border border-[var(--border)]">
+                        <div className="w-[38px] h-[38px] shrink-0 rounded-lg overflow-hidden border border-[var(--border)]">
                           <img src={thumbUrl(id, 'low')} alt="" className="w-full h-full object-cover" />
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-[11.5px] text-[var(--text)]">
+                          <div className="truncate text-[12px] text-[var(--text)]">
                             {item?.name ?? `#${id}`}
                           </div>
-                          <div className="truncate text-[10.5px] leading-4 text-[var(--faint)]">
+                          <div className="truncate text-[11px] leading-4 text-[var(--faint)]">
                             {reasonMap.get(id) ?? '模型没有给出理由'}
                           </div>
                         </div>
@@ -214,27 +214,27 @@ export default function SmartFilterDialog({
         </div>
 
         <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center gap-2">
-          <span className="text-[10.5px] text-[var(--faint)]">
+          <span className="text-[11px] text-[var(--faint)]">
             只有点「开始筛选」才会发请求 · 这 {candidates.length} 张会多花一点时间
             {cost.heavy ? '（量较大，会先确认）' : ''}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             {needsSettings && (
               <button
-                className="btn h-7 px-2 text-[11.5px]"
+                className="btn h-7 px-2 text-[12px]"
                 onClick={() => {
                   onOpenSettings()
                   onClose()
                 }}
               >
-                <Settings size={12} /> 去设置
+                <Settings size={14} /> 去设置
               </button>
             )}
-            <button className="btn btn-ghost h-7 px-2 text-[11.5px]" onClick={onClose}>
+            <button className="btn btn-ghost h-7 px-2 text-[12px]" onClick={onClose}>
               关闭
             </button>
             <button
-              className="btn h-7 px-2 text-[11.5px]"
+              className="btn h-7 px-2 text-[12px]"
               disabled={matched.length === 0}
               onClick={() => onApply(rule.trim(), matched)}
             >

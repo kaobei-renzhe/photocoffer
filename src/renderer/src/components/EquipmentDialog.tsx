@@ -294,15 +294,15 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[900px] max-h-[88vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="w-[900px] max-h-[88vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-[52px] shrink-0 px-4 flex items-center gap-3 border-b border-[var(--border)]">
           <Sparkles size={16} color="var(--accent-2)" />
-          <span className="text-[14px] font-medium">装备与搭配</span>
-          <div className="ml-4 flex items-center rounded-lg border border-[var(--border)] overflow-hidden">
+          <span className="text-[15px] font-bold">装备与搭配</span>
+          <div className="ml-4 flex items-center rounded-2xl border border-[var(--border)] overflow-hidden">
             <button
-              className={`h-7 px-3 text-[11.5px] ${
+              className={`h-7 px-3 text-[12px] ${
                 tab === 'gear' ? 'bg-[var(--accent-soft)] text-[var(--accent-2)]' : 'text-[var(--muted)]'
               }`}
               onClick={() => setTab('gear')}
@@ -310,7 +310,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
               我的装备
             </button>
             <button
-              className={`h-7 px-3 text-[11.5px] ${
+              className={`h-7 px-3 text-[12px] ${
                 tab === 'plan' ? 'bg-[var(--accent-soft)] text-[var(--accent-2)]' : 'text-[var(--muted)]'
               }`}
               onClick={() => setTab('plan')}
@@ -319,13 +319,13 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
             </button>
           </div>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
           {error && (
-            <div className="mb-3 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[11.5px] text-[var(--danger-text)]">
+            <div className="mb-3 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[12px] text-[var(--danger-text)]">
               {error}
             </div>
           )}
@@ -342,7 +342,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
             ) : (
               <>
                 {usage && usage.total > 0 && (
-                  <div className="mb-2 text-[11px] text-[var(--faint)]">
+                  <div className="mb-2 text-[12px] text-[var(--faint)]">
                     已匹配 {usage.matched} / {usage.total} 张带 EXIF 的照片
                     {usage.matched < usage.total ? '（其余没对上的会显示为未匹配）' : ''}
                   </div>
@@ -351,7 +351,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="relative flex-1 max-w-[320px]">
                     <Search
-                      size={13}
+                      size={14}
                       className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--faint)] pointer-events-none"
                     />
                     <input
@@ -362,13 +362,13 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                     />
                   </div>
                   <button
-                    className="btn btn-primary h-7 px-3 text-[11.5px]"
+                    className="btn btn-primary h-7 px-3 text-[12px]"
                     onClick={() => setPicker({ mode: 'add' })}
                   >
-                    <Plus size={12} /> 搜索添加
+                    <Plus size={14} /> 搜索添加
                   </button>
                   <button
-                    className="btn btn-ghost h-7 px-2 text-[11.5px]"
+                    className="btn btn-ghost h-7 px-2 text-[12px]"
                     onClick={() => openManual('')}
                     title="型号不在目录里时，手动录入参数"
                   >
@@ -395,12 +395,12 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                 </div>
 
                 {visibleItems.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-[var(--border)] py-10 text-center">
-                    <div className="text-[12.5px] text-[var(--muted)]">
+                  <div className="rounded-2xl border border-dashed border-[var(--border)] py-10 text-center">
+                    <div className="text-[13.5px] text-[var(--muted)]">
                       {keyword ? '没有匹配的设备' : '还没有这类设备'}
                     </div>
                     <button
-                      className="btn mt-3 h-7 px-3 text-[11.5px]"
+                      className="btn mt-3 h-7 px-3 text-[12px]"
                       onClick={() => setPicker({ mode: 'add' })}
                     >
                       搜索型号添加
@@ -413,20 +413,20 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                       return (
                         <div
                           key={item.id}
-                          className="flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2"
+                          className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2"
                         >
-                          <Icon size={15} color="var(--accent-2)" />
+                          <Icon size={16} color="var(--accent-2)" />
                           <div className="min-w-0">
-                            <div className="text-[12.5px] text-[var(--text)] truncate">
+                            <div className="text-[13.5px] text-[var(--text)] truncate">
                               {item.brand} {item.model}
                             </div>
-                            <div className="text-[10.5px] text-[var(--faint)] truncate">
+                            <div className="text-[11px] text-[var(--faint)] truncate">
                               {CATEGORY_LABEL[item.category]} · {specSummary(item) || '未填写参数'}
                             </div>
                           </div>
                           <div className="ml-auto flex items-center gap-1">
                             {usage && (usage.byGear[item.id] ?? 0) > 0 && (
-                              <span className="text-[10px] px-1.5 py-[1px] rounded bg-[var(--success-soft)] text-[var(--success)] whitespace-nowrap">
+                              <span className="text-[11px] px-1.5 py-[1px] rounded-lg bg-[var(--success-soft)] text-[var(--success)] whitespace-nowrap">
                                 已拍 {usage.byGear[item.id]} 张
                               </span>
                             )}
@@ -435,14 +435,14 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                               title="更换型号（搜索）"
                               onClick={() => setPicker({ mode: 'replace', item })}
                             >
-                              <Pencil size={12} />
+                              <Pencil size={14} />
                             </button>
                             <button
                               className="btn btn-ghost btn-danger h-6 px-1.5"
                               title="删除"
                               onClick={() => void remove(item)}
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </div>
@@ -467,12 +467,12 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                 ))}
               </div>
               {currentScenario && (
-                <div className="text-[11px] text-[var(--faint)] mb-3">{currentScenario.hint}</div>
+                <div className="text-[12px] text-[var(--faint)] mb-3">{currentScenario.hint}</div>
               )}
 
               {kits.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-[11px] text-[var(--faint)] mb-1.5">我的方案</div>
+                  <div className="text-[12px] text-[var(--faint)] mb-1.5">我的方案</div>
                   <div className="grid grid-cols-2 gap-1.5">
                     {kits.map((kit) => {
                       const body = items.find((item) => item.id === kit.bodyId)
@@ -481,32 +481,32 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                       return (
                         <div
                           key={kit.id}
-                          className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2"
+                          className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-[11.5px] text-[var(--text)] truncate">{kit.name}</span>
+                            <span className="text-[12px] text-[var(--text)] truncate">{kit.name}</span>
                             <button
                               className="btn btn-ghost h-5 px-1 ml-auto"
                               title="复制清单"
                               onClick={() => void copyText(copyKey, kitText(kit))}
                             >
-                              <Copy size={11} />
+                              <Copy size={14} />
                             </button>
                             <button
                               className="btn btn-ghost btn-danger h-5 px-1"
                               title="删除方案"
                               onClick={() => void removeKit(kit)}
                             >
-                              <Trash2 size={11} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
-                          <div className="text-[10.5px] text-[var(--faint)] truncate">
+                          <div className="text-[11px] text-[var(--faint)] truncate">
                             {scenarioName(kit.scenario)} · {body?.model ?? '无机身'} +{' '}
                             {lens?.model ?? '无镜头'}
                             {kit.accessoryIds.length > 0 ? ` + ${kit.accessoryIds.length} 件配件` : ''}
                           </div>
                           {copied === copyKey && (
-                            <div className="text-[10px] text-[var(--success)]">已复制到剪贴板</div>
+                            <div className="text-[11px] text-[var(--success)]">✓ 已复制到剪贴板</div>
                           )}
                         </div>
                       )
@@ -516,17 +516,17 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
               )}
 
               {recommendation && recommendation.plans.length === 0 && (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] px-4 py-8 text-center">
-                  <div className="text-[12.5px] text-[var(--muted)]">还缺少基础设备</div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-4 py-8 text-center">
+                  <div className="text-[13.5px] text-[var(--muted)]">还缺少基础设备</div>
                   <div className="mt-2 space-y-1">
                     {recommendation.missing.map((text) => (
-                      <div key={text} className="text-[11.5px] text-[var(--warn)]">
+                      <div key={text} className="text-[12px] text-[var(--warn)]">
                         ＋ {text}
                       </div>
                     ))}
                   </div>
                   <button
-                    className="btn btn-primary mt-4 h-7 px-3 text-[11.5px]"
+                    className="btn btn-primary mt-4 h-7 px-3 text-[12px]"
                     onClick={() => setTab('gear')}
                   >
                     去添加设备
@@ -547,7 +547,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                     return (
                       <div
                         key={key}
-                        className={`rounded-xl border px-3 py-2.5 ${
+                        className={`rounded-2xl border px-3 py-2.5 ${
                           index === 0
                             ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] shadow-[inset_2px_0_0_var(--accent)]'
                             : 'border-[var(--border)] bg-[var(--panel-2)]'
@@ -555,7 +555,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                       >
                         <div className="flex items-center gap-2 mb-1.5">
                           <span
-                            className={`text-[10.5px] px-1.5 py-[1px] rounded border ${
+                            className={`text-[11px] px-1.5 py-[1px] rounded-lg border ${
                               index === 0
                                 ? 'border-[var(--accent-border)] text-[var(--accent-text)]'
                                 : 'border-[var(--border)] bg-[var(--panel-3)] text-[var(--muted)]'
@@ -563,10 +563,10 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                           >
                             {index === 0 ? '首选' : '备选'}
                           </span>
-                          <span className="text-[12.5px] text-[var(--text)]">
+                          <span className="text-[13.5px] text-[var(--text)]">
                             {plan.body?.brand} {plan.body?.model}
                           </span>
-                          <span className="ml-auto text-[10.5px] text-[var(--faint)]">
+                          <span className="ml-auto text-[11px] text-[var(--faint)]">
                             匹配度 {plan.score}
                           </span>
                         </div>
@@ -600,35 +600,35 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                         {plan.reasons.length > 0 && (
                           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
                             {plan.reasons.slice(0, 6).map((reason) => (
-                              <span key={reason} className="text-[10.5px] text-[var(--success)]">
+                              <span key={reason} className="text-[11px] text-[var(--success)]">
                                 ✓ {reason}
                               </span>
                             ))}
                           </div>
                         )}
                         {plan.warnings.map((warning) => (
-                          <div key={warning} className="mt-1 text-[10.5px] text-[var(--warn)]">
+                          <div key={warning} className="mt-1 text-[11px] text-[var(--warn)]">
                             ! {warning}
                           </div>
                         ))}
                         {plan.missing.map((text) => (
-                          <div key={text} className="mt-1 text-[10.5px] text-[var(--accent-2)]">
+                          <div key={text} className="mt-1 text-[11px] text-[var(--accent-2)]">
                             ＋ {text}
                           </div>
                         ))}
 
                         <div className="mt-2 flex items-center gap-2">
                           <button
-                            className="btn btn-ghost h-6 px-2 text-[11px]"
+                            className="btn btn-ghost h-6 px-2 text-[12px]"
                             onClick={() => void copyText(copyKey, planText(plan))}
                           >
-                            <Copy size={11} /> {copied === copyKey ? '已复制' : '复制清单'}
+                            <Copy size={14} /> {copied === copyKey ? '已复制' : '复制清单'}
                           </button>
                           {savingKitFor === key ? (
                             <div className="flex items-center gap-1">
                               <input
                                 autoFocus
-                                className="input h-6 w-[150px] text-[11px]"
+                                className="input h-6 w-[150px] text-[12px]"
                                 placeholder="方案名称"
                                 value={kitName}
                                 onChange={(e) => setKitName(e.target.value)}
@@ -641,7 +641,7 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                                 }}
                               />
                               <button
-                                className="btn h-6 px-2 text-[11px]"
+                                className="btn h-6 px-2 text-[12px]"
                                 onClick={() => void savePlanAsKit(plan)}
                               >
                                 保存
@@ -653,18 +653,18 @@ export default function EquipmentDialog({ onClose }: EquipmentDialogProps) {
                                   setKitName('')
                                 }}
                               >
-                                <X size={11} />
+                                <X size={14} />
                               </button>
                             </div>
                           ) : (
                             <button
-                              className="btn btn-ghost h-6 px-2 text-[11px]"
+                              className="btn btn-ghost h-6 px-2 text-[12px]"
                               onClick={() => {
                                 setSavingKitFor(key)
                                 setKitName(`${scenarioName(plan.scenario)}方案`)
                               }}
                             >
-                              <Plus size={11} /> 存为方案
+                              <Plus size={14} /> 存为方案
                             </button>
                           )}
                         </div>
@@ -705,7 +705,7 @@ function FilterChip({
 }) {
   return (
     <button
-      className={`h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
+      className={`h-[26px] px-2 rounded-lg border text-[12px] transition-colors ${
         active
           ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
           : 'border-[var(--border)] text-[var(--muted)] bg-[var(--panel-2)]'
@@ -719,11 +719,11 @@ function FilterChip({
 
 function PlanLine({ label, value, tag }: { label: string; value: string; tag?: string }) {
   return (
-    <div className="flex items-start gap-2 text-[11.5px] leading-5">
+    <div className="flex items-start gap-2 text-[12px] leading-5">
       <span className="w-[42px] shrink-0 text-[var(--faint)]">{label}</span>
       <span className="text-[var(--text)] break-all">{value}</span>
       {tag && (
-        <span className="ml-auto shrink-0 text-[10px] text-[var(--faint)]">{tag}</span>
+        <span className="ml-auto shrink-0 text-[11px] text-[var(--faint)]">{tag}</span>
       )}
     </div>
   )
@@ -750,13 +750,13 @@ function GearForm({
   }
 
   return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
       <div className="text-[12px] text-[var(--text)] mb-2.5">
         {form.id ? '编辑设备' : '添加设备'}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="block">
-          <div className="text-[10.5px] text-[var(--faint)] mb-1">分类</div>
+          <div className="text-[11px] text-[var(--faint)] mb-1">分类</div>
           <select
             className="input h-7 w-full text-[12px]"
             value={form.category}
@@ -770,7 +770,7 @@ function GearForm({
           </select>
         </label>
         <label className="block">
-          <div className="text-[10.5px] text-[var(--faint)] mb-1">品牌</div>
+          <div className="text-[11px] text-[var(--faint)] mb-1">品牌</div>
           <input
             className="input h-7 w-full text-[12px]"
             value={form.brand}
@@ -779,7 +779,7 @@ function GearForm({
           />
         </label>
         <label className="block col-span-2">
-          <div className="text-[10.5px] text-[var(--faint)] mb-1">型号</div>
+          <div className="text-[11px] text-[var(--faint)] mb-1">型号</div>
           <input
             className="input h-7 w-full text-[12px]"
             value={form.model}
@@ -791,7 +791,7 @@ function GearForm({
         {form.category === 'body' && (
           <>
             <label className="block">
-              <div className="text-[10.5px] text-[var(--faint)] mb-1">卡口</div>
+              <div className="text-[11px] text-[var(--faint)] mb-1">卡口</div>
               <input
                 className="input h-7 w-full text-[12px]"
                 value={form.mount ?? ''}
@@ -800,7 +800,7 @@ function GearForm({
               />
             </label>
             <label className="block">
-              <div className="text-[10.5px] text-[var(--faint)] mb-1">画幅</div>
+              <div className="text-[11px] text-[var(--faint)] mb-1">画幅</div>
               <select
                 className="input h-7 w-full text-[12px]"
                 value={form.sensor ?? 'ff'}
@@ -825,7 +825,7 @@ function GearForm({
         {form.category === 'lens' && (
           <>
             <label className="block">
-              <div className="text-[10.5px] text-[var(--faint)] mb-1">卡口</div>
+              <div className="text-[11px] text-[var(--faint)] mb-1">卡口</div>
               <input
                 className="input h-7 w-full text-[12px]"
                 value={form.mount ?? ''}
@@ -859,7 +859,7 @@ function GearForm({
         )}
 
         <label className="block col-span-2">
-          <div className="text-[10.5px] text-[var(--faint)] mb-1">备注</div>
+          <div className="text-[11px] text-[var(--faint)] mb-1">备注</div>
           <input
             className="input h-7 w-full text-[12px]"
             value={form.note ?? ''}
@@ -870,10 +870,10 @@ function GearForm({
       </div>
 
       <div className="flex justify-end gap-2 mt-3">
-        <button className="btn h-7 px-3 text-[11.5px]" onClick={onCancel}>
+        <button className="btn h-7 px-3 text-[12px]" onClick={onCancel}>
           取消
         </button>
-        <button className="btn btn-primary h-7 px-4 text-[11.5px]" disabled={saving} onClick={onSave}>
+        <button className="btn btn-primary h-7 px-4 text-[12px]" disabled={saving} onClick={onSave}>
           {saving ? '保存中…' : '保存'}
         </button>
       </div>
@@ -894,7 +894,7 @@ function NumberInput({
 }) {
   return (
     <label className="block">
-      <div className="text-[10.5px] text-[var(--faint)] mb-1">{label}</div>
+      <div className="text-[11px] text-[var(--faint)] mb-1">{label}</div>
       <input
         className="input h-7 w-full text-[12px]"
         value={value}
@@ -916,7 +916,7 @@ function Check({
   onChange: (value: boolean) => void
 }) {
   return (
-    <label className="inline-flex items-center gap-1.5 text-[11.5px] text-[var(--muted)] cursor-pointer">
+    <label className="inline-flex items-center gap-1.5 text-[12px] text-[var(--muted)] cursor-pointer">
       <input
         type="checkbox"
         checked={checked}

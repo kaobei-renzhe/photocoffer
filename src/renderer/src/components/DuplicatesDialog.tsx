@@ -35,47 +35,47 @@ export default function DuplicatesDialog({ onClose, onRemove }: DuplicatesDialog
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[760px] max-h-[80vh] rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl flex flex-col"
+        className="w-[760px] max-h-[80vh] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
-          <Copy size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">重复图片</span>
+          <Copy size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">重复图片</span>
           {!loading && (
-            <span className="text-[11.5px] text-[var(--faint)]">
+            <span className="text-[12px] text-[var(--faint)]">
               {groups.length} 组 · 可清理 {total} 张
             </span>
           )}
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          {loading && <div className="py-16 text-center text-[12.5px] text-[var(--muted)]">正在比对…</div>}
+          {loading && <div className="py-16 text-center text-[13.5px] text-[var(--muted)]">正在比对…</div>}
 
           {!loading && groups.length === 0 && (
-            <div className="py-16 text-center text-[12.5px] text-[var(--muted)]">
+            <div className="py-16 text-center text-[13.5px] text-[var(--muted)]">
               没有发现重复或高度相似的图片
             </div>
           )}
 
           <div className="space-y-4">
             {groups.map((group) => (
-              <div key={group.hash} className="rounded-lg border border-[var(--border)] p-3">
+              <div key={group.hash} className="rounded-2xl border border-[var(--border)] p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[11.5px] text-[var(--muted)]">{group.items.length} 张相似</span>
+                  <span className="text-[12px] text-[var(--muted)]">{group.items.length} 张相似</span>
                   <button
-                    className="btn btn-ghost h-6 px-2 ml-auto text-[11.5px] btn-danger"
+                    className="btn btn-ghost h-6 px-2 ml-auto text-[12px] btn-danger"
                     onClick={() => void removeDuplicates(group)}
                   >
-                    <Trash2 size={12} /> 保留第一张，移除其余
+                    <Trash2 size={14} /> 保留第一张，移除其余
                   </button>
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1">
                   {group.items.map((item, i) => (
                     <div key={item.id} className="w-[132px] shrink-0">
-                      <div className="h-[96px] rounded-md overflow-hidden bg-[var(--panel-2)] grid place-items-center">
+                      <div className="h-[96px] rounded-lg overflow-hidden bg-[var(--panel-2)] grid place-items-center">
                         <img
                           src={thumbUrl(item.id)}
                           alt={item.name}
@@ -83,11 +83,11 @@ export default function DuplicatesDialog({ onClose, onRemove }: DuplicatesDialog
                           loading="lazy"
                         />
                       </div>
-                      <div className="mt-1 text-[10.5px] text-[var(--muted)] truncate" title={item.path}>
+                      <div className="mt-1 text-[11px] text-[var(--muted)] truncate" title={item.path}>
                         {i === 0 ? '保留 · ' : ''}
                         {item.name}
                       </div>
-                      <div className="text-[10px] text-[var(--faint)]">{formatBytes(item.size)}</div>
+                      <div className="text-[11px] text-[var(--faint)]">{formatBytes(item.size)}</div>
                     </div>
                   ))}
                 </div>

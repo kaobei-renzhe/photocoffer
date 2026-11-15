@@ -28,7 +28,7 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
   if (!settings) {
     return (
       <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm">
-        <div className="text-[12.5px] text-[var(--muted)]">读取设置…</div>
+        <div className="text-[13.5px] text-[var(--muted)]">读取设置…</div>
       </div>
     )
   }
@@ -60,22 +60,22 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[520px] rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="w-[520px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-[48px] px-4 flex items-center gap-2 border-b border-[var(--border)]">
-          <Archive size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">自动备份</span>
+          <Archive size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">自动备份</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="p-4 space-y-4">
           <div className="flex items-center gap-3">
             <div>
-              <div className="text-[12.5px]">启用自动备份</div>
-              <div className="text-[11px] text-[var(--faint)] mt-0.5">仅在应用运行时检查并执行</div>
+              <div className="text-[13.5px]">启用自动备份</div>
+              <div className="text-[12px] text-[var(--faint)] mt-0.5">仅在应用运行时检查并执行</div>
             </div>
             <button
               className={`ml-auto w-[38px] h-[21px] rounded-full relative transition-colors ${
@@ -93,12 +93,12 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
           </div>
 
           <div className={settings.enabled ? '' : 'opacity-45 pointer-events-none'}>
-            <div className="text-[11px] text-[var(--faint)] mb-1.5">备份周期</div>
+            <div className="text-[12px] text-[var(--faint)] mb-1.5">备份周期</div>
             <div className="flex gap-1.5">
               {INTERVALS.map((option) => (
                 <button
                   key={option.days}
-                  className={`btn h-7 px-3 text-[11.5px] ${
+                  className={`btn h-7 px-3 text-[12px] ${
                     settings.intervalDays === option.days
                       ? 'border-[var(--accent)] text-[var(--accent-2)]'
                       : ''
@@ -110,12 +110,12 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
               ))}
             </div>
 
-            <div className="text-[11px] text-[var(--faint)] mt-3 mb-1.5">保留最近</div>
+            <div className="text-[12px] text-[var(--faint)] mt-3 mb-1.5">保留最近</div>
             <div className="flex gap-1.5">
               {KEEPS.map((count) => (
                 <button
                   key={count}
-                  className={`btn h-7 px-3 text-[11.5px] ${
+                  className={`btn h-7 px-3 text-[12px] ${
                     settings.keep === count ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
                   }`}
                   onClick={() => patch({ keep: count })}
@@ -125,18 +125,18 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
               ))}
             </div>
 
-            <div className="text-[11px] text-[var(--faint)] mt-3 mb-1.5">保存位置</div>
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2">
-              <div className="text-[11.5px] text-[var(--muted)] break-all leading-4">
+            <div className="text-[12px] text-[var(--faint)] mt-3 mb-1.5">保存位置</div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2">
+              <div className="text-[12px] text-[var(--muted)] break-all leading-4">
                 {settings.directory ?? '默认：图库旁边的 image-nest-backups 文件夹'}
               </div>
               <div className="flex gap-1.5 mt-1.5">
-                <button className="btn h-6 px-2 text-[11px]" onClick={() => void chooseDir()}>
+                <button className="btn h-6 px-2 text-[12px]" onClick={() => void chooseDir()}>
                   更改…
                 </button>
                 {settings.directory && (
                   <button
-                    className="btn btn-ghost h-6 px-2 text-[11px]"
+                    className="btn btn-ghost h-6 px-2 text-[12px]"
                     onClick={() => patch({ directory: null })}
                   >
                     恢复默认
@@ -146,12 +146,12 @@ export default function AutoBackupDialog({ onClose, onSaved }: AutoBackupDialogP
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[11.5px] text-[var(--faint)]">
-            <Clock size={12} />
+          <div className="flex items-center gap-2 text-[12px] text-[var(--faint)]">
+            <Clock size={14} />
             上次自动备份：{settings.lastRunAt ? formatDate(settings.lastRunAt) : '还没有执行过'}
           </div>
 
-          <div className="text-[11px] text-[var(--faint)] leading-4">
+          <div className="text-[12px] text-[var(--faint)] leading-4">
             自动备份只打包图库的数据文件（标签、评分、备注、文件夹、堆叠），不包含原图与缩略图，体积很小。
           </div>
         </div>

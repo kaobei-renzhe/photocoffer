@@ -129,9 +129,9 @@ const Card = memo(function Card({
       {item.error ? (
         <div className="absolute inset-0 grid place-items-center bg-[var(--card)] px-2 text-center">
           <div>
-            <TriangleAlert size={18} className="mx-auto text-[var(--danger-text)]" />
-            <div className="mt-1 text-[10px] text-[var(--danger-text)]">无法读取</div>
-            <div className="mt-0.5 text-[9.5px] text-[var(--faint)] truncate">{item.ext.replace('.', '').toUpperCase()}</div>
+            <TriangleAlert size={24} strokeWidth={1.5} className="mx-auto text-[var(--danger-text)]" />
+            <div className="mt-1 text-[11px] text-[var(--danger-text)]">无法读取</div>
+            <div className="mt-0.5 text-[11px] text-[var(--faint)] truncate">{item.ext.replace('.', '').toUpperCase()}</div>
           </div>
         </div>
       ) : (
@@ -148,12 +148,12 @@ const Card = memo(function Card({
         className="absolute inset-x-0 bottom-0 h-[42%] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
         style={{ background: 'linear-gradient(to top, rgba(5,7,10,0.72), rgba(5,7,10,0))' }}
       />
-      <div className="absolute bottom-1.5 left-2 right-2 text-[11px] text-white/90 truncate opacity-0 group-hover:opacity-100 pointer-events-none">
+      <div className="absolute bottom-1.5 left-2 right-2 text-[12px] text-white/90 truncate opacity-0 group-hover:opacity-100 pointer-events-none">
         {item.name}
       </div>
       {item.quality && (
         <span
-          className="absolute top-1.5 left-2 px-1 rounded text-[10.5px] font-semibold tabular-nums"
+          className="absolute top-1.5 left-2 px-1 rounded-lg text-[11px] font-normal tabular-nums"
           style={{ color: scoreColor(item.quality.overall), background: 'rgba(0,0,0,0.5)' }}
           title={`AI 评分 ${item.quality.overall}${item.quality.comment ? `：${item.quality.comment}` : ''}`}
         >
@@ -165,12 +165,12 @@ const Card = memo(function Card({
           className="absolute right-1.5 top-1.5 z-10 grid h-[18px] w-[18px] place-items-center rounded-full border border-white/20 text-white shadow-[0_2px_6px_rgba(0,0,0,0.35)]"
           style={{ background: 'rgba(10,12,16,0.72)', backdropFilter: 'blur(6px)' }}
         >
-          <Check size={11} strokeWidth={3} />
+          <Check size={12} strokeWidth={3} />
         </span>
       )}
       {item.flag !== 0 && (
         <span
-          className="absolute top-1.5 text-[11px] font-semibold px-1 rounded"
+          className="absolute top-1.5 text-[12px] font-normal px-1 rounded-lg"
           style={{
             right: selected ? 26 : 8,
             color: item.flag > 0 ? '#8be9a8' : '#ff9aa2',
@@ -182,21 +182,26 @@ const Card = memo(function Card({
       )}
       {item.rating > 0 && (
         <div
-          className="absolute text-[10.5px] text-amber-300 drop-shadow"
-          style={{ top: item.flag !== 0 ? 26 : 6, right: selected ? 26 : 8 }}
+          className="absolute text-[11px] text-[var(--star)] drop-shadow"
+          style={{
+            top: item.flag !== 0 ? 26 : 6,
+            right: selected ? 26 : 8,
+            WebkitTextStroke: '0.75px rgba(0,0,0,.45)',
+            textShadow: '0 1px 1px rgba(0,0,0,.45)'
+          }}
         >
           {'★'.repeat(item.rating)}
         </div>
       )}
       <div className="absolute bottom-1.5 right-2 flex items-center gap-1 pointer-events-none">
         {item.missing === 1 && (
-          <span className="px-1 py-[1px] rounded bg-[#7a2b2f] text-[9px] tracking-wide text-[#ffd7da]">
+          <span className="px-1 py-[1px] rounded-lg bg-[#7a2b2f] text-[11px] text-[#ffd7da]">
             丢失
           </span>
         )}
         {item.groupCount > 1 && item.groupKey && (
           <button
-            className="px-1 py-[1px] rounded bg-black/70 text-[9px] tracking-wide text-[#cfe0ff] hover:bg-black/90 pointer-events-auto"
+            className="px-1 py-[1px] rounded-lg bg-black/70 text-[11px] text-[#cfe0ff] hover:bg-black/90 pointer-events-auto"
             onClick={(e) => {
               e.stopPropagation()
               onExpandGroup(item.groupKey as string)
@@ -208,12 +213,12 @@ const Card = memo(function Card({
           </button>
         )}
         {item.pairCount > 1 && (
-          <span className="px-1 py-[1px] rounded bg-black/60 text-[9px] tracking-wide text-[#cfe0ff]">
+          <span className="px-1 py-[1px] rounded-lg bg-black/60 text-[11px] text-[#cfe0ff]">
             ＋{item.pairCount - 1}
           </span>
         )}
         {RAW_EXT.has(item.ext) && (
-          <span className="px-1 py-[1px] rounded bg-black/55 text-[9px] tracking-wider text-white/75">
+          <span className="px-1 py-[1px] rounded-lg bg-black/55 text-[11px] tracking-wider text-white/75">
             RAW
           </span>
         )}
@@ -459,14 +464,14 @@ export default function Gallery({
     return (
       <div className="flex-1 grid place-items-center">
         <div className="text-center max-w-[360px]">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-xl border border-[var(--border)] bg-[var(--panel-2)] grid place-items-center">
+          <div className="mx-auto mb-4 w-12 h-12 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] grid place-items-center">
             {hasFilter ? (
-              <Sparkles size={20} color="var(--muted)" />
+              <Sparkles size={24} strokeWidth={1.5} color="var(--muted)" />
             ) : (
-              <ImagePlus size={20} color="var(--muted)" />
+              <ImagePlus size={24} strokeWidth={1.5} color="var(--muted)" />
             )}
           </div>
-          <div className="text-[14px] text-[var(--text)]">
+          <div className="text-[15px] text-[var(--text)]">
             {hasFilter ? '没有符合筛选条件的图片' : '图库还是空的'}
           </div>
           <div className="text-[12px] text-[var(--muted)] mt-1.5 leading-5">
@@ -474,7 +479,7 @@ export default function Gallery({
           </div>
           {hasFilter && otherHint && otherHint.total > 0 && (
             <button
-              className="mt-3 text-[11.5px] text-[var(--accent-2)] hover:underline"
+              className="mt-3 text-[12px] text-[var(--accent-2)] hover:underline"
               onClick={onOpenOtherLibrary}
             >
               其他 {otherHint.libraries} 个库里可能还有 {otherHint.total} 条 →
@@ -510,7 +515,7 @@ export default function Gallery({
         ))}
       </div>
       {(hasMore || loadingMore) && (
-        <div className="py-6 text-center text-[11.5px] text-[var(--faint)]">
+        <div className="py-6 text-center text-[12px] text-[var(--faint)]">
           {loadingMore ? '正在加载更多…' : `已加载 ${items.length} / ${total} 张，继续下滑加载`}
         </div>
       )}

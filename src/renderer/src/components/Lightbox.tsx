@@ -620,7 +620,7 @@ export default function Lightbox({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[var(--lightbox)]">
-      <div className={`h-[46px] shrink-0 px-4 flex items-center gap-3 text-[12.5px] ${chrome}`}>
+      <div className={`h-[46px] shrink-0 px-4 flex items-center gap-3 text-[13.5px] ${chrome}`}>
         <span className="truncate text-[var(--text)]">{item.name}</span>
         <span className="text-[var(--faint)] tabular-nums">
           {index + 1} / {items.length}
@@ -630,7 +630,7 @@ export default function Lightbox({
           onClick={() => setHelpOpen((open) => !open)}
           title="快捷键"
         >
-          <CircleHelp size={15} />
+          <CircleHelp size={16} strokeWidth={1.75} />
         </button>
         <button
           className={`btn h-7 px-2 ${
@@ -639,16 +639,16 @@ export default function Lightbox({
           onClick={() => setInspectorOpen((open) => !open)}
           title="照片档案"
         >
-          <Info size={14} /> 档案
+          <Info size={16} strokeWidth={1.75} /> 档案
         </button>
         <button className="btn btn-ghost h-7 px-2" onClick={onClose} title="关闭 (Esc)">
-          <X size={15} />
+          <X size={16} strokeWidth={1.75} />
         </button>
       </div>
 
       {helpOpen && (
         <div
-          className="absolute right-3 top-12 z-10 w-[240px] rounded-lg border border-white/12 bg-[#14171e] p-3 text-[11.5px] shadow-xl"
+          className="absolute right-3 top-12 z-10 w-[240px] rounded-2xl border border-white/12 bg-[#14171e] p-3 text-[12px] shadow-xl"
           onMouseLeave={() => setHelpOpen(false)}
         >
           {[
@@ -760,7 +760,7 @@ export default function Lightbox({
             onClick={() => onNavigate(index - 1)}
             title="上一张"
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={24} strokeWidth={1.5} />
           </button>
         )}
         {index < items.length - 1 && (
@@ -771,12 +771,12 @@ export default function Lightbox({
             onClick={() => onNavigate(index + 1)}
             title="下一张"
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={24} strokeWidth={1.5} />
           </button>
         )}
 
         {(drawing || hint) && (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-[11px] text-white/85">
+          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-[12px] text-white/85">
             {/* 提示优先：框太小时框选模式还开着，别把提示盖掉 */}
             {hint || '在画面上拖拽，框出一块区域'}
           </div>
@@ -813,7 +813,7 @@ export default function Lightbox({
       </div>
 
       <div
-        className={`h-[34px] shrink-0 px-4 flex items-center gap-3 text-[11px] text-[var(--faint)] border-t border-white/8 ${chrome}`}
+        className={`h-[34px] shrink-0 px-4 flex items-center gap-3 text-[12px] text-[var(--faint)] border-t border-white/8 ${chrome}`}
       >
         <span>
           {item.width} × {item.height}
@@ -825,16 +825,16 @@ export default function Lightbox({
         {item.exif?.iso && <span>ISO {item.exif.iso}</span>}
         <div className="ml-auto flex items-center gap-1 shrink-0">
           <button
-            className={`w-6 h-6 rounded grid place-items-center hover:bg-white/12 ${
+            className={`w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 ${
               slideshow ? 'text-[var(--accent-2)]' : 'text-white/70'
             }`}
             onClick={() => setSlideshow((value) => !value)}
             title="幻灯片 (S)"
           >
-            {slideshow ? <Pause size={13} /> : <Play size={13} />}
+            {slideshow ? <Pause size={16} strokeWidth={1.75} /> : <Play size={16} strokeWidth={1.75} />}
           </button>
           <button
-            className={`h-6 px-1.5 rounded hover:bg-white/12 tabular-nums ${
+            className={`h-6 px-1.5 rounded-lg hover:bg-white/12 tabular-nums ${
               slideshow ? 'text-white/80' : 'text-white/50'
             }`}
             onClick={() => setSlideDelay((value) => (value === 3000 ? 5000 : 3000))}
@@ -843,45 +843,45 @@ export default function Lightbox({
             {slideDelay / 1000} 秒
           </button>
           <button
-            className="w-6 h-6 rounded grid place-items-center hover:bg-white/12 text-white/70"
+            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
             onClick={() => void toggleFullscreen()}
             title="全屏 (F11)"
           >
-            {fullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
+            {fullscreen ? <Minimize size={16} strokeWidth={1.75} /> : <Maximize size={16} strokeWidth={1.75} />}
           </button>
           <span className="mx-1 h-4 w-px bg-white/12" />
           <button
-            className="w-6 h-6 rounded grid place-items-center hover:bg-white/12 text-white/70"
+            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
             onClick={() => rotateBy(-90)}
             title="向左旋转 (Shift+R)"
           >
-            <RotateCcw size={13} />
+            <RotateCcw size={16} strokeWidth={1.75} />
           </button>
           <button
-            className="w-6 h-6 rounded grid place-items-center hover:bg-white/12 text-white/70"
+            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
             onClick={() => rotateBy(90)}
             title="向右旋转 (R)"
           >
-            <RotateCw size={13} />
+            <RotateCw size={16} strokeWidth={1.75} />
           </button>
           <span className="w-[34px] text-center tabular-nums text-[var(--faint)]">{rotation}°</span>
           <button
-            className="w-6 h-6 rounded grid place-items-center hover:bg-white/12 text-white/70"
+            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
             onClick={() => zoomStep(1 / 1.25)}
             title="缩小 (-)"
           >
-            <Minus size={13} />
+            <Minus size={16} strokeWidth={1.75} />
           </button>
           <span className="w-[42px] text-center tabular-nums text-[var(--text)]">{percent}</span>
           <button
-            className="w-6 h-6 rounded grid place-items-center hover:bg-white/12 text-white/70"
+            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
             onClick={() => zoomStep(1.25)}
             title="放大 (+)"
           >
-            <Plus size={13} />
+            <Plus size={16} strokeWidth={1.75} />
           </button>
           <button
-            className="h-6 px-2 rounded hover:bg-white/12 text-white/70"
+            className="h-6 px-2 rounded-lg hover:bg-white/12 text-white/70"
             onClick={resetFit}
             title="适应窗口 (0)"
           >

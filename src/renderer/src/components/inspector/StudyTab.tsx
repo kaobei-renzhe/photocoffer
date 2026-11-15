@@ -312,12 +312,12 @@ export default function StudyTab({
   return (
     <div className={compact ? 'space-y-2.5 p-2.5' : 'space-y-3 p-3'}>
       <div className="flex items-center gap-1">
-        <span className="text-[10.5px] text-[var(--faint)]">模式</span>
-        <div className="ml-auto flex rounded-md border border-[var(--border)] p-0.5">
+        <span className="text-[11px] text-[var(--faint)]">模式</span>
+        <div className="ml-auto flex rounded-lg border border-[var(--border)] p-0.5">
           {(['study', 'review'] as NoteMode[]).map((entry) => (
             <button
               key={entry}
-              className={`h-6 rounded px-2 text-[10.5px] transition-colors ${
+              className={`h-6 rounded-lg px-2 text-[11px] transition-colors ${
                 mode === entry
                   ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                   : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -331,7 +331,7 @@ export default function StudyTab({
         </div>
       </div>
 
-      <div className="text-[10px] leading-4 text-[var(--faint)]">
+      <div className="text-[11px] leading-4 text-[var(--faint)]">
         {!aiReady
           ? '大模型未启用，仍可手工记笔记；到「设置 → 大模型」配置后就能让老师反问。'
           : scopeBlocked
@@ -342,27 +342,27 @@ export default function StudyTab({
       </div>
 
       {error && (
-        <div className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[10.5px] leading-4 text-[var(--danger-text)]">
+        <div className="rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[11px] leading-4 text-[var(--danger-text)]">
           {error}
         </div>
       )}
       {aiError && (
-        <div className="rounded-lg border border-[var(--warn)]/40 bg-[var(--panel-2)] px-2.5 py-2 text-[10.5px] leading-4 text-[var(--warn)]">
+        <div className="rounded-2xl border border-[var(--warn)]/40 bg-[var(--panel-2)] px-2.5 py-2 text-[11px] leading-4 text-[var(--warn)]">
           <div className="flex items-start gap-1.5">
-            <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
             <span>{aiError}</span>
           </div>
         </div>
       )}
 
       {threads === null ? (
-        <div className="py-6 text-center text-[11px] text-[var(--faint)]">读取笔记…</div>
+        <div className="py-6 text-center text-[12px] text-[var(--faint)]">读取笔记…</div>
       ) : ordered.length === 0 ? (
-        <div className="grid place-items-center rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-7 text-center">
+        <div className="grid place-items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-7 text-center">
           <div>
-            <BookOpen size={22} className="mx-auto mb-1.5 text-[var(--faint)] opacity-60" />
-            <div className="text-[11.5px] text-[var(--muted)]">还没有研读笔记</div>
-            <div className="mt-1 text-[10px] leading-4 text-[var(--faint)]">
+            <BookOpen size={24} className="mx-auto mb-1.5 text-[var(--faint)] opacity-60" />
+            <div className="text-[12px] text-[var(--muted)]">还没有研读笔记</div>
+            <div className="mt-1 text-[11px] leading-4 text-[var(--faint)]">
               写下：这块为什么吸引你、用了什么手法、下次怎么用。
             </div>
           </div>
@@ -382,14 +382,14 @@ export default function StudyTab({
                   if (el) cardRefs.current.set(thread.root.id, el)
                   else cardRefs.current.delete(thread.root.id)
                 }}
-                className={`rounded-lg border bg-[var(--panel-2)] px-2.5 py-2 ${
+                className={`rounded-2xl border bg-[var(--panel-2)] px-2.5 py-2 ${
                   flashId === thread.root.id
                     ? 'border-[var(--accent)] shadow-[0_0_0_2px_var(--accent-soft)]'
                     : 'border-[var(--border)]'
                 }`}
               >
-                <div className="flex items-center gap-1.5 text-[9.5px] text-[var(--faint)]">
-                  <span className="rounded bg-[var(--accent-soft)] px-1 py-0.5 text-[var(--accent-text)]">
+                <div className="flex items-center gap-1.5 text-[11px] text-[var(--faint)]">
+                  <span className="rounded-lg bg-[var(--accent-soft)] px-1 py-0.5 text-[var(--accent-text)]">
                     {modeLabel(thread.root.mode)}
                   </span>
                   <span>{noteKindLabel(thread.root)}</span>
@@ -397,15 +397,15 @@ export default function StudyTab({
                   {aiTurns > 0 && <span>· 反问 {Math.min(aiTurns, 2)}/2</span>}
                   <span className="ml-auto tabular-nums">{formatDate(thread.root.createdAt)}</span>
                   <button
-                    className="grid h-5 w-5 place-items-center rounded text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--danger-text)]"
+                    className="grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--danger-text)]"
                     onClick={() => void remove(thread)}
                     title="删除这条笔记"
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
 
-                <div className="mt-1.5 whitespace-pre-wrap text-[11.5px] leading-5 text-[var(--text)]">
+                <div className="mt-1.5 whitespace-pre-wrap text-[12px] leading-5 text-[var(--text)]">
                   {thread.root.body}
                 </div>
 
@@ -413,7 +413,7 @@ export default function StudyTab({
                   <div className="mt-2 space-y-1.5 border-l border-[var(--border)] pl-2">
                     {thread.replies.map((reply) => (
                       <div key={reply.id}>
-                        <div className="flex items-center gap-1 text-[9px] text-[var(--faint)]">
+                        <div className="flex items-center gap-1 text-[11px] text-[var(--faint)]">
                           <span className={reply.author === 'ai' ? 'text-[var(--accent-2)]' : ''}>
                             {reply.author === 'ai' ? 'AI' : '我'}
                           </span>
@@ -421,7 +421,7 @@ export default function StudyTab({
                           <span className="ml-auto tabular-nums">{formatDate(reply.createdAt)}</span>
                         </div>
                         <div
-                          className={`mt-0.5 whitespace-pre-wrap text-[11px] leading-4 ${
+                          className={`mt-0.5 whitespace-pre-wrap text-[12px] leading-4 ${
                             reply.author === 'ai'
                               ? 'text-[var(--accent-text)]'
                               : 'text-[var(--text)]'
@@ -435,15 +435,15 @@ export default function StudyTab({
                 )}
 
                 {thinking && (
-                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-[var(--muted)]">
-                    <Loader2 size={11} className="animate-spin" /> 老师正在想…
+                  <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[var(--muted)]">
+                    <Loader2 size={14} className="animate-spin" /> 老师正在想…
                   </div>
                 )}
 
                 {followFor === thread.root.id ? (
                   <div className="mt-2">
                     <textarea
-                      className="input h-[48px] w-full resize-none py-1.5 text-[11px] leading-5"
+                      className="input h-[48px] w-full resize-none py-1.5 text-[12px] leading-5"
                       placeholder="继续追问，或补一句自己的观察…"
                       value={followDraft}
                       autoFocus
@@ -457,7 +457,7 @@ export default function StudyTab({
                     />
                     <div className="mt-1 flex flex-wrap items-center gap-1">
                       <button
-                        className="btn h-6 px-2 text-[10.5px]"
+                        className="btn h-6 px-2 text-[11px]"
                         disabled={followBusy || aiBusy || !followDraft.trim()}
                         onClick={() => void submitFollow(thread)}
                       >
@@ -466,14 +466,14 @@ export default function StudyTab({
                       {aiAvailable && (
                         <>
                           <button
-                            className="btn h-6 px-2 text-[10.5px]"
+                            className="btn h-6 px-2 text-[11px]"
                             disabled={aiBusy || !followDraft.trim()}
                             onClick={() => void submitFollowWithAi(thread, false)}
                           >
-                            <Sparkles size={11} /> 问 AI
+                            <Sparkles size={14} /> 问 AI
                           </button>
                           <button
-                            className="btn btn-ghost h-6 px-2 text-[10.5px]"
+                            className="btn btn-ghost h-6 px-2 text-[11px]"
                             disabled={aiBusy || !followDraft.trim()}
                             onClick={() => void submitFollowWithAi(thread, true)}
                           >
@@ -489,19 +489,19 @@ export default function StudyTab({
                         }}
                         title="取消"
                       >
-                        <X size={12} />
+                        <X size={14} />
                       </button>
                     </div>
                   </div>
                 ) : (
                   <button
-                    className="mt-1.5 flex items-center gap-1 text-[10px] text-[var(--faint)] hover:text-[var(--text)]"
+                    className="mt-1.5 flex items-center gap-1 text-[11px] text-[var(--faint)] hover:text-[var(--text)]"
                     onClick={() => {
                       setFollowFor(thread.root.id)
                       setFollowDraft('')
                     }}
                   >
-                    <MessageSquare size={11} /> 追问
+                    <MessageSquare size={14} /> 追问
                   </button>
                 )}
               </div>
@@ -510,38 +510,38 @@ export default function StudyTab({
         </div>
       )}
 
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] p-2">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-2">
         {(onDrawingChange || region) && (
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             {onDrawingChange && (
               <button
-                className={`btn h-6 px-2 text-[10.5px] ${
+                className={`btn h-6 px-2 text-[11px] ${
                   drawing ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
                 }`}
                 onClick={() => onDrawingChange(!drawing)}
                 title="在图上拖拽圈出一块区域，提问时带上它"
               >
-                <Crop size={11} /> {drawing ? '在图上框选…' : '框选区域'}
+                <Crop size={14} /> {drawing ? '在图上框选…' : '框选区域'}
               </button>
             )}
             {region ? (
-              <span className="flex items-center gap-1 text-[10px] text-[var(--accent-text)]">
+              <span className="flex items-center gap-1 text-[11px] text-[var(--accent-text)]">
                 已框选一块区域 · {Math.round(region.w * 100)}% × {Math.round(region.h * 100)}%
                 <button
-                  className="grid h-5 w-5 place-items-center rounded text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--text)]"
+                  className="grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--text)]"
                   onClick={() => onRegionChange?.(null)}
                   title="清除框选"
                 >
-                  <X size={11} />
+                  <X size={14} />
                 </button>
               </span>
             ) : (
-              !drawing && <span className="text-[10px] text-[var(--faint)]">不框就按整张图提问</span>
+              !drawing && <span className="text-[11px] text-[var(--faint)]">不框就按整张图提问</span>
             )}
           </div>
         )}
         <textarea
-          className="input h-[70px] w-full resize-none py-1.5 text-[11.5px] leading-5"
+          className="input h-[70px] w-full resize-none py-1.5 text-[12px] leading-5"
           placeholder={
             mode === 'study'
               ? '从这张图里看到了什么？想学哪一手？'
@@ -557,32 +557,32 @@ export default function StudyTab({
           }}
         />
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="text-[9.5px] text-[var(--faint)]">{modLabel} + Enter 保存</span>
+          <span className="text-[11px] text-[var(--faint)]">{modLabel} + Enter 保存</span>
           <div className="ml-auto flex flex-wrap items-center gap-1">
             <button
-              className="btn h-7 px-2 text-[10.5px]"
+              className="btn h-7 px-2 text-[11px]"
               disabled={busy || aiBusy || !draft.trim()}
               onClick={() => void submit()}
             >
-              <Send size={11} /> {busy ? '保存中…' : '记下来'}
+              <Send size={14} /> {busy ? '保存中…' : '记下来'}
             </button>
             {aiAvailable && (
               <>
                 <button
-                  className="btn h-7 px-2 text-[10.5px]"
+                  className="btn h-7 px-2 text-[11px]"
                   disabled={aiBusy || !draft.trim()}
                   onClick={() => void submitWithAi(false)}
                   title="让老师先反问，最多两轮"
                 >
                   {rootThinking ? (
-                    <Loader2 size={11} className="animate-spin" />
+                    <Loader2 size={14} className="animate-spin" />
                   ) : (
-                    <Sparkles size={11} />
+                    <Sparkles size={14} />
                   )}
                   {rootThinking ? '老师思考中…' : 'AI 反问'}
                 </button>
                 <button
-                  className="btn btn-ghost h-7 px-2 text-[10.5px]"
+                  className="btn btn-ghost h-7 px-2 text-[11px]"
                   disabled={aiBusy || !draft.trim()}
                   onClick={() => void submitWithAi(true)}
                   title="跳过反问，直接给答案"
@@ -595,7 +595,7 @@ export default function StudyTab({
         </div>
       </div>
 
-      <div className="text-[9.5px] leading-4 text-[var(--faint)]">
+      <div className="text-[11px] leading-4 text-[var(--faint)]">
         {aiAvailable
           ? 'AI 会先反问，最多两轮；也可以直接要答案。手工笔记和 AI 回复都存在同一个线程里。'
           : '现在写的是纯文字笔记，不依赖大模型。'}

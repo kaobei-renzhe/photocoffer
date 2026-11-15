@@ -1105,13 +1105,13 @@ export default function App() {
       {
         id: 'open',
         label: '打开',
-        icon: <Maximize size={12} />,
+        icon: <Maximize size={14} />,
         onSelect: () => openLightbox(item.id)
       },
       {
         id: 'reveal',
         label: '在资源管理器中显示',
-        icon: <FolderOpen size={12} />,
+        icon: <FolderOpen size={14} />,
         onSelect: () => void window.api.showInFolder(item.path)
       }
     ]
@@ -1122,13 +1122,13 @@ export default function App() {
         {
           id: 'restore',
           label: `从回收站恢复${ids.length > 1 ? `（${ids.length} 张）` : ''}`,
-          icon: <RefreshCw size={12} />,
+          icon: <RefreshCw size={14} />,
           onSelect: () => void restoreSelected()
         },
         {
           id: 'purge',
           label: `彻底删除${ids.length > 1 ? `（${ids.length} 张）` : ''}`,
-          icon: <Trash2 size={12} />,
+          icon: <Trash2 size={14} />,
           danger: true,
           onSelect: () => void purgeSelected()
         }
@@ -1153,7 +1153,7 @@ export default function App() {
       {
         id: 'copy',
         label: '复制图片',
-        icon: <Copy size={12} />,
+        icon: <Copy size={14} />,
         onSelect: () =>
           void window.api
             .copyImage(item.id)
@@ -1163,7 +1163,7 @@ export default function App() {
       {
         id: 'rate',
         label: '评分',
-        icon: <Star size={12} />,
+        icon: <Star size={14} />,
         hint: item.rating ? '★'.repeat(item.rating) : undefined,
         children: [
           ...[1, 2, 3, 4, 5].map((n) => ({
@@ -1180,17 +1180,17 @@ export default function App() {
           }
         ]
       },
-      { id: 'tag', label: '加标签', icon: <TagIcon size={12} />, children: tagChildren },
+      { id: 'tag', label: '加标签', icon: <TagIcon size={14} />, children: tagChildren },
       {
         id: 'folder',
         label: '加入文件夹',
-        icon: <FolderPlus size={12} />,
+        icon: <FolderPlus size={14} />,
         children: folderChildren
       },
       {
         id: 'stack',
         label: ids.length > 1 ? `堆叠这 ${ids.length} 张` : '堆叠',
-        icon: <Layers size={12} />,
+        icon: <Layers size={14} />,
         disabled: ids.length < 2,
         onSelect: () => void stackSelected()
       },
@@ -1198,7 +1198,7 @@ export default function App() {
       {
         id: 'remove',
         label: '移除',
-        icon: <Trash2 size={12} />,
+        icon: <Trash2 size={14} />,
         danger: true,
         onSelect: () => void deleteSelected()
       }
@@ -1486,7 +1486,7 @@ export default function App() {
 
   if (booting) {
     return (
-      <div className="h-full grid place-items-center text-[var(--faint)] text-[13px]">正在唤醒存照…</div>
+      <div className="h-full grid place-items-center text-[var(--faint)] text-[13.5px]">正在唤醒存照…</div>
     )
   }
 
@@ -1616,15 +1616,15 @@ export default function App() {
 
         <div className="flex-1 flex flex-col min-w-0">
           {volume && (volume.libraryOffline || volume.offlineSources.length > 0) && (
-            <div className="shrink-0 flex items-center gap-2 border-b border-[var(--warn-border)] bg-[var(--warn-soft)] px-4 py-2 text-[11.5px] text-[var(--text)]">
-              <TriangleAlert size={13} className="text-[var(--warn)] shrink-0" />
+            <div className="shrink-0 flex items-center gap-2 border-b border-[var(--warn-border)] bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--text)]">
+              <TriangleAlert size={14} className="text-[var(--warn)] shrink-0" />
               <span>
                 {volume.libraryOffline
                   ? '图库所在磁盘未连接，自动同步已暂停；插回后会自动恢复。'
                   : `有 ${volume.offlineSources.length} 个导入目录所在磁盘未连接，插回后会自动接回。`}
               </span>
               <button
-                className="btn ml-auto h-6 px-2 text-[11px]"
+                className="btn ml-auto h-6 px-2 text-[12px]"
                 onClick={() => setRelocateOpen(true)}
               >
                 重新定位
@@ -1681,7 +1681,7 @@ export default function App() {
               <span className="text-[var(--text)]">
                 与「{similar.name}」相似 · {total} 张
               </span>
-              <button className="btn h-6 px-2 text-[11px] ml-auto" onClick={exitSimilar}>
+              <button className="btn h-6 px-2 text-[12px] ml-auto" onClick={exitSimilar}>
                 返回全部
               </button>
             </div>
@@ -1763,7 +1763,7 @@ export default function App() {
       {dragging && (
         <div className="absolute inset-0 z-40 grid place-items-center bg-[rgba(9,11,15,0.82)] backdrop-blur-sm pointer-events-none">
           <div className="px-10 py-8 rounded-2xl border-2 border-dashed border-[var(--accent)] text-center">
-            <div className="text-[16px] text-[var(--accent-2)] font-medium">松手就收进图库</div>
+            <div className="text-[18px] text-[var(--accent-2)] font-bold">松手就收进图库</div>
             <div className="text-[12px] text-[var(--muted)] mt-1">支持文件夹、文件与图片网址</div>
           </div>
         </div>
@@ -1811,7 +1811,7 @@ export default function App() {
       )}
 
       {clipDownload && (
-        <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-[60] w-[360px] rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-2xl">
+        <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-[60] w-[360px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-2xl">
           <div className="flex items-center justify-between text-[12px] mb-2">
             <span className="text-[var(--muted)] truncate pr-3">正在下载识图模型</span>
             <span className="text-[var(--text)] tabular-nums">
@@ -1838,8 +1838,8 @@ export default function App() {
       {clipProgress && !clipDownload && (
         clipCardMinimized ? (
           <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 shadow-2xl">
-            <span className="text-[11.5px] text-[var(--muted)]">识图</span>
-            <span className="text-[11.5px] text-[var(--text)] tabular-nums">
+            <span className="text-[12px] text-[var(--muted)]">识图</span>
+            <span className="text-[12px] text-[var(--text)] tabular-nums">
               {clipProgress.total ? `${clipProgress.done}/${clipProgress.total}` : '准备中…'}
               {clipProgress.total
                 ? ` · ${Math.round((clipProgress.done / clipProgress.total) * 100)}%`
@@ -1850,11 +1850,11 @@ export default function App() {
               title="展开进度"
               onClick={() => setClipCardMinimized(false)}
             >
-              <ChevronUp size={12} />
+              <ChevronUp size={14} />
             </button>
           </div>
         ) : (
-          <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-40 w-[360px] rounded-xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-2xl">
+          <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-40 w-[360px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-2xl">
             <div className="flex items-center justify-between text-[12px] mb-2">
               <span className="text-[var(--muted)] truncate pr-3">
                 识图 {clipProgress.current || (clipProgress.total ? '' : '准备中…')}
@@ -1868,7 +1868,7 @@ export default function App() {
                   title="最小化，处理别的事"
                   onClick={() => setClipCardMinimized(true)}
                 >
-                  <ChevronDown size={12} />
+                  <ChevronDown size={14} />
                 </button>
               </span>
             </div>
@@ -1886,7 +1886,7 @@ export default function App() {
             </div>
             <div className="mt-2 flex items-center gap-1.5">
               <button
-                className="btn btn-ghost btn-danger h-6 px-2 text-[11px]"
+                className="btn btn-ghost btn-danger h-6 px-2 text-[12px]"
                 onClick={() => {
                   void window.api.clipCancel()
                   notify('正在停止语义索引…')
@@ -1894,7 +1894,7 @@ export default function App() {
               >
                 停止索引
               </button>
-              <span className="ml-auto text-[10.5px] text-[var(--faint)]">
+              <span className="ml-auto text-[11px] text-[var(--faint)]">
                 只占用 2 个 CPU 线程
               </span>
             </div>
@@ -1903,7 +1903,7 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-[12.5px] text-[var(--text)] shadow-xl">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-[13.5px] text-[var(--text)] shadow-xl">
           <span>{toast.text}</span>
           {toast.undo && (
             <button

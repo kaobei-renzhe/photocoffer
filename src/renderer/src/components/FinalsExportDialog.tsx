@@ -125,50 +125,50 @@ export default function FinalsExportDialog({
       onClick={running ? undefined : onClose}
     >
       <div
-        className="flex max-h-[86vh] w-[520px] flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="flex max-h-[86vh] w-[520px] flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex h-[46px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
-          <HardDriveDownload size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">导出成品</span>
-          <span className="text-[11px] text-[var(--faint)]">已选 {itemIds.length} 张</span>
+          <HardDriveDownload size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">导出成品</span>
+          <span className="text-[12px] text-[var(--faint)]">已选 {itemIds.length} 张</span>
           <button
             className="btn btn-ghost ml-auto h-7 px-1.5"
             onClick={onClose}
             disabled={running}
             title="关闭（Esc）"
           >
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
           {result ? (
             <div>
-              <div className="flex items-start gap-2 rounded-lg border border-[var(--success)]/40 bg-[var(--panel-2)] px-3 py-3">
+              <div className="flex items-start gap-2 rounded-2xl border border-[var(--success)]/40 bg-[var(--panel-2)] px-3 py-3">
                 <Check size={16} className="mt-0.5 shrink-0 text-[var(--success)]" />
                 <div className="min-w-0">
-                  <div className="text-[12.5px] text-[var(--text)]">
+                  <div className="text-[13.5px] text-[var(--text)]">
                     {result.count > 0
                       ? `已导出 ${result.count} 张 · ${formatBytes(result.bytes)}`
                       : '没有导出新文件'}
                     {result.renamed > 0 && ` · ${result.renamed} 张重名已加序号`}
                     {result.skipped > 0 && ` · ${result.skipped} 张重名已跳过`}
                   </div>
-                  <div className="mt-1 break-all text-[10.5px] leading-4 text-[var(--faint)]">
+                  <div className="mt-1 break-all text-[11px] leading-4 text-[var(--faint)]">
                     {result.dir}
                   </div>
                 </div>
               </div>
 
               {result.failed.length > 0 && (
-                <div className="mt-3 rounded-lg border border-[var(--warn)]/40 bg-[var(--panel-2)] px-3 py-2.5">
-                  <div className="text-[11.5px] text-[var(--warn)]">
+                <div className="mt-3 rounded-2xl border border-[var(--warn)]/40 bg-[var(--panel-2)] px-3 py-2.5">
+                  <div className="text-[12px] text-[var(--warn)]">
                     {result.failed.length} 张没能导出
                   </div>
                   <div className="mt-1 space-y-0.5">
                     {result.failed.slice(0, 5).map((item) => (
-                      <div key={item.id} className="truncate text-[10.5px] text-[var(--faint)]">
+                      <div key={item.id} className="truncate text-[11px] text-[var(--faint)]">
                         {item.name} · {item.message}
                       </div>
                     ))}
@@ -179,8 +179,8 @@ export default function FinalsExportDialog({
           ) : (
             <>
               <div className="flex items-center gap-1">
-                <span className="w-[52px] text-[11px] text-[var(--muted)]">方式</span>
-                <div className="flex rounded-md border border-[var(--border)] p-0.5">
+                <span className="w-[52px] text-[12px] text-[var(--muted)]">方式</span>
+                <div className="flex rounded-lg border border-[var(--border)] p-0.5">
                   {(
                     [
                       { id: 'jpeg', label: 'JPEG' },
@@ -191,7 +191,7 @@ export default function FinalsExportDialog({
                   ).map((entry) => (
                     <button
                       key={entry.id}
-                      className={`h-6 rounded px-2 text-[11px] transition-colors ${
+                      className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
                         mode === entry.id
                           ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                           : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -203,7 +203,7 @@ export default function FinalsExportDialog({
                     </button>
                   ))}
                 </div>
-                <span className="ml-auto text-[10px] leading-4 text-[var(--faint)]">
+                <span className="ml-auto text-[11px] leading-4 text-[var(--faint)]">
                   {mode === 'copy'
                     ? '原样复制，保留 RAW 与 EXIF'
                     : keepMetadata
@@ -214,9 +214,9 @@ export default function FinalsExportDialog({
 
               {mode !== 'copy' && (
                 <div className="mt-3 flex items-center gap-2">
-                  <span className="w-[52px] text-[11px] text-[var(--muted)]">尺寸</span>
+                  <span className="w-[52px] text-[12px] text-[var(--muted)]">尺寸</span>
                   <select
-                    className="input h-7 w-[130px] text-[11.5px]"
+                    className="input h-7 w-[130px] text-[12px]"
                     value={edge}
                     onChange={(event) => setEdge(event.target.value)}
                     disabled={running}
@@ -229,9 +229,9 @@ export default function FinalsExportDialog({
                   </select>
                   {(mode === 'jpeg' || mode === 'webp') && (
                     <>
-                      <span className="ml-2 text-[11px] text-[var(--muted)]">质量</span>
+                      <span className="ml-2 text-[12px] text-[var(--muted)]">质量</span>
                       <select
-                        className="input h-7 w-[72px] text-[11.5px]"
+                        className="input h-7 w-[72px] text-[12px]"
                         value={quality}
                         onChange={(event) => setQuality(Number(event.target.value))}
                         disabled={running}
@@ -245,14 +245,14 @@ export default function FinalsExportDialog({
                     </>
                   )}
                   {mode === 'png' && (
-                    <span className="ml-2 text-[10px] text-[var(--faint)]">无损，不设质量</span>
+                    <span className="ml-2 text-[11px] text-[var(--faint)]">无损，不设质量</span>
                   )}
                 </div>
               )}
 
               <div className="mt-3 flex items-center gap-2">
-                <span className="w-[52px] text-[11px] text-[var(--muted)]">命名</span>
-                <div className="flex rounded-md border border-[var(--border)] p-0.5">
+                <span className="w-[52px] text-[12px] text-[var(--muted)]">命名</span>
+                <div className="flex rounded-lg border border-[var(--border)] p-0.5">
                   {(
                     [
                       { id: 'original', label: '原名' },
@@ -261,7 +261,7 @@ export default function FinalsExportDialog({
                   ).map((entry) => (
                     <button
                       key={entry.id}
-                      className={`h-6 rounded px-2 text-[11px] transition-colors ${
+                      className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
                         naming === entry.id
                           ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                           : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -275,7 +275,7 @@ export default function FinalsExportDialog({
                 </div>
                 {naming === 'prefix' && (
                   <input
-                    className="input h-7 flex-1 text-[11.5px]"
+                    className="input h-7 flex-1 text-[12px]"
                     value={prefix}
                     onChange={(event) => setPrefix(event.target.value)}
                     placeholder="例如：小林-街拍"
@@ -284,7 +284,7 @@ export default function FinalsExportDialog({
                 )}
               </div>
               {naming === 'prefix' && (
-                <div className="mt-1 pl-[60px] text-[10px] text-[var(--faint)]">
+                <div className="mt-1 pl-[60px] text-[11px] text-[var(--faint)]">
                   输出如 {prefix.trim() || 'export'}-001{extHint}
                 </div>
               )}
@@ -298,16 +298,16 @@ export default function FinalsExportDialog({
                     onChange={(event) => setKeepMetadata(event.target.checked)}
                     disabled={running}
                   />
-                  <span className="text-[11.5px] text-[var(--text)]">保留拍摄信息（EXIF/GPS）</span>
-                  <span className="ml-auto text-[10px] text-[var(--faint)]">
+                  <span className="text-[12px] text-[var(--text)]">保留拍摄信息（EXIF/GPS）</span>
+                  <span className="ml-auto text-[11px] text-[var(--faint)]">
                     关闭时只留 sRGB 色彩配置
                   </span>
                 </label>
               )}
 
               <div className="mt-3 flex items-center gap-2">
-                <span className="w-[52px] text-[11px] text-[var(--muted)]">同名</span>
-                <div className="flex rounded-md border border-[var(--border)] p-0.5">
+                <span className="w-[52px] text-[12px] text-[var(--muted)]">同名</span>
+                <div className="flex rounded-lg border border-[var(--border)] p-0.5">
                   {(
                     [
                       { id: 'rename', label: '自动加序号' },
@@ -316,7 +316,7 @@ export default function FinalsExportDialog({
                   ).map((entry) => (
                     <button
                       key={entry.id}
-                      className={`h-6 rounded px-2 text-[11px] transition-colors ${
+                      className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
                         collision === entry.id
                           ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
                           : 'text-[var(--faint)] hover:text-[var(--text)]'
@@ -328,13 +328,13 @@ export default function FinalsExportDialog({
                     </button>
                   ))}
                 </div>
-                <span className="ml-auto text-[10px] text-[var(--faint)]">
+                <span className="ml-auto text-[11px] text-[var(--faint)]">
                   {collision === 'rename' ? '不覆盖已有文件' : '已有同名时不再写新文件'}
                 </span>
               </div>
 
               {mode !== 'copy' && (
-                <div className="mt-3 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+                <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                   <label className="flex cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
@@ -343,23 +343,23 @@ export default function FinalsExportDialog({
                       onChange={(event) => setWatermarkOn(event.target.checked)}
                       disabled={running}
                     />
-                    <span className="text-[11.5px] text-[var(--text)]">加水印</span>
-                    <span className="ml-auto text-[10px] text-[var(--faint)]">烘焙进像素，去不掉</span>
+                    <span className="text-[12px] text-[var(--text)]">加水印</span>
+                    <span className="ml-auto text-[11px] text-[var(--faint)]">烘焙进像素，去不掉</span>
                   </label>
 
                   {watermarkOn && (
                     <div className="mt-2 space-y-2">
                       <input
-                        className="input h-7 w-full text-[11.5px]"
+                        className="input h-7 w-full text-[12px]"
                         value={watermark}
                         onChange={(event) => setWatermark(event.target.value)}
                         placeholder="水印文字，例如：银月影像"
                         disabled={running}
                       />
                       <div className="flex items-center gap-2">
-                        <span className="w-[36px] text-[10.5px] text-[var(--muted)]">位置</span>
+                        <span className="w-[36px] text-[11px] text-[var(--muted)]">位置</span>
                         <select
-                          className="input h-7 flex-1 text-[11.5px]"
+                          className="input h-7 flex-1 text-[12px]"
                           value={style.position}
                           onChange={(event) =>
                             patchStyle({
@@ -374,7 +374,7 @@ export default function FinalsExportDialog({
                             </option>
                           ))}
                         </select>
-                        <span className="text-[10.5px] text-[var(--muted)]">透明度</span>
+                        <span className="text-[11px] text-[var(--muted)]">透明度</span>
                         <input
                           type="range"
                           min={20}
@@ -387,7 +387,7 @@ export default function FinalsExportDialog({
                           className="w-[86px] accent-[var(--accent)]"
                           disabled={running}
                         />
-                        <span className="w-8 text-right text-[10.5px] tabular-nums text-[var(--faint)]">
+                        <span className="w-8 text-right text-[11px] tabular-nums text-[var(--faint)]">
                           {Math.round(style.opacity * 100)}%
                         </span>
                       </div>
@@ -396,7 +396,7 @@ export default function FinalsExportDialog({
                 </div>
               )}
 
-              <p className="mt-3 text-[10.5px] leading-5 text-[var(--faint)]">
+              <p className="mt-3 text-[11px] leading-5 text-[var(--faint)]">
                 导出到所选文件夹；
                 {collision === 'rename' ? '同名会自动加 -2、-3。' : '同名会直接跳过。'}
                 {mode === 'copy'
@@ -407,10 +407,10 @@ export default function FinalsExportDialog({
               </p>
 
               {running && (
-                <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
-                  <div className="flex items-center justify-between text-[11.5px] text-[var(--muted)]">
+                <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+                  <div className="flex items-center justify-between text-[12px] text-[var(--muted)]">
                     <span className="flex items-center gap-1.5">
-                      <Loader2 size={12} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin" />
                       正在导出
                     </span>
                     <span className="tabular-nums">
@@ -429,14 +429,14 @@ export default function FinalsExportDialog({
                       }}
                     />
                   </div>
-                  <div className="mt-1.5 truncate text-[10.5px] text-[var(--faint)]">
+                  <div className="mt-1.5 truncate text-[11px] text-[var(--faint)]">
                     {progress?.current ?? '正在准备…'}
                   </div>
                 </div>
               )}
 
               {error && (
-                <div className="mt-3 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2 text-[11.5px] leading-5 text-[var(--danger-text)]">
+                <div className="mt-3 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-3 py-2 text-[12px] leading-5 text-[var(--danger-text)]">
                   {error}
                 </div>
               )}
@@ -445,33 +445,33 @@ export default function FinalsExportDialog({
         </div>
 
         <div className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] px-4 py-2.5">
-          <span className="text-[10.5px] text-[var(--faint)]">
+          <span className="text-[11px] text-[var(--faint)]">
             {result ? '要发出去就直接开文件夹' : '导出过程中别关窗口'}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             {result ? (
               <>
                 <button
-                  className="btn h-7 px-2.5 text-[11.5px]"
+                  className="btn h-7 px-2.5 text-[12px]"
                   onClick={() => void window.api.showInFolder(result.dir)}
                 >
-                  <FolderOpen size={12} /> 打开文件夹
+                  <FolderOpen size={14} /> 打开文件夹
                 </button>
-                <button className="btn h-7 px-2.5 text-[11.5px]" onClick={onClose}>
+                <button className="btn h-7 px-2.5 text-[12px]" onClick={onClose}>
                   完成
                 </button>
               </>
             ) : (
               <>
                 <button
-                  className="btn btn-ghost h-7 px-2.5 text-[11.5px]"
+                  className="btn btn-ghost h-7 px-2.5 text-[12px]"
                   onClick={onClose}
                   disabled={running}
                 >
                   取消
                 </button>
                 <button
-                  className="btn h-7 px-2.5 text-[11.5px]"
+                  className="btn h-7 px-2.5 text-[12px]"
                   disabled={
                     running ||
                     itemIds.length === 0 ||

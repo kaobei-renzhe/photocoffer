@@ -24,8 +24,8 @@ function Toggle({
   return (
     <div className="flex items-start gap-3">
       <div className="min-w-0">
-        <div className="text-[12.5px]">{label}</div>
-        <div className="text-[11px] text-[var(--faint)] mt-0.5 leading-4">{hint}</div>
+        <div className="text-[13.5px]">{label}</div>
+        <div className="text-[12px] text-[var(--faint)] mt-0.5 leading-4">{hint}</div>
       </div>
       <button
         className={`ml-auto mt-0.5 w-[38px] h-[21px] rounded-full relative shrink-0 transition-colors ${
@@ -67,23 +67,23 @@ export default function ImportDialog({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[500px] rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="w-[500px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="h-[48px] px-4 flex items-center gap-2 border-b border-[var(--border)]">
-          <Upload size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">导入照片</span>
+          <Upload size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">导入照片</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="text-[11.5px] text-[var(--muted)] leading-5">
+          <div className="text-[12px] text-[var(--muted)] leading-5">
             选一个文件夹，存照会扫描并导入里面的照片。
           </div>
 
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3 space-y-3">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3 space-y-3">
             <Toggle
               label="包含子文件夹"
               hint="递归扫描所有层级，不用一张张挑"
@@ -98,11 +98,11 @@ export default function ImportDialog({
             />
           </div>
 
-          <div className="text-[11px] text-[var(--faint)]">
+          <div className="text-[12px] text-[var(--faint)]">
             这些选项会自动记住，下次导入沿用上次的设置。
           </div>
 
-          <div className="rounded-lg border border-[var(--border)] px-3 py-2.5 text-[11px] text-[var(--faint)] leading-4">
+          <div className="rounded-2xl border border-[var(--border)] px-3 py-2.5 text-[12px] text-[var(--faint)] leading-4">
             按原文件夹归档；坏掉的文件会单独标记，不影响其它照片。
           </div>
         </div>
@@ -116,14 +116,14 @@ export default function ImportDialog({
             onClick={() => void start('files')}
             disabled={busy !== null}
           >
-            <ImagePlus size={13} /> 选择图片
+            <ImagePlus size={14} /> 选择图片
           </button>
           <button
             className="btn btn-primary h-7 px-4 text-[12px]"
             onClick={() => void start('folder')}
             disabled={busy !== null}
           >
-            <FolderOpen size={13} /> 选择文件夹
+            <FolderOpen size={14} /> 选择文件夹
           </button>
         </div>
       </div>

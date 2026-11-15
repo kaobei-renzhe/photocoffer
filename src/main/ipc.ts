@@ -306,8 +306,8 @@ function applySkinNative(id: SkinId): void {
   const background =
     def.mode === 'auto'
       ? nativeTheme.shouldUseDarkColors
-        ? '#14161B'
-        : '#F0F3F7'
+        ? '#171818'
+        : '#FAF6EE'
       : def.base
   for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(background)
 }

@@ -71,15 +71,15 @@ export default function AppDialogHost() {
       aria-label={current.title}
     >
       <div
-        className="w-[420px] rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl overflow-hidden"
+        className="w-[420px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start gap-3 px-4 pt-4 pb-3">
-          <Icon size={17} color={color} className="mt-0.5 shrink-0" />
+          <Icon size={18} color={color} className="mt-0.5 shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium leading-5 text-[var(--text)]">{current.title}</div>
+            <div className="text-[13.5px] font-bold leading-5 text-[var(--text)]">{current.title}</div>
             {current.detail && (
-              <div className="mt-1.5 text-[11.5px] leading-5 text-[var(--muted)]">{current.detail}</div>
+              <div className="mt-1.5 text-[12px] leading-5 text-[var(--muted)]">{current.detail}</div>
             )}
             {current.checkboxLabel && (
               <label className="mt-3 flex items-start gap-2 cursor-pointer select-none">
@@ -89,7 +89,7 @@ export default function AppDialogHost() {
                   checked={checked}
                   onChange={(event) => setChecked(event.target.checked)}
                 />
-                <span className="text-[11.5px] leading-4 text-[var(--muted)]">{current.checkboxLabel}</span>
+                <span className="text-[12px] leading-4 text-[var(--muted)]">{current.checkboxLabel}</span>
               </label>
             )}
           </div>

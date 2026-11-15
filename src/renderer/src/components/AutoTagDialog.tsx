@@ -43,7 +43,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
   if (!settings) {
     return (
       <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm">
-        <div className="text-[12.5px] text-[var(--muted)]">读取设置…</div>
+        <div className="text-[13.5px] text-[var(--muted)]">读取设置…</div>
       </div>
     )
   }
@@ -105,19 +105,19 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[560px] max-h-[82vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="w-[560px] max-h-[82vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
-          <Tags size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">自动分类</span>
+          <Tags size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">自动分类</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="text-[11.5px] text-[var(--muted)] leading-5">
+          <div className="text-[12px] text-[var(--muted)] leading-5">
             用本地识图模型给照片分类，结果就是普通标签，能照常筛选和删除。
             目前{' '}
             {status
@@ -126,18 +126,18 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
           </div>
 
           {status && status.indexed < status.total && (
-            <div className="rounded-lg border border-[var(--warn-border)] bg-[var(--warn-soft)] px-2.5 py-2 text-[11.5px] text-[var(--warn)]">
+            <div className="rounded-2xl border border-[var(--warn-border)] bg-[var(--warn-soft)] px-2.5 py-2 text-[12px] text-[var(--warn)]">
               还有 {status.total - status.indexed} 张没识图，不会参与分类。先在侧栏点「语义索引」补齐。
             </div>
           )}
 
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[11px] text-[var(--faint)]">判定阈值</span>
-              <span className="text-[11.5px] text-[var(--text)] tabular-nums">
+              <span className="text-[12px] text-[var(--faint)]">判定阈值</span>
+              <span className="text-[12px] text-[var(--text)] tabular-nums">
                 {settings.threshold.toFixed(2)}
               </span>
-              <span className="text-[11px] text-[var(--faint)] ml-auto">越高越严格，越低越容易归类</span>
+              <span className="text-[12px] text-[var(--faint)] ml-auto">越高越严格，越低越容易归类</span>
             </div>
             <input
               type="range"
@@ -152,7 +152,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
           </div>
 
           <div>
-            <div className="text-[11px] text-[var(--faint)] mb-1.5">
+            <div className="text-[12px] text-[var(--faint)] mb-1.5">
               参与分类的类目（{settings.categories.length}/{categories.length}）
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -163,7 +163,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
                     key={category.name}
                     disabled={running}
                     onClick={() => toggleCategory(category.name)}
-                    className={`inline-flex items-center gap-1.5 h-[26px] px-2 rounded-md border text-[11.5px] transition-colors ${
+                    className={`inline-flex items-center gap-1.5 h-[26px] px-2 rounded-lg border text-[12px] transition-colors ${
                       active
                         ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
                         : 'border-[var(--border)] text-[var(--faint)] bg-[var(--panel-2)]'
@@ -181,8 +181,8 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
           </div>
 
           {running && progress && (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
-              <div className="flex items-center gap-2 text-[11.5px] mb-1.5">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+              <div className="flex items-center gap-2 text-[12px] mb-1.5">
                 <span className="text-[var(--muted)]">
                   {progress.phase === 'prepare'
                     ? `准备类目向量${progress.current ? ` · ${progress.current}` : ''}`
@@ -206,14 +206,14 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
           )}
 
           {error && (
-            <div className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[11.5px] text-[var(--danger-text)]">
+            <div className="rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[12px] text-[var(--danger-text)]">
               {error}
             </div>
           )}
 
           {result && (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
-              <div className="text-[11.5px] text-[var(--text)]">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
+              <div className="text-[12px] text-[var(--text)]">
                 共 {result.total} 张 · 已归类 {result.assigned} 张
                 {result.total > result.assigned
                   ? ` · ${result.total - result.assigned} 张低于阈值`
@@ -226,7 +226,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
                     return (
                       <span
                         key={name}
-                        className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-md bg-[var(--panel)] border border-[var(--border)] text-[11px]"
+                        className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-lg bg-[var(--panel)] border border-[var(--border)] text-[12px]"
                       >
                         <span className="w-[6px] h-[6px] rounded-full" style={{ background: color }} />
                         {name}
@@ -239,7 +239,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
             </div>
           )}
 
-          <div className="text-[11px] text-[var(--faint)] leading-4">
+          <div className="text-[12px] text-[var(--faint)] leading-4">
             每张照片只归到一个最像的分类。可重复运行，不会重复打标签。
           </div>
         </div>
@@ -247,11 +247,11 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
         <div className="px-4 py-3 border-t border-[var(--border)] flex items-center gap-2">
           {status && status.tagged > 0 && (
             <button
-              className="btn btn-ghost h-7 px-2 text-[11.5px]"
+              className="btn btn-ghost h-7 px-2 text-[12px]"
               disabled={running || clearing}
               onClick={() => void clear()}
             >
-              <Trash2 size={12} /> 清除自动分类
+              <Trash2 size={14} /> 清除自动分类
             </button>
           )}
           <div className="ml-auto flex items-center gap-2">
@@ -263,7 +263,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
               disabled={running}
               onClick={() => void start()}
             >
-              <Sparkles size={12} /> {running ? '分类中…' : '开始分类'}
+              <Sparkles size={14} /> {running ? '分类中…' : '开始分类'}
             </button>
           </div>
         </div>

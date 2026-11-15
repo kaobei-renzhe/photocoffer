@@ -191,13 +191,13 @@ export default function DraftPhotoPicker({
       onClick={saving ? undefined : onClose}
     >
       <div
-        className="flex h-[700px] max-h-[90vh] w-[980px] max-w-[94vw] flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="flex h-[700px] max-h-[90vh] w-[980px] max-w-[94vw] flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex h-[46px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
-          <ImagePlus size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">管理这单的照片</span>
-          <span className="text-[11px] text-[var(--faint)]">
+          <ImagePlus size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">管理这单的照片</span>
+          <span className="text-[12px] text-[var(--faint)]">
             {session.title} · 已选 {picked.size} 张
           </span>
           <button
@@ -206,27 +206,27 @@ export default function DraftPhotoPicker({
             disabled={saving}
             title="关闭（Esc）"
           >
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
         {error && (
-          <div className="shrink-0 border-b border-[var(--danger-border)] bg-[var(--danger-soft)] px-4 py-2 text-[11px] text-[var(--danger-text)]">
+          <div className="shrink-0 border-b border-[var(--danger-border)] bg-[var(--danger-soft)] px-4 py-2 text-[12px] text-[var(--danger-text)]">
             {error}
           </div>
         )}
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           <section>
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--faint)]">
+            <div className="flex items-center gap-2 text-[12px] font-normal text-[var(--faint)]">
               已在这单
               <span className="tabular-nums">{picked.size}</span>
-              <span className="ml-auto text-[10px] font-normal normal-case tracking-normal">
+              <span className="ml-auto text-[11px] font-normal normal-case tracking-normal">
                 点右上角 × 移出；拖动缩略图调整顺序；保存后按这里的顺序重新编号
               </span>
             </div>
             {picked.size === 0 ? (
-              <div className="mt-2 rounded-lg border border-dashed border-[var(--border)] px-3 py-6 text-center text-[11.5px] text-[var(--faint)]">
+              <div className="mt-2 rounded-2xl border border-dashed border-[var(--border)] px-3 py-6 text-center text-[12px] text-[var(--faint)]">
                 这一单还没有照片，从下面挑几张
               </div>
             ) : (
@@ -242,7 +242,7 @@ export default function DraftPhotoPicker({
                       onDragOver={(event) => onDragOverCard(id, event)}
                       onDrop={(event) => onDropCard(id, event)}
                       onDragEnd={clearDrag}
-                      className={`group overflow-hidden rounded-lg border bg-[var(--panel-2)] transition ${
+                      className={`group overflow-hidden rounded-2xl border bg-[var(--panel-2)] transition ${
                         isDragging ? 'opacity-40' : ''
                       } ${
                         isOver
@@ -259,21 +259,21 @@ export default function DraftPhotoPicker({
                           className="h-full w-full object-cover"
                           loading="lazy"
                         />
-                        <span className="absolute left-1 top-1 rounded bg-black/55 px-1 py-0.5 text-[9.5px] tabular-nums text-white">
+                        <span className="absolute left-1 top-1 rounded-lg bg-black/55 px-1 py-0.5 text-[11px] tabular-nums text-white">
                           {pad3(index + 1)}
                         </span>
-                        <span className="absolute bottom-1 left-1 rounded bg-black/55 p-0.5 text-white/80 opacity-0 transition group-hover:opacity-100">
-                          <GripVertical size={11} />
+                        <span className="absolute bottom-1 left-1 rounded-lg bg-black/55 p-0.5 text-white/80 opacity-0 transition group-hover:opacity-100">
+                          <GripVertical size={14} />
                         </span>
                         <button
-                          className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/65 text-white hover:bg-[var(--danger)]"
+                          className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/65 text-white hover:bg-[var(--panel-3)]"
                           onClick={() => remove(id)}
                           title="移出这单"
                         >
-                          <X size={12} />
+                          <X size={14} />
                         </button>
                       </div>
-                      <div className="truncate px-1.5 py-1 text-[9.5px] text-[var(--faint)]">
+                      <div className="truncate px-1.5 py-1 text-[11px] text-[var(--faint)]">
                         {name}
                       </div>
                     </div>
@@ -283,7 +283,7 @@ export default function DraftPhotoPicker({
             )}
             {dragId !== null && (
               <div
-                className={`mt-2 rounded-lg border border-dashed px-3 py-2 text-center text-[10.5px] transition ${
+                className={`mt-2 rounded-2xl border border-dashed px-3 py-2 text-center text-[11px] transition ${
                   overEnd
                     ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
                     : 'border-[var(--border)] text-[var(--faint)]'
@@ -303,12 +303,12 @@ export default function DraftPhotoPicker({
 
           <section>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--faint)]">
+              <div className="text-[12px] font-normal text-[var(--faint)]">
                 从图库添加
               </div>
               <div className="relative ml-auto w-[260px]">
                 <Search
-                  size={13}
+                  size={14}
                   className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--faint)]"
                 />
                 <input
@@ -321,16 +321,16 @@ export default function DraftPhotoPicker({
                 />
               </div>
             </div>
-            <div className="mt-1 text-[10.5px] text-[var(--faint)]">
+            <div className="mt-1 text-[11px] text-[var(--faint)]">
               默认显示最近 {PAGE} 张；图库很大时用搜索找。
             </div>
 
             {loading && !candidates ? (
-              <div className="mt-3 flex items-center gap-2 py-6 text-[11.5px] text-[var(--muted)]">
-                <Loader2 size={13} className="animate-spin" /> 读取图库…
+              <div className="mt-3 flex items-center gap-2 py-6 text-[12px] text-[var(--muted)]">
+                <Loader2 size={14} className="animate-spin" /> 读取图库…
               </div>
             ) : visibleCandidates.length === 0 ? (
-              <div className="mt-3 rounded-lg border border-dashed border-[var(--border)] px-3 py-6 text-center text-[11.5px] text-[var(--faint)]">
+              <div className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-3 py-6 text-center text-[12px] text-[var(--faint)]">
                 {query.trim() ? '没有更多匹配的照片' : '图库里暂时没有可添加的照片'}
               </div>
             ) : (
@@ -338,7 +338,7 @@ export default function DraftPhotoPicker({
                 {visibleCandidates.map((item) => (
                   <button
                     key={item.id}
-                    className="group overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--panel-2)] text-left"
+                    className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] text-left"
                     onClick={() => add(item)}
                     title={`加入这单：${item.name}`}
                   >
@@ -353,7 +353,7 @@ export default function DraftPhotoPicker({
                         <Plus size={18} className="text-white" />
                       </span>
                     </div>
-                    <div className="truncate px-1.5 py-1 text-[9.5px] text-[var(--faint)]">
+                    <div className="truncate px-1.5 py-1 text-[11px] text-[var(--faint)]">
                       {item.name}
                     </div>
                   </button>
@@ -364,15 +364,15 @@ export default function DraftPhotoPicker({
         </div>
 
         <div className="flex shrink-0 items-center gap-2 border-t border-[var(--border)] px-4 py-2.5">
-          <span className="text-[10.5px] text-[var(--faint)]">
+          <span className="text-[11px] text-[var(--faint)]">
             只改这一单的照片，不动图库；已发出的单不能改。
           </span>
           <div className="ml-auto flex items-center gap-1.5">
-            <button className="btn btn-ghost h-7 px-2.5 text-[11.5px]" onClick={onClose} disabled={saving}>
+            <button className="btn btn-ghost h-7 px-2.5 text-[12px]" onClick={onClose} disabled={saving}>
               取消
             </button>
             <button
-              className="btn btn-primary h-7 px-2.5 text-[11.5px]"
+              className="btn btn-primary h-7 px-2.5 text-[12px]"
               disabled={saving || picked.size === 0}
               onClick={() => void save()}
             >

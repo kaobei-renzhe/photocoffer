@@ -146,17 +146,17 @@ export default function GearSearch({
   return (
     <div className="fixed inset-0 z-[60] grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-[660px] max-h-[80vh] flex flex-col rounded-xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
+        className="w-[660px] max-h-[80vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
-          <Search size={15} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-medium">
+          <Search size={16} color="var(--accent-2)" />
+          <span className="text-[13.5px] font-bold">
             {mode === 'replace' ? '更换型号' : '添加设备'}
           </span>
-          <span className="text-[11px] text-[var(--faint)] ml-1">搜索型号，参数自动带出</span>
+          <span className="text-[12px] text-[var(--faint)] ml-1">搜索型号，参数自动带出</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
-            <X size={15} />
+            <X size={16} />
           </button>
         </div>
 
@@ -168,7 +168,7 @@ export default function GearSearch({
             />
             <input
               ref={inputRef}
-              className="input w-full h-8 pl-8 text-[12.5px]"
+              className="input w-full h-8 pl-8 text-[13.5px]"
               placeholder="输入型号或品牌，比如 Zf、24-70、三脚架…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -180,7 +180,7 @@ export default function GearSearch({
 
           <div className="flex flex-wrap gap-1.5">
             <button
-              className={`h-[24px] px-2 rounded-md border text-[11px] ${
+              className={`h-[24px] px-2 rounded-lg border text-[12px] ${
                 category === 'all'
                   ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
                   : 'border-[var(--border)] text-[var(--muted)] bg-[var(--panel-2)]'
@@ -192,7 +192,7 @@ export default function GearSearch({
             {CATEGORY_ORDER.map((entry) => (
               <button
                 key={entry}
-                className={`h-[24px] px-2 rounded-md border text-[11px] ${
+                className={`h-[24px] px-2 rounded-lg border text-[12px] ${
                     category === entry
                     ? 'border-[var(--accent-border)] text-[var(--accent-text)] bg-[var(--accent-soft)]'
                     : 'border-[var(--border)] text-[var(--muted)] bg-[var(--panel-2)]'
@@ -208,8 +208,8 @@ export default function GearSearch({
         <div className="flex-1 overflow-y-auto p-2 min-h-[180px]">
           {results.length === 0 ? (
             <div className="py-10 text-center">
-              <div className="text-[12.5px] text-[var(--muted)]">没有匹配的设备</div>
-              <div className="text-[11px] text-[var(--faint)] mt-1">
+              <div className="text-[13.5px] text-[var(--muted)]">没有匹配的设备</div>
+              <div className="text-[12px] text-[var(--faint)] mt-1">
                 换个关键词，或用下面的「手动填写」直接建一条
               </div>
             </div>
@@ -222,7 +222,7 @@ export default function GearSearch({
                 return (
                   <button
                     key={`${key}-${spec.brand}`}
-                    className="w-full flex items-center gap-3 rounded-lg border border-transparent px-2.5 py-1.5 text-left hover:border-[var(--accent)] hover:bg-[var(--panel-2)] disabled:opacity-45 disabled:hover:border-transparent disabled:hover:bg-transparent"
+                    className="w-full flex items-center gap-3 rounded-2xl border border-transparent px-2.5 py-1.5 text-left hover:border-[var(--accent)] hover:bg-[var(--panel-2)] disabled:opacity-45 disabled:hover:border-transparent disabled:hover:bg-transparent"
                     disabled={already}
                     onClick={() => onPick(spec)}
                     title={already ? '已经在装备里了' : '点击添加'}
@@ -232,20 +232,20 @@ export default function GearSearch({
                       <div className="text-[12px] text-[var(--text)] truncate">
                         {spec.brand} {spec.model}
                       </div>
-                      <div className="text-[10.5px] text-[var(--faint)] truncate">
+                      <div className="text-[11px] text-[var(--faint)] truncate">
                         {CATEGORY_LABEL[spec.category]}
                         {summary(spec) ? ` · ${summary(spec)}` : ' · 参数可在手动模式补充'}
                       </div>
                     </div>
                     {spec.count > 0 && (
-                      <span className="shrink-0 text-[10px] px-1.5 py-[1px] rounded bg-[var(--panel-3)] text-[var(--muted)] whitespace-nowrap">
+                      <span className="shrink-0 text-[11px] px-1.5 py-[1px] rounded-lg bg-[var(--panel-3)] text-[var(--muted)] whitespace-nowrap">
                         已有 {spec.count} 张
                       </span>
                     )}
                     {already ? (
-                      <span className="shrink-0 text-[10.5px] text-[var(--faint)]">已添加</span>
+                      <span className="shrink-0 text-[11px] text-[var(--faint)]">已添加</span>
                     ) : (
-                      <Plus size={13} className="shrink-0 text-[var(--faint)]" />
+                      <Plus size={14} className="shrink-0 text-[var(--faint)]" />
                     )}
                   </button>
                 )
@@ -255,11 +255,11 @@ export default function GearSearch({
         </div>
 
         <div className="shrink-0 px-3 py-2 border-t border-[var(--border)] flex items-center gap-2">
-          <span className="text-[10.5px] text-[var(--faint)]">
+          <span className="text-[11px] text-[var(--faint)]">
             {mode === 'replace' ? '选一个型号会覆盖参数，备注保留' : '回车可直接选第一条'}
           </span>
           <button
-            className="btn btn-ghost h-6 px-2 text-[11px] ml-auto"
+            className="btn btn-ghost h-6 px-2 text-[12px] ml-auto"
             onClick={() => onManual(trimmed)}
           >
             手动填写{trimmed && mode === 'add' ? `「${trimmed}」` : ''}

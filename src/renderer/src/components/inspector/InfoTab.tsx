@@ -144,7 +144,7 @@ export default function InfoTab({
     <div className={compact ? 'p-2.5' : 'p-3'}>
       {showPreview && (
         <div
-          className={`mx-auto w-fit max-w-full overflow-hidden rounded-xl border border-[var(--border)] ${
+          className={`mx-auto w-fit max-w-full overflow-hidden rounded-2xl border border-[var(--border)] ${
             onOpenLightbox ? 'cursor-zoom-in' : ''
           }`}
           onClick={onOpenLightbox}
@@ -160,29 +160,29 @@ export default function InfoTab({
       )}
 
       {item.missing === 1 && (
-        <div className="mt-2 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[11px] leading-4 text-[var(--danger-text)]">
+        <div className="mt-2 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[12px] leading-4 text-[var(--danger-text)]">
           原文件已丢失，这里显示的是缓存缩略图。可以在侧栏「重新定位」里选个新文件夹把它接回来。
         </div>
       )}
 
       {item.error && (
-        <div className="mt-2 rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[11px] leading-4 text-[var(--danger-text)]">
+        <div className="mt-2 rounded-2xl border border-[var(--danger-border)] bg-[var(--danger-soft)] px-2.5 py-2 text-[12px] leading-4 text-[var(--danger-text)]">
           导入失败：{item.error}
-          <div className="mt-1 text-[10.5px] opacity-80">
+          <div className="mt-1 text-[11px] opacity-80">
             文件可能损坏或格式暂不支持；修复后重新导入同一目录即可。
           </div>
         </div>
       )}
 
-      <label className="mt-2.5 flex cursor-pointer items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5">
+      <label className="mt-2.5 flex cursor-pointer items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5">
         <input
           type="checkbox"
           className="h-3.5 w-3.5 accent-[var(--accent)]"
           checked={item.reference === 1}
           onChange={() => void toggleReference()}
         />
-        <span className="text-[11.5px] text-[var(--text)]">这是参考片</span>
-        <span className="ml-auto text-[10px] text-[var(--faint)]">研读别人怎么拍</span>
+        <span className="text-[12px] text-[var(--text)]">这是参考片</span>
+        <span className="ml-auto text-[11px] text-[var(--faint)]">研读别人怎么拍</span>
       </label>
 
       <div className="mt-2.5 flex items-center gap-1">
@@ -190,22 +190,23 @@ export default function InfoTab({
           {[1, 2, 3, 4, 5].map((n) => (
             <Star
               key={n}
-              size={15}
+              size={16}
               onClick={() => void setRating(n)}
               fill={item.rating >= n ? 'var(--star)' : 'transparent'}
               color={item.rating >= n ? 'var(--star)' : 'var(--faint)'}
-              strokeWidth={1.6}
+              stroke={item.rating >= n ? 'rgba(0,0,0,.45)' : 'var(--faint)'}
+              strokeWidth={item.rating >= n ? 0.75 : 1.6}
             />
           ))}
         </div>
-        <span className="ml-auto text-[11px] text-[var(--faint)]">
+        <span className="ml-auto text-[12px] text-[var(--faint)]">
           {item.width} × {item.height}
         </span>
       </div>
 
       <div className="mt-2 flex items-center gap-1.5">
         <button
-          className={`btn h-6 px-2 text-[11px] ${
+          className={`btn h-6 px-2 text-[12px] ${
             item.flag > 0 ? 'border-[var(--success-border)] text-[var(--success)]' : ''
           }`}
           onClick={() => void setFlag(1)}
@@ -214,7 +215,7 @@ export default function InfoTab({
           ✓ 留用
         </button>
         <button
-          className={`btn h-6 px-2 text-[11px] ${
+          className={`btn h-6 px-2 text-[12px] ${
             item.flag < 0 ? 'border-[var(--danger-border)] text-[var(--danger-text)]' : ''
           }`}
           onClick={() => void setFlag(-1)}
@@ -224,7 +225,7 @@ export default function InfoTab({
         </button>
         {item.flag !== 0 && (
           <button
-            className="btn btn-ghost h-6 px-1.5 text-[11px]"
+            className="btn btn-ghost h-6 px-1.5 text-[12px]"
             onClick={() => void setFlag(0)}
             title="清除（U）"
           >
@@ -233,11 +234,11 @@ export default function InfoTab({
         )}
         {onFindSimilar && (
           <button
-            className="btn btn-ghost ml-auto h-6 px-2 text-[11px]"
+            className="btn btn-ghost ml-auto h-6 px-2 text-[12px]"
             onClick={onFindSimilar}
             title="以图搜图：找出画面相近的图片"
           >
-            <ScanSearch size={12} /> 找相似
+            <ScanSearch size={14} /> 找相似
           </button>
         )}
       </div>
@@ -247,14 +248,14 @@ export default function InfoTab({
           {item.tags.map((tag) => (
             <span
               key={tag.id}
-              className="inline-flex h-[22px] items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--panel-2)] pl-1.5 pr-1 text-[11.5px]"
+              className="inline-flex h-[22px] items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] pl-1.5 pr-1 text-[12px]"
             >
               {tag.name}
               <button
                 className="text-[var(--faint)] hover:text-[var(--danger)]"
                 onClick={() => void removeTag(tag.id, tag.name)}
               >
-                <X size={10} />
+                <X size={14} />
               </button>
             </span>
           ))}
@@ -276,7 +277,7 @@ export default function InfoTab({
             ))}
           </datalist>
           <button className="btn h-7 px-2" onClick={() => void commitTag()}>
-            <Plus size={12} />
+            <Plus size={14} />
           </button>
         </div>
       </Section>
@@ -289,7 +290,7 @@ export default function InfoTab({
             return (
               <span
                 key={id}
-                className="inline-flex h-[22px] items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--panel-2)] px-1.5 text-[11.5px]"
+                className="inline-flex h-[22px] items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-1.5 text-[12px]"
               >
                 {folder.name}
                 <button
@@ -306,16 +307,16 @@ export default function InfoTab({
                     onRefresh()
                   }}
                 >
-                  <X size={10} />
+                  <X size={14} />
                 </button>
               </span>
             )
           })}
           {folders.length > 0 && (
-            <label className="inline-flex h-[22px] cursor-pointer items-center gap-1 rounded-md border border-dashed border-[var(--border-strong)] px-1.5 text-[11.5px] text-[var(--muted)]">
-              <FolderPlus size={11} />
+            <label className="inline-flex h-[22px] cursor-pointer items-center gap-1 rounded-lg border border-dashed border-[var(--border-strong)] px-1.5 text-[12px] text-[var(--muted)]">
+              <FolderPlus size={14} />
               <select
-                className="cursor-pointer border-0 bg-transparent text-[11.5px] text-[var(--muted)] outline-none"
+                className="cursor-pointer border-0 bg-transparent text-[12px] text-[var(--muted)] outline-none"
                 value=""
                 onChange={(event) => void addFolder(Number(event.target.value))}
               >
@@ -341,12 +342,12 @@ export default function InfoTab({
       {(item.pairCount > 1 || item.burstCount > 1 || item.stackCount > 1) && (
         <Section title="分组" compact={compact}>
           {item.stackCount > 1 && item.stackId && (
-            <div className="flex items-center gap-2 text-[11.5px] leading-5">
+            <div className="flex items-center gap-2 text-[12px] leading-5">
               <span className="w-[52px] shrink-0 text-[var(--faint)]">堆叠</span>
               <span className="text-[var(--text)]">手动堆叠 · {item.stackCount} 张</span>
               {onUnstack && (
                 <button
-                  className="btn ml-auto h-5 px-1.5 text-[10.5px]"
+                  className="btn ml-auto h-5 px-1.5 text-[11px]"
                   onClick={() => onUnstack(item.stackId as number)}
                 >
                   拆开
@@ -380,7 +381,7 @@ export default function InfoTab({
             {item.palette.map((hex) => (
               <button
                 key={hex}
-                className="h-[26px] flex-1 rounded-md border border-[var(--border)]"
+                className="h-[26px] flex-1 rounded-lg border border-[var(--border)]"
                 style={{ background: hex }}
                 title={`${hex}（点击复制）`}
                 onClick={() => void navigator.clipboard.writeText(hex)}
@@ -401,36 +402,36 @@ export default function InfoTab({
       </Section>
 
       <Section title="位置" compact={compact}>
-        <div className="break-all text-[11px] leading-4 text-[var(--muted)]">{item.path}</div>
+        <div className="break-all text-[12px] leading-4 text-[var(--muted)]">{item.path}</div>
         <div className="mt-1.5 flex gap-1.5">
           <button
-            className="btn h-7 px-2 text-[11.5px]"
+            className="btn h-7 px-2 text-[12px]"
             onClick={() => void window.api.copyImage(item.id)}
             title={`把图片复制到剪贴板（${modLabel}+C）`}
           >
-            <Copy size={12} /> 复制图片
+            <Copy size={14} /> 复制图片
           </button>
           <button
-            className="btn h-7 px-2 text-[11.5px]"
+            className="btn h-7 px-2 text-[12px]"
             onClick={() => void window.api.showInFolder(item.path)}
           >
             在资源管理器中显示
           </button>
         </div>
-        <div className="mt-1.5 text-[10.5px] leading-4 text-[var(--faint)]">
+        <div className="mt-1.5 text-[11px] leading-4 text-[var(--faint)]">
           提示：按住 {altLabel} 拖拽卡片，可以直接拖到资源管理器或其它应用
         </div>
       </Section>
 
       {onOpenStudy && (
         <button
-          className="mt-3 flex w-full items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2 text-[11.5px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)]"
+          className="mt-3 flex w-full items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-2 text-[12px] text-[var(--muted)] hover:border-[var(--accent)] hover:text-[var(--text)]"
           onClick={onOpenStudy}
           title="切到研读 Tab"
         >
-          <BookOpen size={12} />
+          <BookOpen size={14} />
           研读笔记 · {noteCount} 条
-          <ChevronRight size={12} className="ml-auto" />
+          <ChevronRight size={14} className="ml-auto" />
         </button>
       )}
     </div>

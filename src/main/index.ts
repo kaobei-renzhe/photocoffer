@@ -110,7 +110,7 @@ function currentSkin() {
 function windowBackground(): string {
   const skin = currentSkin()
   if (skin.mode !== 'auto') return skin.base
-  return nativeTheme.shouldUseDarkColors ? '#14161B' : '#F0F3F7'
+  return nativeTheme.shouldUseDarkColors ? '#171818' : '#FAF6EE'
 }
 
 /**

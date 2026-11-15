@@ -18,32 +18,32 @@ export const SKINS: SkinDefinition[] = [
     name: '默认',
     hint: '跟随系统深浅 · 匣色',
     mode: 'auto',
-    base: '#14161B',
-    swatches: ['#14161B', '#2A2E36', '#5B9FE8']
+    base: '#171818',
+    swatches: ['#171818', '#242424', '#FDC75D']
   },
   {
     id: 'night',
     name: '深色',
     hint: '常驻深色 · 底板与匣壁',
     mode: 'dark',
-    base: '#14161B',
-    swatches: ['#14161B', '#1E2127', '#5B9FE8']
+    base: '#171818',
+    swatches: ['#171818', '#242424', '#FDC75D']
   },
   {
     id: 'paper',
     name: '浅色',
-    hint: '常驻浅色 · 冷白纸感',
+    hint: '常驻浅色 · 暖纸感',
     mode: 'light',
-    base: '#F0F3F7',
-    swatches: ['#F0F3F7', '#E8EEF4', '#2F6CB8']
+    base: '#FAF6EE',
+    swatches: ['#FAF6EE', '#F4EEE3', '#7A5200']
   },
   {
     id: 'contrast',
     name: '高对比',
     hint: '无障碍 · 高辨识度',
     mode: 'dark',
-    base: '#0A0C0F',
-    swatches: ['#0A0C0F', '#14171C', '#82B4F2']
+    base: '#0A0A0A',
+    swatches: ['#0A0A0A', '#141414', '#FFD97A']
   }
 ]
 

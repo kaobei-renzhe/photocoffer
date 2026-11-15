@@ -121,7 +121,7 @@ export default function FinalsExportDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm"
+      className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] "
       onClick={running ? undefined : onClose}
     >
       <div

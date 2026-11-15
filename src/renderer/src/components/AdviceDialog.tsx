@@ -68,7 +68,7 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
   const needsSettings = error?.code === 'not_configured' || error?.code === 'auth'
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] " onClick={onClose}>
       <div
         className="w-[520px] max-h-[82vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}

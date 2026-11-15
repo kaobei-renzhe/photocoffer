@@ -1882,7 +1882,7 @@ export default function App() {
       </div>
 
       {dragging && (
-        <div className="absolute inset-0 z-40 grid place-items-center bg-[rgba(9,11,15,0.82)] backdrop-blur-sm pointer-events-none">
+        <div className="absolute inset-0 z-40 grid place-items-center bg-[rgba(9,11,15,0.82)]  pointer-events-none">
           <div className="px-10 py-8 rounded-2xl border-2 border-dashed border-[var(--accent)] text-center">
             <div className="text-[18px] text-[var(--accent-2)] font-bold">松手就收进图库</div>
             <div className="text-[12px] text-[var(--muted)] mt-1">支持文件夹、文件与照片网址</div>

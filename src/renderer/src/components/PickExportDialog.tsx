@@ -117,7 +117,7 @@ export default function PickExportDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={exporting ? undefined : onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] " onClick={exporting ? undefined : onClose}>
       <div
         className="w-[540px] max-h-[86vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}

@@ -385,6 +385,7 @@ export default function PortraitWorkspace({
     [items, portraitFlags]
   )
   const reviewCount = reviewItems.length
+  const selectionSet = useMemo(() => new Set(selection), [selection])
 
   const toggleFacetOpen = (id: string): void => {
     setOpenFacets((prev) => {
@@ -817,7 +818,7 @@ export default function PortraitWorkspace({
                   )}
                   <div style={{ columnCount: columns, columnGap: 16 }}>
                     {shownItems.map((item, index) => {
-                      const on = selection.includes(item.id)
+                      const on = selectionSet.has(item.id)
                       const marks = item.tags.filter((tag) => valueName.has(tag.id)).slice(0, 3)
                       return (
                         <button

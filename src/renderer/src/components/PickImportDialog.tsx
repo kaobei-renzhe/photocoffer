@@ -110,7 +110,7 @@ export default function PickImportDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={phase === 'idle' ? onClose : undefined}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] " onClick={phase === 'idle' ? onClose : undefined}>
       <div
         className="w-[560px] max-h-[86vh] flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}

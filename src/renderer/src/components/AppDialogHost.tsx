@@ -64,7 +64,7 @@ export default function AppDialogHost() {
 
   return (
     <div
-      className="fixed inset-0 z-[60] grid place-items-center bg-[var(--overlay)] backdrop-blur-sm"
+      className="fixed inset-0 z-[60] grid place-items-center bg-[var(--overlay)] "
       onClick={() => reply(Boolean(current.onlyConfirm))}
       role="dialog"
       aria-modal="true"

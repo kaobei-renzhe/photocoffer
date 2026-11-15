@@ -154,7 +154,7 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
   }, [activeIndex, filtered, onClose, openEntry])
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-[var(--overlay)] " onClick={onClose}>
       <div
         className="flex w-[560px] max-h-[76vh] flex-col rounded-2xl border border-[var(--border)] bg-[var(--panel)] shadow-2xl"
         onClick={(event) => event.stopPropagation()}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 
 /**
- * 指针和键盘静止 delay 毫秒后返回 true；任何输入立即回到 false。
- * 用于灯箱、视频播放器这类「看的时候不该有控件」的场景。
+ * @deprecated 查看器已改用 immersive / slideIdle / peekY 三状态源（见 lib/chromeVisibility.ts）。
+ * 保留文件避免与其它分支冲突；新代码不要再用「全局 idle 计时器」控制 chrome。
  */
 export function useIdle(delay = 2000): boolean {
   const [idle, setIdle] = useState(false)

@@ -23,7 +23,7 @@ import PhotoInspector, {
 } from './inspector/PhotoInspector'
 import type { PushUndo } from './inspector/ui'
 import { inAiScope, outOfScopeText, type AiScope } from '../lib/aiScope'
-import { useIdle } from '../hooks/useIdle'
+import { isChromeVisible } from '../lib/chromeVisibility'
 
 interface LightboxProps {
   items: Item[]
@@ -119,12 +119,21 @@ export default function Lightbox({
   const [slideDelay, setSlideDelay] = useState<3000 | 5000>(3000)
   /** 任何键鼠操作都让计时重新开始 */
   const [slideTick, setSlideTick] = useState(0)
+  /** 沉浸（Tab）/ 幻灯片静止 / 指针唤回带：三个状态源各自只有一个写入者 */
+  const [immersive, setImmersive] = useState(false)
+  const [slideIdle, setSlideIdle] = useState(false)
+  const [peekY, setPeekY] = useState<number | null>(null)
+  const lastUserInputRef = useRef(Date.now())
   /** 只有本灯箱自己进的全屏才负责退出，别动用户原本就有的全屏 */
   const ownFullscreenRef = useRef(false)
-  /** 框选 / 看快捷键时不淡出，免得用户以为界面出错了 */
-  const idleRaw = useIdle(2000)
-  const idle = idleRaw && !drawing && !helpOpen
-  const chrome = `transition-opacity duration-300 ${idle ? 'opacity-0 pointer-events-none' : 'opacity-100'}`
+  const peekBand = peekY !== null && (peekY < 68 || peekY > window.innerHeight - 68)
+  const chromeVisible = isChromeVisible({ immersive, peekBand, slideIdle })
+  const chromeCls =
+    immersive || slideIdle
+      ? `transition-opacity ${slideIdle ? 'duration-[60ms]' : 'duration-200'} ${
+          chromeVisible ? 'opacity-100' : 'opacity-0'
+        }`
+      : 'opacity-100'
 
   /** 旋转 90/270 度后，图像的横向和纵向尺寸互换 */
   const upright = rotation % 180 === 0
@@ -198,8 +207,15 @@ export default function Lightbox({
 
   // 任何键鼠操作都把计时器拨回起点（键盘在 onKey 里处理，这里管指针与滚轮）
   useEffect(() => {
-    if (!slideshow) return
-    const bump = (): void => setSlideTick((value) => value + 1)
+    if (!slideshow) {
+      setSlideIdle(false)
+      return
+    }
+    const bump = (): void => {
+      lastUserInputRef.current = Date.now()
+      setSlideIdle(false)
+      setSlideTick((value) => value + 1)
+    }
     window.addEventListener('pointerdown', bump, true)
     window.addEventListener('wheel', bump, true)
     return () => {
@@ -207,6 +223,33 @@ export default function Lightbox({
       window.removeEventListener('wheel', bump, true)
     }
   }, [slideshow])
+
+  // 幻灯片静止：唯一允许的 idle 判定；自动翻页不更新 lastUserInputRef
+  useEffect(() => {
+    if (!slideshow) {
+      setSlideIdle(false)
+      return
+    }
+    const timer = window.setInterval(() => {
+      const quiet = Date.now() - lastUserInputRef.current > 3000
+      setSlideIdle(quiet && !drawing && !helpOpen && !immersive)
+    }, 500)
+    return () => window.clearInterval(timer)
+  }, [slideshow, drawing, helpOpen, immersive])
+
+  // 沉浸态：只在 window 上听一次 pointermove，passive
+  useEffect(() => {
+    if (!immersive) {
+      setPeekY(null)
+      return
+    }
+    const onMove = (event: PointerEvent): void => setPeekY(event.clientY)
+    window.addEventListener('pointermove', onMove, { passive: true })
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [immersive])
+
+  // 关闭查看器时重置沉浸，避免用户忘了自己按过 Tab
+  useEffect(() => () => setImmersive(false), [])
 
   const clampPan = useCallback(
     (next: { x: number; y: number }, scale: number) => {
@@ -384,6 +427,8 @@ export default function Lightbox({
       // 内层（输入框、弹窗）已经处理掉的键不要再抢
       if (e.defaultPrevented) return
       // 任何按键都算一次操作，把幻灯片的计时拨回起点
+      lastUserInputRef.current = Date.now()
+      setSlideIdle(false)
       if (slideshow) setSlideTick((value) => value + 1)
       const target = e.target as HTMLElement | null
       const typing =
@@ -399,6 +444,12 @@ export default function Lightbox({
           return
         }
         // 先退全屏，再按一次才关灯箱
+        if (immersive) {
+          e.preventDefault()
+          e.stopPropagation()
+          setImmersive(false)
+          return
+        }
         if (fullscreen) {
           e.preventDefault()
           e.stopPropagation()
@@ -422,6 +473,16 @@ export default function Lightbox({
       }
       if (typing) return
 
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        setImmersive((value) => !value)
+        return
+      }
+      if (e.key === '?') {
+        e.preventDefault()
+        setHelpOpen((value) => !value)
+        return
+      }
       if (e.key === 'F11') {
         e.preventDefault()
         void toggleFullscreen()
@@ -445,13 +506,13 @@ export default function Lightbox({
         changeDrawing(!drawing)
         return
       }
-      // 灯箱只认左右键：按当前顺序翻页
-      if (e.key === 'ArrowLeft') {
+      // 灯箱只认左右键：按当前顺序翻页；J/K 是别名
+      if (e.key === 'ArrowLeft' || e.key === 'j' || e.key === 'J') {
         e.preventDefault()
         if (index > 0) onNavigate(index - 1)
         return
       }
-      if (e.key === 'ArrowRight') {
+      if (e.key === 'ArrowRight' || e.key === 'k' || e.key === 'K') {
         e.preventDefault()
         if (index < items.length - 1) onNavigate(index + 1)
         return
@@ -482,6 +543,7 @@ export default function Lightbox({
     index,
     inspectorOpen,
     inspectorTab,
+    immersive,
     items.length,
     onNavigate,
     openInspector,
@@ -619,36 +681,47 @@ export default function Lightbox({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[var(--lightbox)]">
-      <div className={`h-[46px] shrink-0 px-4 flex items-center gap-3 text-[13.5px] ${chrome}`}>
-        <span className="truncate text-[var(--text)]">{item.name}</span>
-        <span className="text-[var(--faint)] tabular-nums">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--lightbox)]">
+      <div
+        className={`absolute left-1/2 top-2 z-20 flex h-11 -translate-x-1/2 items-center gap-3 rounded-full border border-[var(--lb-rule)] bg-[var(--lb-chrome)] px-4 text-[13.5px] backdrop-blur-[18px] ${chromeCls}`}
+        style={{ width: 620, maxWidth: '62%', left: inspectorOpen ? 'calc(50% - 160px)' : '50%' }}
+        inert={!chromeVisible}
+        aria-hidden={!chromeVisible}
+      >
+        <span className="truncate text-[15px] font-bold text-[var(--lb-text)]">{item.name}</span>
+        <span className="min-w-[62px] shrink-0 text-[12px] tabular-nums text-[var(--lb-faint)]">
           {index + 1} / {items.length}
         </span>
         <button
-          className="btn btn-ghost ml-auto h-7 px-2"
+          className="ml-auto grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => setHelpOpen((open) => !open)}
           title="快捷键"
         >
           <CircleHelp size={16} strokeWidth={1.75} />
         </button>
         <button
-          className={`btn h-7 px-2 ${
-            inspectorOpen ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
+          className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[12px] ${
+            inspectorOpen
+              ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+              : 'text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]'
           }`}
           onClick={() => setInspectorOpen((open) => !open)}
           title="照片档案"
         >
           <Info size={16} strokeWidth={1.75} /> 档案
         </button>
-        <button className="btn btn-ghost h-7 px-2" onClick={onClose} title="关闭 (Esc)">
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={onClose}
+          title="关闭 (Esc)"
+        >
           <X size={16} strokeWidth={1.75} />
         </button>
       </div>
 
       {helpOpen && (
         <div
-          className="absolute right-3 top-12 z-10 w-[240px] rounded-2xl border border-white/12 bg-[#14171e] p-3 text-[12px] shadow-xl"
+          className="absolute right-4 top-16 z-30 w-[240px] rounded-2xl border border-[var(--lb-rule)] bg-[var(--lb-chrome)] p-3 text-[12px] shadow-xl backdrop-blur-[18px]"
           onMouseLeave={() => setHelpOpen(false)}
         >
           {[
@@ -664,14 +737,14 @@ export default function Lightbox({
             ['Esc', '关闭']
           ].map(([key, value]) => (
             <div key={key} className="flex justify-between py-[3px]">
-              <span className="text-[var(--faint)]">{key}</span>
-              <span className="text-[var(--text)]">{value}</span>
+              <span className="text-[var(--lb-faint)]">{key}</span>
+              <span className="text-[var(--lb-text)]">{value}</span>
             </div>
           ))}
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
+      <div className="flex h-full min-h-0">
         <div
           ref={stageRef}
           className="relative min-h-0 flex-1 overflow-hidden select-none"
@@ -754,8 +827,8 @@ export default function Lightbox({
 
         {index > 0 && (
           <button
-            className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-300 ${
-              idle ? 'opacity-15' : 'opacity-100'
+            className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-200 ${
+              chromeVisible ? 'opacity-40 hover:opacity-100' : 'opacity-0 pointer-events-none'
             }`}
             onClick={() => onNavigate(index - 1)}
             title="上一张"
@@ -765,8 +838,8 @@ export default function Lightbox({
         )}
         {index < items.length - 1 && (
           <button
-            className={`absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-300 ${
-              idle ? 'opacity-15' : 'opacity-100'
+            className={`absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-200 ${
+              chromeVisible ? 'opacity-40 hover:opacity-100' : 'opacity-0 pointer-events-none'
             }`}
             onClick={() => onNavigate(index + 1)}
             title="下一张"
@@ -813,81 +886,91 @@ export default function Lightbox({
       </div>
 
       <div
-        className={`h-[34px] shrink-0 px-4 flex items-center gap-3 text-[12px] text-[var(--faint)] border-t border-white/8 ${chrome}`}
+        className={`absolute bottom-3 left-4 z-20 flex h-11 items-center gap-3 rounded-full border border-[var(--lb-rule)] bg-[var(--lb-chrome)] px-4 text-[12px] text-[var(--lb-faint)] backdrop-blur-[18px] ${chromeCls}`}
+        inert={!chromeVisible}
+        aria-hidden={!chromeVisible}
       >
-        <span>
-          {item.width} × {item.height}
+        <span className="inline-block w-[40px] tabular-nums">{item.exif?.aperture ?? 'f/—'}</span>
+        <span className="inline-block w-[56px] tabular-nums">{item.exif?.shutter ?? '—'}</span>
+        <span className="inline-block w-[56px] tabular-nums">
+          {item.exif?.iso ? `ISO ${item.exif.iso}` : 'ISO —'}
         </span>
-        {item.exif?.camera && <span>{item.exif.camera}</span>}
-        {item.exif?.lens && <span className="truncate max-w-[280px]">{item.exif.lens}</span>}
-        {item.exif?.aperture && <span>{item.exif.aperture}</span>}
-        {item.exif?.shutter && <span>{item.exif.shutter}</span>}
-        {item.exif?.iso && <span>ISO {item.exif.iso}</span>}
-        <div className="ml-auto flex items-center gap-1 shrink-0">
-          <button
-            className={`w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 ${
-              slideshow ? 'text-[var(--accent-2)]' : 'text-white/70'
-            }`}
-            onClick={() => setSlideshow((value) => !value)}
-            title="幻灯片 (S)"
-          >
-            {slideshow ? <Pause size={16} strokeWidth={1.75} /> : <Play size={16} strokeWidth={1.75} />}
-          </button>
-          <button
-            className={`h-6 px-1.5 rounded-lg hover:bg-white/12 tabular-nums ${
-              slideshow ? 'text-white/80' : 'text-white/50'
-            }`}
-            onClick={() => setSlideDelay((value) => (value === 3000 ? 5000 : 3000))}
-            title="切换幻灯片间隔"
-          >
-            {slideDelay / 1000} 秒
-          </button>
-          <button
-            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
-            onClick={() => void toggleFullscreen()}
-            title="全屏 (F11)"
-          >
-            {fullscreen ? <Minimize size={16} strokeWidth={1.75} /> : <Maximize size={16} strokeWidth={1.75} />}
-          </button>
-          <span className="mx-1 h-4 w-px bg-white/12" />
-          <button
-            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
-            onClick={() => rotateBy(-90)}
-            title="向左旋转 (Shift+R)"
-          >
-            <RotateCcw size={16} strokeWidth={1.75} />
-          </button>
-          <button
-            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
-            onClick={() => rotateBy(90)}
-            title="向右旋转 (R)"
-          >
-            <RotateCw size={16} strokeWidth={1.75} />
-          </button>
-          <span className="w-[34px] text-center tabular-nums text-[var(--faint)]">{rotation}°</span>
-          <button
-            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
-            onClick={() => zoomStep(1 / 1.25)}
-            title="缩小 (-)"
-          >
-            <Minus size={16} strokeWidth={1.75} />
-          </button>
-          <span className="w-[42px] text-center tabular-nums text-[var(--text)]">{percent}</span>
-          <button
-            className="w-6 h-6 rounded-lg grid place-items-center hover:bg-white/12 text-white/70"
-            onClick={() => zoomStep(1.25)}
-            title="放大 (+)"
-          >
-            <Plus size={16} strokeWidth={1.75} />
-          </button>
-          <button
-            className="h-6 px-2 rounded-lg hover:bg-white/12 text-white/70"
-            onClick={resetFit}
-            title="适应窗口 (0)"
-          >
-            适应
-          </button>
-        </div>
+        <span className="h-4 w-px bg-[var(--lb-rule)]" />
+        <span className="max-w-[320px] truncate text-[11px]">
+          {[item.exif?.camera, item.exif?.lens].filter(Boolean).join(' · ') || '没有器材信息'}
+        </span>
+      </div>
+
+      <div
+        className={`absolute bottom-3 z-20 flex h-11 items-center gap-1 rounded-full border border-[var(--lb-rule)] bg-[var(--lb-chrome)] px-2 text-[12px] text-[var(--lb-faint)] backdrop-blur-[18px] ${
+          inspectorOpen ? 'right-[336px]' : 'right-4'
+        } ${chromeCls}`}
+        inert={!chromeVisible}
+        aria-hidden={!chromeVisible}
+      >
+        <button
+          className={`grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--lb-hover)] ${
+            slideshow ? 'text-[var(--accent-2)]' : 'text-[var(--lb-faint)] hover:text-[var(--lb-text)]'
+          }`}
+          onClick={() => setSlideshow((value) => !value)}
+          title="幻灯片 (S)"
+        >
+          {slideshow ? <Pause size={16} strokeWidth={1.75} /> : <Play size={16} strokeWidth={1.75} />}
+        </button>
+        <button
+          className={`h-7 rounded-full px-1.5 tabular-nums hover:bg-[var(--lb-hover)] ${
+            slideshow ? 'text-[var(--lb-text)]' : 'text-[var(--lb-faint)]'
+          }`}
+          onClick={() => setSlideDelay((value) => (value === 3000 ? 5000 : 3000))}
+          title="切换幻灯片间隔"
+        >
+          {slideDelay / 1000} 秒
+        </button>
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={() => void toggleFullscreen()}
+          title="全屏 (F11)"
+        >
+          {fullscreen ? <Minimize size={16} strokeWidth={1.75} /> : <Maximize size={16} strokeWidth={1.75} />}
+        </button>
+        <span className="mx-1 h-4 w-px bg-[var(--lb-rule)]" />
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={() => rotateBy(-90)}
+          title="向左旋转 (Shift+R)"
+        >
+          <RotateCcw size={16} strokeWidth={1.75} />
+        </button>
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={() => rotateBy(90)}
+          title="向右旋转 (R)"
+        >
+          <RotateCw size={16} strokeWidth={1.75} />
+        </button>
+        <span className="w-[34px] text-center tabular-nums text-[var(--lb-faint)]">{rotation}°</span>
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={() => zoomStep(1 / 1.25)}
+          title="缩小 (-)"
+        >
+          <Minus size={16} strokeWidth={1.75} />
+        </button>
+        <span className="min-w-[46px] text-center tabular-nums text-[var(--lb-text)]">{percent}</span>
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={() => zoomStep(1.25)}
+          title="放大 (+)"
+        >
+          <Plus size={16} strokeWidth={1.75} />
+        </button>
+        <button
+          className="h-7 rounded-full px-2 text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={resetFit}
+          title="适应窗口 (0)"
+        >
+          适应
+        </button>
       </div>
     </div>
   )
@@ -958,9 +1041,9 @@ function RegionLayer({
           title="看这条研读笔记"
           style={{
             ...place(note.region),
-            borderColor: 'var(--accent)',
-            background: 'color-mix(in srgb, var(--accent) 14%, transparent)',
-            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.35)',
+            borderColor: '#F2F5F8',
+            background: 'rgba(0,0,0,0.16)',
+            boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.45)',
             pointerEvents: drawing ? 'none' : 'auto',
             cursor: drawing ? 'crosshair' : 'pointer'
           }}
@@ -973,8 +1056,8 @@ function RegionLayer({
           className="absolute rounded-[3px] border border-dashed"
           style={{
             ...place(selection),
-            borderColor: 'var(--accent)',
-            background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+            borderColor: '#F2F5F8',
+            background: 'rgba(0,0,0,0.10)',
             boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.45)'
           }}
         />
@@ -982,8 +1065,8 @@ function RegionLayer({
       {draft && (
         <div
           data-region-draft="drawing"
-          className="absolute rounded-[3px] border border-dashed border-white/80 bg-white/10"
-          style={place(draft)}
+          className="absolute rounded-[3px] border border-dashed border-[#F2F5F8] bg-black/15"
+          style={{ ...place(draft), boxShadow: '0 0 0 1px rgba(0,0,0,.45)' }}
         />
       )}
     </div>

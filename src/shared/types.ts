@@ -993,6 +993,8 @@ export interface Api {
   portraitScan: (ids: number[]) => Promise<PortraitFlag[]>
   /** 写入人工判定：1=确认人像，0=不是人像，null=清除人工结论 */
   portraitOverride: (ids: number[], value: 0 | 1 | null) => Promise<number>
+  /** 自定义标题栏 / 原生菜单动作 */
+  onMenuAction: (cb: (id: string) => void) => () => void
   autoTagCategories: () => Promise<AutoTagCategory[]>
   getAutoTagSettings: () => Promise<AutoTagSettings>
   saveAutoTagSettings: (patch: Partial<AutoTagSettings>) => Promise<AutoTagSettings>

@@ -298,6 +298,11 @@ const api: Api = {
   portraitScan: (ids: number[]) => ipcRenderer.invoke('portrait:scan', ids),
   portraitOverride: (ids: number[], value: 0 | 1 | null) =>
     ipcRenderer.invoke('portrait:override', ids, value),
+  onMenuAction: (cb: (id: string) => void) => {
+    const handler = (_e: unknown, id: string): void => cb(id)
+    ipcRenderer.on('menu:action', handler)
+    return () => ipcRenderer.removeListener('menu:action', handler)
+  },
   onAutoTagProgress: (cb: (progress: AutoTagProgress) => void) => {
     const handler = (_e: unknown, payload: AutoTagProgress): void => cb(payload)
     ipcRenderer.on('clip:autotag-progress', handler)

@@ -63,6 +63,7 @@ import ImportStatusCard from './components/ImportStatusCard'
 import ResumeImportCard from './components/ResumeImportCard'
 import Welcome from './components/Welcome'
 import LibrarySwitcher from './components/LibrarySwitcher'
+import TitleBar from './components/TitleBar'
 import { formatBytes, folderName, samePath } from './lib/format'
 import { pickHttpUrl } from './lib/urlImport'
 import { inAiScope, loadAiScope, type AiScope } from './lib/aiScope'
@@ -73,6 +74,7 @@ import { useLightbox } from './hooks/useLightbox'
 import { useShortcuts } from './hooks/useShortcuts'
 import { useSelection } from './hooks/useSelection'
 import { useImport } from './hooks/useImport'
+import { useGlobalKeys } from './hooks/useGlobalKeys'
 import { modLabel } from './lib/platform'
 
 const EMPTY_STATS: Stats = {
@@ -493,7 +495,7 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return
-    const timer = setTimeout(() => setToast(null), 4200)
+    const timer = setTimeout(() => setToast(null), 10000)
     return () => clearTimeout(timer)
   }, [toast])
 
@@ -549,7 +551,7 @@ export default function App() {
         void startImport(paths)
         return
       }
-      // 从浏览器拖图片网址进来：交给主进程下载后再走导入
+      // 从浏览器拖照片网址进来：交给主进程下载后再走导入
       const raw =
         e.dataTransfer?.getData('text/uri-list') || e.dataTransfer?.getData('text/plain') || ''
       const url = pickHttpUrl(raw)
@@ -561,11 +563,11 @@ export default function App() {
           if (!result.ok) {
             notify(
               result.reason === 'not-image'
-                ? '这个网址不是图片'
+                ? '这个网址不是照片'
                 : result.reason === 'too-large'
-                  ? '图片超过 30 MB，先存下来再导入吧'
+                  ? '照片超过 30 MB，先存下来再导入吧'
                   : result.reason === 'invalid-url'
-                    ? '只支持 http/https 图片地址'
+                    ? '只支持 http/https 照片地址'
                     : result.reason === 'no-library'
                       ? '先打开一个图库'
                       : '下载失败，检查网址或网络'
@@ -589,7 +591,7 @@ export default function App() {
     }
   }, [library, startImport])
 
-  // Ctrl+V：剪贴板里是图片文件就直接导入；截图这类没有路径的位图交给主进程落盘再入库
+  // Ctrl+V：剪贴板里是照片文件就直接导入；截图这类没有路径的位图交给主进程落盘再入库
   useEffect(() => {
     const onPaste = (event: ClipboardEvent): void => {
       if (!library) return
@@ -1152,12 +1154,12 @@ export default function App() {
       ...base,
       {
         id: 'copy',
-        label: '复制图片',
+        label: '复制照片',
         icon: <Copy size={14} />,
         onSelect: () =>
           void window.api
             .copyImage(item.id)
-            .then((ok) => notify(ok ? '已复制图片到剪贴板' : '复制失败，试试其它图片'))
+            .then((ok) => notify(ok ? '已复制照片到剪贴板' : '复制失败，试试其它照片'))
       },
       { id: 'action-sep', label: '', separator: true },
       {
@@ -1378,7 +1380,7 @@ export default function App() {
     setClipStatus(fresh)
     setSemanticMode(true)
     if (fresh.total > fresh.indexed && !fresh.running) {
-      notify('正在后台识别图片，完成后就能按描述搜')
+      notify('正在后台识别照片，完成后就能按描述搜')
       void startClipIndex()
     }
   }
@@ -1387,7 +1389,7 @@ export default function App() {
     try {
       const item = itemsRef.current.find((entry) => entry.id === id)
       const result = await window.api.clipSimilar(id, 200)
-      setSimilar({ id, name: item?.name ?? '当前图片' })
+      setSimilar({ id, name: item?.name ?? '当前照片' })
       applyItems(result.items)
       setTotal(result.total)
       setSelectedIds([])
@@ -1457,6 +1459,89 @@ export default function App() {
     [notify]
   )
 
+  const handleMenuAction = useCallback(
+    (id: string): void => {
+      switch (id) {
+        case 'import.files':
+        case 'import.folder':
+          openImportDialog()
+          return
+        case 'library.switch':
+          setSwitcherOpen(true)
+          return
+        case 'app.settings':
+          openSettings('appearance')
+          return
+        case 'app.about':
+          openSettings('about')
+          return
+        case 'view.gallery':
+          setPortraitOpen(false)
+          setPickDeliveryOpen(false)
+          return
+        case 'view.portrait':
+          setPortraitOpen(true)
+          setPickDeliveryOpen(false)
+          return
+        case 'view.delivery':
+          setPickDeliveryOpen(true)
+          setPortraitOpen(false)
+          return
+        case 'view.fullscreen':
+          void window.api.setFullScreen()
+          return
+        case 'photo.addToPick':
+          void savePickDraft()
+          return
+        case 'photo.export':
+          setFinalsExportIds(null)
+          setFinalsExportOpen(true)
+          return
+        case 'photo.rate.0':
+          void rateSelected(0)
+          return
+        case 'photo.rate.1':
+        case 'photo.rate.2':
+        case 'photo.rate.3':
+        case 'photo.rate.4':
+        case 'photo.rate.5':
+          void rateSelected(Number(id.slice(-1)))
+          return
+        case 'photo.flag.keep':
+          void setFlagSelected(1)
+          return
+        case 'photo.flag.reject':
+          void setFlagSelected(-1)
+          return
+        case 'photo.flag.clear':
+          void setFlagSelected(0)
+          return
+        default:
+          return
+      }
+    },
+    [openImportDialog, openSettings, rateSelected, savePickDraft, setFlagSelected]
+  )
+
+  useEffect(() => window.api.onMenuAction(handleMenuAction), [handleMenuAction])
+
+  useGlobalKeys({
+    enabled: !lightboxId && !settingsOpen && !importOpen,
+    onView: (view) => handleMenuAction(`view.${view}`),
+    onSearch: () => document.querySelector<HTMLInputElement>('[data-search-input]')?.focus(),
+    onSettings: () => openSettings('appearance'),
+    onReload: bump
+  })
+
+  const titleBar = (
+    <TitleBar
+      libraryName={libraryName || (library ? folderName(library) : '存照')}
+      onMenuAction={handleMenuAction}
+      onSwitch={() => setSwitcherOpen(true)}
+      onSettings={() => openSettings('appearance')}
+    />
+  )
+
   // 条件/排序/模式变化时让瀑布流回到顶部
   const listResetKey = [
     filter.sort ?? '',
@@ -1507,42 +1592,56 @@ export default function App() {
 
   if (booting) {
     return (
-      <div className="h-full grid place-items-center text-[var(--faint)] text-[13.5px]">正在唤醒存照…</div>
+      <div className="h-full flex flex-col">
+        {titleBar}
+        <div className="flex-1 grid place-items-center text-[var(--faint)] text-[13.5px]">正在打开图库…</div>
+      </div>
     )
   }
 
   if (!library) {
     return (
-      <Welcome
-        notice={indexMissing}
-        onReady={(dir) => {
-          setIndexMissing(null)
-          setLibrary(dir)
-          setFilter({ sort: 'added' })
-          setSelectedIds([])
-          setActiveId(null)
-          setSemanticMode(false)
-          setSimilar(null)
-          setPickDeliveryOpen(false)
-        }}
-      />
+      <div className="h-full flex flex-col">
+        {titleBar}
+        <div className="flex-1 min-h-0">
+          <Welcome
+            notice={indexMissing}
+            onReady={(dir) => {
+              setIndexMissing(null)
+              setLibrary(dir)
+              setFilter({ sort: 'added' })
+              setSelectedIds([])
+              setActiveId(null)
+              setSemanticMode(false)
+              setSimilar(null)
+              setPickDeliveryOpen(false)
+            }}
+          />
+        </div>
+      </div>
     )
   }
 
   if (portraitOpen) {
     return (
-      <PortraitWorkspace
-        onBack={() => setPortraitOpen(false)}
-        aiReady={aiReady}
-        canAsk={aiCaps['photo.socratic'] !== false}
-        aiScope={aiScope}
-        onAddToPick={addPortraitToPick}
-      />
+      <div className="h-full flex flex-col">
+        {titleBar}
+        <div className="flex-1 min-h-0">
+          <PortraitWorkspace
+            onBack={() => setPortraitOpen(false)}
+            aiReady={aiReady}
+            canAsk={aiCaps['photo.socratic'] !== false}
+            aiScope={aiScope}
+            onAddToPick={addPortraitToPick}
+          />
+        </div>
+      </div>
     )
   }
 
   return (
     <div ref={shellRef} className="h-full flex flex-col relative">
+      {titleBar}
       <div className="flex-1 flex min-h-0">
         <Sidebar
           library={library}
@@ -1596,7 +1695,7 @@ export default function App() {
           onDeleteFolder={async (id) => {
             const ok = await window.api.confirm(
               '删除这个文件夹？',
-              '里面的图片不会被删除；子文件夹会移到上一级。'
+              '里面的照片不会被删除；子文件夹会移到上一级。'
             )
             if (ok) {
               await window.api.deleteFolder(id)
@@ -1605,7 +1704,7 @@ export default function App() {
             }
           }}
           onDeleteTag={async (id) => {
-            const ok = await window.api.confirm('删除这个标签？', '标签会从所有图片上移除。')
+            const ok = await window.api.confirm('删除这个标签？', '标签会从所有照片上移除。')
             if (ok) {
               await window.api.deleteTag(id)
               setFilter({ ...filter, tagIds: (filter.tagIds ?? []).filter((t) => t !== id) })
@@ -1786,7 +1885,7 @@ export default function App() {
         <div className="absolute inset-0 z-40 grid place-items-center bg-[rgba(9,11,15,0.82)] backdrop-blur-sm pointer-events-none">
           <div className="px-10 py-8 rounded-2xl border-2 border-dashed border-[var(--accent)] text-center">
             <div className="text-[18px] text-[var(--accent-2)] font-bold">松手就收进图库</div>
-            <div className="text-[12px] text-[var(--muted)] mt-1">支持文件夹、文件与图片网址</div>
+            <div className="text-[12px] text-[var(--muted)] mt-1">支持文件夹、文件与照片网址</div>
           </div>
         </div>
       )}
@@ -1862,7 +1961,7 @@ export default function App() {
           <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--panel)] px-3 py-1.5 shadow-2xl">
             <span className="text-[12px] text-[var(--muted)]">识图</span>
             <span className="text-[12px] text-[var(--text)] tabular-nums">
-              {clipProgress.total ? `${clipProgress.done}/${clipProgress.total}` : '准备中…'}
+              {clipProgress.total ? `${clipProgress.done}/${clipProgress.total}` : '正在准备…'}
               {clipProgress.total
                 ? ` · ${Math.round((clipProgress.done / clipProgress.total) * 100)}%`
                 : ''}
@@ -1879,7 +1978,7 @@ export default function App() {
           <div className="absolute bottom-[86px] left-1/2 -translate-x-1/2 z-40 w-[360px] rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-3 shadow-2xl">
             <div className="flex items-center justify-between text-[12px] mb-2">
               <span className="text-[var(--muted)] truncate pr-3">
-                识图 {clipProgress.current || (clipProgress.total ? '' : '准备中…')}
+                识图 {clipProgress.current || (clipProgress.total ? '' : '正在准备…')}
               </span>
               <span className="flex items-center gap-1 shrink-0">
                 <span className="text-[var(--text)] tabular-nums">
@@ -1984,7 +2083,7 @@ export default function App() {
           onClose={() => setDuplicatesOpen(false)}
           onRemove={async (ids) => {
             await window.api.deleteItems(ids)
-            pushUndo(`已移除 ${ids.length} 张重复图片`, async () => {
+            pushUndo(`已移除 ${ids.length} 张重复照片`, async () => {
               await window.api.restoreItems(ids)
               bump()
             })
@@ -2025,7 +2124,7 @@ export default function App() {
           }}
           onFinished={(message) => {
             setRelocateOpen(false)
-            // 接回后「文件丢失」视图通常空了，直接回到全部图片
+            // 接回后「文件丢失」视图通常空了，直接回到全部照片
             setFilter({ sort: filter.sort })
             notify(message)
             bump()

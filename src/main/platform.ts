@@ -1,4 +1,5 @@
-import { Menu, app } from 'electron'
+import { BrowserWindow, Menu, app, type MenuItemConstructorOptions } from 'electron'
+import { MENU_SECTIONS } from '../shared/menu'
 
 /**
  * 平台差异只在这里出现一次。
@@ -12,20 +13,48 @@ export const isWindows = platformName === 'win32'
 export const modLabel = isMac ? '⌘' : 'Ctrl'
 export const altLabel = isMac ? '⌥' : 'Alt'
 
+function sendMenuAction(id: string): void {
+  const win = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  win?.webContents.send('menu:action', id)
+}
+
+const ROLE_BY_ID: Record<string, MenuItemConstructorOptions['role']> = {
+  'edit.undo': 'undo',
+  'edit.redo': 'redo',
+  'edit.cut': 'cut',
+  'edit.copy': 'copy',
+  'edit.paste': 'paste',
+  'edit.selectAll': 'selectAll',
+  'view.fullscreen': 'togglefullscreen',
+  'app.quit': 'quit'
+}
+
 /**
- * macOS 必须有应用菜单：编辑类快捷键（⌘C/⌘V/⌘A/⌘Z）依赖菜单的 edit role。
- * Windows 保持现状（autoHideMenuBar: true，按 Alt 可呼出），不要设成 null。
+ * 菜单唯一来源：Windows 与 macOS 都安装同一份模板。
+ * Windows 保留 autoHideMenuBar: true，原生菜单不可见但加速键仍生效；
+ * 绝不能 setApplicationMenu(null)，否则 Ctrl+Z/C/V 会失去加速键来源。
  */
 export function installAppMenu(): void {
-  if (!isMac) return
-  Menu.setApplicationMenu(
-    Menu.buildFromTemplate([
-      { role: 'appMenu' },
-      { role: 'editMenu' },
-      { role: 'viewMenu' },
-      { role: 'windowMenu' }
-    ])
-  )
+  const sections = MENU_SECTIONS.map((section) => ({
+    label: section.label,
+    submenu: section.items.map((entry) => {
+      if (entry === '---') return { type: 'separator' as const }
+      const role = ROLE_BY_ID[entry.id]
+      if (role) {
+        return { role, label: entry.label, accelerator: entry.accelerator }
+      }
+      return {
+        label: entry.label,
+        accelerator: entry.accelerator,
+        click: () => sendMenuAction(entry.id)
+      }
+    })
+  }))
+  const template = [
+    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    ...sections
+  ] as MenuItemConstructorOptions[]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
 /** 数据目录的用户可读说明，用于「关于」页 */

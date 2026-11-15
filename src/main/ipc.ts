@@ -61,6 +61,7 @@ import {
   setIndexDirFor,
   updateConfig
 } from './settings'
+import { titleBarColors } from './titlebar'
 import { startAutoBackup } from './scheduler'
 import { checkForUpdates, onUpdateStatus, quitAndInstall, updateStatus, updatesEnabled } from './updater'
 import {
@@ -316,7 +317,12 @@ function applySkinNative(id: SkinId): void {
         ? '#171818'
         : '#FAF6EE'
       : def.base
-  for (const win of BrowserWindow.getAllWindows()) win.setBackgroundColor(background)
+  for (const win of BrowserWindow.getAllWindows()) {
+    win.setBackgroundColor(background)
+    if (process.platform === 'win32') {
+      win.setTitleBarOverlay({ ...titleBarColors(), height: 36 })
+    }
+  }
 }
 
 function restartWatcher(): void {

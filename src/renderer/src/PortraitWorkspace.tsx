@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { ArrowLeft, Camera, Folder as FolderIcon, Images, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, Plus, RefreshCw, Search, X } from 'lucide-react'
 import type {
   Facet,
   FacetValue,
@@ -11,12 +11,14 @@ import type {
   PortraitStatus,
   Tag
 } from '@shared/types'
-import { PORTRAIT_THUMB } from '@shared/layout'
+import { PORTRAIT_COLUMNS, normalizePortraitColumns } from '@shared/layout'
 import { photoUrl, thumbUrl } from './lib/format'
 import { inAiScope, outOfScopeText, type AiScope } from './lib/aiScope'
-import { modLabel } from './lib/platform'
+import { sortFacets } from './lib/portraitFacets'
 import Lightbox from './components/Lightbox'
 import PhotoInspector from './components/inspector/PhotoInspector'
+import PortraitReview from './components/PortraitReview'
+import PortraitStatusCard from './components/PortraitStatusCard'
 
 interface PortraitWorkspaceProps {
   onBack: () => void
@@ -25,6 +27,7 @@ interface PortraitWorkspaceProps {
   canAsk: boolean
   /** AI 处理范围：超出范围的单张不显示 AI 操作 */
   aiScope: AiScope | null
+  onAddToPick: (ids: number[]) => Promise<void>
 }
 
 const PAGE_LIMIT = 500
@@ -37,7 +40,8 @@ export default function PortraitWorkspace({
   onBack,
   aiReady,
   canAsk,
-  aiScope
+  aiScope,
+  onAddToPick
 }: PortraitWorkspaceProps) {
   const [facets, setFacets] = useState<Facet[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
@@ -56,11 +60,22 @@ export default function PortraitWorkspace({
   const [creatingFacet, setCreatingFacet] = useState(false)
   const [facetDraft, setFacetDraft] = useState('')
   const [message, setMessage] = useState('')
-  /** 瀑布流卡片宽度：拖动时只改本地，停手后落盘 */
-  const [thumbSize, setThumbSize] = useState<number>(PORTRAIT_THUMB.default)
-  const thumbSaveTimer = useRef<number | null>(null)
-  /** 人像检测：默认只看人像；模型与结果都由主进程缓存 */
-  const [portraitOnly, setPortraitOnly] = useState(true)
+  /** 人像工作台列数：2/3/4，读不到就用默认 3 */
+  const [columns, setColumns] = useState<number>(PORTRAIT_COLUMNS.default)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'confirmed' | 'likely' | 'excluded'>('all')
+  const anchorRef = useRef<number | null>(null)
+  const [openFacets, setOpenFacets] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('portraitFacetsOpen')
+      const parsed = raw ? JSON.parse(raw) : null
+      if (Array.isArray(parsed)) return parsed.filter((id) => typeof id === 'string')
+    } catch {
+      /* 坏数据回落默认 */
+    }
+    return ['shot_size', 'light']
+  })
+  /** 人像检测：结果由主进程缓存 */
   const [portraitStatus, setPortraitStatus] = useState<PortraitStatus | null>(null)
   const [portraitFlags, setPortraitFlags] = useState<Record<number, PortraitFlag>>({})
   const [portraitScanning, setPortraitScanning] = useState(false)
@@ -114,19 +129,16 @@ export default function PortraitWorkspace({
   }, [loadItems])
 
   useEffect(() => {
-    void window.api.getPortraitThumbSize().then(setThumbSize).catch(() => undefined)
-    return () => {
-      if (thumbSaveTimer.current !== null) window.clearTimeout(thumbSaveTimer.current)
-    }
+    void window.api
+      .getPortraitColumns()
+      .then((value) => setColumns(normalizePortraitColumns(value)))
+      .catch(() => undefined)
   }, [])
 
-  const changeThumbSize = (value: number): void => {
-    setThumbSize(value)
-    if (thumbSaveTimer.current !== null) window.clearTimeout(thumbSaveTimer.current)
-    thumbSaveTimer.current = window.setTimeout(() => {
-      thumbSaveTimer.current = null
-      void window.api.savePortraitThumbSize(value).catch(() => undefined)
-    }, 150)
+  const changeColumns = (value: number): void => {
+    const next = normalizePortraitColumns(value)
+    setColumns(next)
+    void window.api.savePortraitColumns(next).catch(() => undefined)
   }
 
   const loadPortraitStatus = useCallback(async (): Promise<void> => {
@@ -141,13 +153,8 @@ export default function PortraitWorkspace({
     void loadPortraitStatus()
   }, [loadPortraitStatus])
 
-  // 分块扫描：每 20 张更新一次界面，未识别完之前不阻塞其它操作
+  // 分块扫描：每 20 张更新一次界面，未识别完之前不阻塞其它操作；扫描中不重排
   useEffect(() => {
-    if (!portraitOnly) {
-      setPortraitScanning(false)
-      setPortraitProgress(null)
-      return
-    }
     if (!portraitStatus?.modelReady || items.length === 0) return
     const known = portraitFlagsRef.current
     const missing = items.filter((item) => known[item.id] === undefined).map((item) => item.id)
@@ -187,19 +194,22 @@ export default function PortraitWorkspace({
     return () => {
       scanToken.current++
     }
-  }, [items, portraitOnly, portraitStatus?.modelReady])
+  }, [items, portraitStatus?.modelReady])
 
   const shownItems = useMemo(() => {
-    if (!portraitOnly) return items
     if (!portraitStatus?.modelReady) return []
     return items.filter((item) => {
       const flag = portraitFlags[item.id]
       if (!flag) return false
-      if (flag.override === 1) return true
+      if (statusFilter === 'excluded') {
+        return flag.override === 0 || (flag.override == null && flag.verdict === 'no-person')
+      }
       if (flag.override === 0) return false
-      return flag.verdict === 'person' || flag.verdict === 'likely'
+      if (statusFilter === 'confirmed') return flag.override === 1 || flag.verdict === 'person'
+      if (statusFilter === 'likely') return flag.override == null && flag.verdict === 'likely'
+      return flag.override === 1 || flag.verdict === 'person' || flag.verdict === 'likely'
     })
-  }, [items, portraitOnly, portraitStatus?.modelReady, portraitFlags])
+  }, [items, portraitStatus?.modelReady, portraitFlags, statusFilter])
 
   // 切换筛选后，右侧详情不能继续显示已经被隐藏的照片
   useEffect(() => {
@@ -250,7 +260,6 @@ export default function PortraitWorkspace({
     }
     return map
   }, [facets])
-  const activeFolder = folderId !== null ? folders.find((folder) => folder.id === folderId) : null
 
   const toggleFilter = (facetId: string, valueId: number): void => {
     setPicked((prev) => {
@@ -265,6 +274,18 @@ export default function PortraitWorkspace({
   }
 
   const selectCard = (item: Item, event: ReactMouseEvent): void => {
+    const ids = shownItems.map((entry) => entry.id)
+    if (event.shiftKey && anchorRef.current !== null) {
+      const a = ids.indexOf(anchorRef.current)
+      const b = ids.indexOf(item.id)
+      if (a >= 0 && b >= 0) {
+        const [lo, hi] = a < b ? [a, b] : [b, a]
+        setSelection(ids.slice(lo, hi + 1))
+        setActiveId(item.id)
+        return
+      }
+    }
+    anchorRef.current = item.id
     setActiveId(item.id)
     if (event.ctrlKey || event.metaKey) {
       setSelection((prev) =>
@@ -351,479 +372,621 @@ export default function PortraitWorkspace({
     }
   }
 
-  const pickedCount = Object.values(picked).reduce((sum, list) => sum + list.length, 0)
   const lightboxItem = lightIndex !== null ? shownItems[lightIndex] : null
+
+  const orderedFacets = useMemo(() => sortFacets(facets), [facets])
+
+  const reviewItems = useMemo(
+    () =>
+      items.filter((item) => {
+        const flag = portraitFlags[item.id]
+        return !flag || flag.verdict === 'unresolved'
+      }),
+    [items, portraitFlags]
+  )
+  const reviewCount = reviewItems.length
+
+  const toggleFacetOpen = (id: string): void => {
+    setOpenFacets((prev) => {
+      const next = prev.includes(id) ? prev.filter((entry) => entry !== id) : [...prev, id]
+      try {
+        localStorage.setItem('portraitFacetsOpen', JSON.stringify(next))
+      } catch {
+        /* 隐私模式写不进去也不影响使用 */
+      }
+      return next
+    })
+  }
+
+  const judgePortrait = async (id: number, value: 0 | 1): Promise<void> => {
+    try {
+      await window.api.portraitOverride([id], value)
+      setPortraitFlags((prev) => {
+        const old = prev[id]
+        return {
+          ...prev,
+          [id]: {
+            id,
+            verdict: old?.verdict ?? 'unresolved',
+            score: old?.score ?? 0,
+            hasPerson: value === 1,
+            override: value
+          }
+        }
+      })
+      await loadPortraitStatus()
+    } catch (error) {
+      setMessage(`人工判定失败：${(error as Error).message}`)
+    }
+  }
+
+  const clearPortraitVerdict = async (id: number): Promise<void> => {
+    try {
+      await window.api.portraitOverride([id], null)
+      setPortraitFlags((prev) => {
+        const old = prev[id]
+        return {
+          ...prev,
+          [id]: {
+            id,
+            verdict: old?.verdict ?? 'unresolved',
+            score: old?.score ?? 0,
+            hasPerson: old?.verdict === 'person' || old?.verdict === 'likely',
+            override: null
+          }
+        }
+      })
+      await loadPortraitStatus()
+    } catch (error) {
+      setMessage(`清除判定失败：${(error as Error).message}`)
+    }
+  }
+
+  const rateTargets = async (rating: number): Promise<void> => {
+    if (!targets.length) return
+    try {
+      await window.api.bulkUpdate(targets, { rating })
+      await loadItems()
+    } catch (error) {
+      setMessage(`设置星级失败：${(error as Error).message}`)
+    }
+  }
+
+  const flagTargets = async (flag: number): Promise<void> => {
+    if (!targets.length) return
+    try {
+      await window.api.bulkUpdate(targets, { flag })
+      await loadItems()
+    } catch (error) {
+      setMessage(`设置去留失败：${(error as Error).message}`)
+    }
+  }
 
   return (
     <div className="h-full flex flex-col bg-[var(--bg)]">
-      <header className="h-[52px] shrink-0 px-3 flex items-center gap-2 border-b border-[var(--border)] bg-[var(--chrome)]">
-        <button className="btn btn-ghost h-7 px-2 text-[12px]" onClick={onBack}>
-          <ArrowLeft size={14} /> 返回图库
-        </button>
-        <Camera size={16} color="var(--accent-2)" />
-        <span className="text-[13.5px] font-bold">人像工作台</span>
-        <div className="flex items-center gap-1 ml-3 flex-wrap">
-          {activeFolder && (
-            <button
-              className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[12px] text-[var(--accent-text)]"
-              onClick={() => setFolderId(null)}
-              title="移除文件夹条件"
-            >
-              <FolderIcon size={14} />
-              {activeFolder.name}
-              <X size={14} />
+      {reviewOpen ? (
+        <PortraitReview
+          items={reviewItems}
+          flags={portraitFlags}
+          onJudge={judgePortrait}
+          onUndo={clearPortraitVerdict}
+          onExit={() => setReviewOpen(false)}
+          onOpenLightbox={(id) => {
+            const index = shownItems.findIndex((item) => item.id === id)
+            if (index >= 0) setLightIndex(index)
+          }}
+        />
+      ) : (
+        <>
+          <header className="h-12 shrink-0 px-3 flex items-center gap-2 border-b border-[var(--border)] bg-[var(--chrome)]">
+            <button className="btn btn-ghost h-8 px-2 text-[12px]" onClick={onBack}>
+              <ArrowLeft size={16} strokeWidth={1.75} /> 图库
             </button>
-          )}
-          {facets.flatMap((facet) =>
-            (picked[facet.id] ?? []).map((valueId) => {
-              const value = facet.values.find((entry) => entry.id === valueId)
-              if (!value) return null
-              return (
-                <button
-                  key={`${facet.id}-${valueId}`}
-                  className="inline-flex items-center gap-1 h-[22px] px-1.5 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[12px] text-[var(--accent-text)]"
-                  onClick={() => toggleFilter(facet.id, valueId)}
-                  title="移除这个条件"
-                >
-                  <span className="w-[6px] h-[6px] rounded-full" style={{ background: value.color }} />
-                  {value.name}
-                  <X size={14} />
-                </button>
-              )
-            })
-          )}
-          {pickedCount > 0 && (
-            <button className="text-[12px] text-[var(--faint)] hover:text-[var(--text)]" onClick={() => setPicked({})}>
-              清空条件
-            </button>
-          )}
-        </div>
-        <span className="ml-auto text-[12px] text-[var(--faint)] tabular-nums">
-          {loading ? '读取中…' : `${portraitOnly ? shownItems.length : items.length} / ${total} 张`}
-        </span>
-        <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5">
-          <button
-            className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
-              portraitOnly
-                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                : 'text-[var(--faint)] hover:text-[var(--text)]'
-            }`}
-            onClick={() => {
-              setPortraitOnly(true)
-              setSelection([])
-              setActiveId(null)
-            }}
-            title="只显示检测到人物的照片"
-          >
-            仅人像
-          </button>
-          <button
-            className={`h-6 rounded-lg px-2 text-[12px] transition-colors ${
-              !portraitOnly
-                ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                : 'text-[var(--faint)] hover:text-[var(--text)]'
-            }`}
-            onClick={() => {
-              setPortraitOnly(false)
-              setSelection([])
-              setActiveId(null)
-            }}
-            title="显示全部照片"
-          >
-            全部
-          </button>
-        </div>
-        <div className="flex items-center gap-1.5" title="调整瀑布流卡片大小">
-          <span className="text-[11px] text-[var(--faint)]">大小</span>
-          <input
-            type="range"
-            min={PORTRAIT_THUMB.min}
-            max={PORTRAIT_THUMB.max}
-            step={PORTRAIT_THUMB.step}
-            value={thumbSize}
-            onChange={(event) => changeThumbSize(Number(event.target.value))}
-            className="w-[92px] accent-[var(--accent)]"
-          />
-        </div>
-        <button
-          className="btn h-7 px-2 text-[12px]"
-          onClick={() => void Promise.all([loadItems(), loadFacets(), loadFolders()])}
-          title="重新读取文件夹、分类与照片"
-        >
-          <RefreshCw size={14} /> 刷新
-        </button>
-      </header>
-
-      {message && (
-        <div className="shrink-0 px-3 py-1.5 text-[12px] text-[var(--danger-text)] bg-[var(--danger-soft)] border-b border-[var(--danger-border)]">
-          {message}
-        </div>
-      )}
-
-      <div className="flex-1 flex min-h-0">
-        {/* 左：文件夹 + 维度 */}
-        <aside className="w-[228px] shrink-0 border-r border-[var(--border)] overflow-y-auto px-2 py-3">
-          <div className="mb-3">
-            <div className="flex items-center gap-1.5 px-1 mb-1.5">
-              <FolderIcon size={14} className="text-[var(--faint)]" />
-              <span className="text-[12px] text-[var(--text)]">文件夹</span>
-              <span className="ml-auto text-[11px] text-[var(--faint)] tabular-nums">
-                {folders.length}
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-bold">人像</span>
+              <span className="text-[12px] text-[var(--muted)] tabular-nums">
+                {loading ? '正在读取' : `${shownItems.length} 张`}
+                {selection.length > 0 ? ` · 已选 ${selection.length}` : ''}
               </span>
             </div>
-            <button
-              className={`w-full flex items-center gap-1.5 h-[26px] px-1.5 rounded-lg text-[12px] transition-colors ${
-                folderId === null
-                  ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                  : 'text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]'
-              }`}
-              onClick={() => setFolderId(null)}
+            <select
+              className="input h-8 min-w-[150px] max-w-[220px] text-[12px]"
+              value={folderId ?? ''}
+              onChange={(event) => {
+                const value = event.target.value
+                setFolderId(value ? Number(value) : null)
+                setSelection([])
+                setActiveId(null)
+              }}
+              title="选择范围"
             >
-              <Images size={14} />
-              全部照片
-            </button>
-            {folders.map((folder) => {
-              const active = folderId === folder.id
-              return (
+              <option value="">范围：整个图库</option>
+              {folders.map((folder) => (
+                <option key={folder.id} value={folder.id}>
+                  {folder.name}（{folder.count}）
+                </option>
+              ))}
+            </select>
+            <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5">
+              {[2, 3, 4].map((n) => (
                 <button
-                  key={folder.id}
-                  className={`w-full flex items-center gap-1.5 h-[26px] px-1.5 rounded-lg text-[12px] transition-colors ${
-                    active
+                  key={n}
+                  className={`h-7 w-7 rounded-lg text-[12px] ${
+                    columns === n
                       ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                      : 'text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]'
+                      : 'text-[var(--faint)] hover:text-[var(--text)]'
                   }`}
-                  onClick={() => setFolderId(active ? null : folder.id)}
-                  title={folder.name}
+                  onClick={() => changeColumns(n)}
+                  aria-pressed={columns === n}
+                  title={`${n} 列`}
                 >
-                  <FolderIcon size={14} />
-                  <span className="truncate">{folder.name}</span>
-                  <span className="ml-auto text-[11px] text-[var(--faint)] tabular-nums">
-                    {folder.count}
-                  </span>
+                  {n}
                 </button>
-              )
-            })}
-            {folders.length === 0 && (
-              <div className="px-1 py-0.5 text-[11px] text-[var(--faint)]">
-                还没有文件夹，可在图库里新建
-              </div>
-            )}
-          </div>
-          <div className="my-3 border-t border-[var(--border)]" />
-
-          {facets.map((facet) => {
-            const active = picked[facet.id] ?? []
-            return (
-              <div key={facet.id} className="mb-4">
-                <div className="flex items-center gap-1.5 px-1 mb-1.5">
-                  <span className="text-[12px] text-[var(--text)]">{facet.name}</span>
-                  <span className="text-[11px] text-[var(--faint)]">{facet.multi ? '多选' : '单选'}</span>
-                  <button
-                    className="ml-auto w-5 h-5 rounded-lg grid place-items-center text-[var(--faint)] hover:text-[var(--text)] hover:bg-[var(--panel-2)]"
-                    onClick={() => {
-                      setAddingValueFor(addingValueFor === facet.id ? null : facet.id)
-                      setValueDraft('')
-                    }}
-                    title="新增取值"
-                  >
-                    <Plus size={14} />
-                  </button>
-                  <button
-                    className="w-5 h-5 rounded-lg grid place-items-center text-[var(--faint)] hover:text-[var(--danger-text)] hover:bg-[var(--panel-2)]"
-                    onClick={() => void removeFacet(facet)}
-                    title="删除分类"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {facet.values.map((value) => {
-                    const on = active.includes(value.id)
-                    return (
-                      <button
-                        key={value.id}
-                        className={`inline-flex items-center gap-1 h-[22px] px-1.5 rounded-lg border text-[12px] transition-colors ${
-                          on
-                            ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                            : 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--faint)] hover:text-[var(--text)]'
-                        }`}
-                        onClick={() => toggleFilter(facet.id, value.id)}
-                      >
-                        <span
-                          className="w-[6px] h-[6px] rounded-full"
-                          style={{ background: value.color, opacity: on ? 1 : 0.5 }}
-                        />
-                        {value.name}
-                        {value.count > 0 && <span className="tabular-nums opacity-60">{value.count}</span>}
-                      </button>
-                    )
-                  })}
-                  {facet.values.length === 0 && (
-                    <span className="text-[11px] text-[var(--faint)] px-1">还没有取值</span>
-                  )}
-                </div>
-                {addingValueFor === facet.id && (
-                  <div className="flex items-center gap-1 mt-1.5">
-                    <input
-                      className="input h-6 text-[12px] min-w-0 flex-1"
-                      value={valueDraft}
-                      autoFocus
-                      placeholder="新取值"
-                      onChange={(e) => setValueDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') void addValue(facet.id)
-                        if (e.key === 'Escape') setAddingValueFor(null)
-                      }}
-                    />
-                    <button className="btn h-6 px-1.5 text-[12px]" onClick={() => void addValue(facet.id)}>
-                      加
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-
-          {creatingFacet ? (
-            <div className="flex items-center gap-1 px-1">
-              <input
-                className="input h-6 text-[12px] min-w-0 flex-1"
-                value={facetDraft}
-                autoFocus
-                placeholder="分类名，如 道具"
-                onChange={(e) => setFacetDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void addFacet()
-                  if (e.key === 'Escape') setCreatingFacet(false)
-                }}
-              />
-              <button className="btn h-6 px-1.5 text-[12px]" onClick={() => void addFacet()}>
-                建
+              ))}
+            </div>
+            {statusFilter !== 'all' && (
+              <button
+                className="inline-flex items-center gap-1 h-7 px-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[12px] text-[var(--accent-text)]"
+                onClick={() => setStatusFilter('all')}
+                title="返回全部人像"
+              >
+                {statusFilter === 'confirmed' ? '已确认' : statusFilter === 'likely' ? '可能' : '被判无人'}
+                <X size={12} strokeWidth={1.75} />
               </button>
-            </div>
-          ) : (
+            )}
+            {reviewCount > 0 && portraitStatus?.modelReady && (
+              <button
+                className="inline-flex items-center gap-1.5 h-8 px-2 rounded-lg border border-[var(--accent-border)] bg-[var(--accent-soft)] text-[12px] text-[var(--accent-text)]"
+                onClick={() => setReviewOpen(true)}
+                title="过待确认"
+              >
+                <Search size={14} strokeWidth={1.75} /> 待确认 {reviewCount}
+              </button>
+            )}
+            <span className="ml-auto" />
             <button
-              className="btn btn-ghost h-7 px-2 text-[12px] w-full justify-center"
-              onClick={() => setCreatingFacet(true)}
+              className="btn btn-ghost h-8 w-8 p-0"
+              onClick={() => void Promise.all([loadItems(), loadFacets(), loadFolders()])}
+              title="重新读取照片与维度"
             >
-              <Plus size={14} /> 新建分类
+              <RefreshCw size={16} strokeWidth={1.75} />
             </button>
-          )}
-        </aside>
+          </header>
 
-        {/* 中：瀑布流 */}
-        <main className="flex-1 min-w-0 overflow-y-auto px-3 py-3">
-          {portraitOnly && portraitStatus && !portraitStatus.modelReady ? (
-            <div className="h-full grid place-items-center">
-              <div className="max-w-[360px] text-center">
-                <div className="text-[13.5px] text-[var(--text)]">人像识别需要本地检测模型</div>
-                <div className="mt-1.5 text-[12px] leading-5 text-[var(--faint)]">
-                  DETR-ResNet-50 · 约 41 MB · 只下载一次。下载后会自动识别人像，结果缓存在当前图库。
-                </div>
-                {modelDownload ? (
-                  <div className="mt-3">
-                    <div className="h-1 overflow-hidden rounded-lg bg-[var(--border)]">
-                      <div
-                        className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
-                        style={{
-                          width: `${
-                            modelDownload.total
-                              ? Math.round((modelDownload.received / modelDownload.total) * 100)
-                              : 0
-                          }%`
-                        }}
-                      />
-                    </div>
-                    <div className="mt-1 text-[11px] text-[var(--faint)] tabular-nums">
-                      {modelDownload.total
-                        ? `${Math.round((modelDownload.received / modelDownload.total) * 100)}%`
-                        : '准备下载…'}
-                    </div>
-                  </div>
+          {message && (
+            <div className="shrink-0 px-3 py-1.5 text-[12px] text-[var(--danger-text)] bg-[var(--danger-soft)] border-b border-[var(--danger-border)]">
+              {message}
+            </div>
+          )}
+
+          <div className="flex-1 flex min-h-0">
+            <aside className="w-[264px] shrink-0 border-r border-[var(--border)] overflow-y-auto px-2 py-2">
+              <div className="sticky top-0 z-10 -mx-2 px-2 pb-2 bg-[var(--chrome)]">
+                {portraitStatus ? (
+                  <PortraitStatusCard
+                    status={portraitStatus}
+                    onShowConfirmed={() => setStatusFilter('confirmed')}
+                    onShowLikely={() => setStatusFilter('likely')}
+                    onShowReview={() => setReviewOpen(true)}
+                  />
                 ) : (
-                  <button
-                    className="btn btn-primary mt-3 h-8 px-3 text-[12px]"
-                    onClick={() => void downloadPortraitModel()}
-                  >
-                    下载人像模型
-                  </button>
-                )}
-                {portraitMsg && (
-                  <div className="mt-2 text-[12px] leading-4 text-[var(--danger-text)]">{portraitMsg}</div>
-                )}
-                <button
-                  className="btn btn-ghost mt-3 h-7 px-2 text-[12px]"
-                  onClick={() => setPortraitOnly(false)}
-                >
-                  先看全部照片
-                </button>
-              </div>
-            </div>
-          ) : loading && items.length === 0 ? (
-            <div className="text-[12px] text-[var(--faint)] px-1">读取中…</div>
-          ) : items.length === 0 ? (
-            <div className="h-full grid place-items-center">
-              <div className="text-center text-[12px] text-[var(--faint)] max-w-[300px] leading-5">
-                当前条件下没有照片。
-                <br />
-                换几个分类取值，或先在图库里导入人像。
-              </div>
-            </div>
-          ) : portraitOnly && !portraitStatus ? (
-            <div className="h-full grid place-items-center">
-              <div className="text-center text-[12px] text-[var(--faint)] max-w-[300px] leading-5">
-                {portraitMsg || '读取人像模型状态…'}
-                <div className="mt-2">
-                  <button
-                    className="btn btn-ghost h-7 px-2 text-[12px]"
-                    onClick={() => void loadPortraitStatus()}
-                  >
-                    重试
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : portraitOnly && shownItems.length === 0 ? (
-            <div className="h-full grid place-items-center">
-              <div className="text-center text-[12px] text-[var(--faint)] max-w-[300px] leading-5">
-                {portraitMsg ? (
-                  <span className="text-[var(--danger-text)]">{portraitMsg}</span>
-                ) : portraitScanning && portraitProgress ? (
-                  `正在识别人像 ${portraitProgress.done} / ${portraitProgress.total}…`
-                ) : (
-                  '当前筛选下没有识别到人像，可以切到「全部」看看。'
-                )}
-              </div>
-            </div>
-          ) : (
-            <>
-              {portraitOnly && portraitScanning && portraitProgress && (
-                <div className="mb-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-2">
-                  <div className="flex items-center justify-between text-[12px] text-[var(--muted)]">
-                    <span>正在识别人像</span>
-                    <span className="tabular-nums">
-                      {portraitProgress.done} / {portraitProgress.total}
-                    </span>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] text-[var(--faint)]">
+                    正在读取人像状态…
                   </div>
-                  <div className="mt-1 h-1 overflow-hidden rounded-lg bg-[var(--border)]">
-                    <div
-                      className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
-                      style={{
-                        width: `${Math.round(
-                          (portraitProgress.done / Math.max(1, portraitProgress.total)) * 100
-                        )}%`
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-              {portraitMsg && (
-                <div className="mb-2 text-[12px] text-[var(--danger-text)]">{portraitMsg}</div>
-              )}
-              <div style={{ columnWidth: thumbSize, columnGap: 10 }}>
-                {shownItems.map((item, index) => {
-                  const on = selection.includes(item.id)
-                  const marks = item.tags
-                    .filter((tag) => valueName.has(tag.id))
-                    .slice(0, 3)
+                )}
+              </div>
+
+              <div className="mt-2">
+                {orderedFacets.map((facet) => {
+                  const active = picked[facet.id] ?? []
+                  const open = openFacets.includes(facet.id)
                   return (
-                    <button
-                      key={item.id}
-                      data-gallery-id={item.id}
-                      className={`block w-full mb-2.5 break-inside-avoid text-left rounded-2xl overflow-hidden border transition-colors ${
-                        on
-                          ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]'
-                          : 'border-[var(--border)] hover:border-[var(--border-strong)]'
-                      }`}
-                      onClick={(event) => selectCard(item, event)}
-                      onDoubleClick={() => setLightIndex(index)}
+                    <div
+                      key={facet.id}
+                      className="mb-1"
+                      onContextMenu={(event) => {
+                        event.preventDefault()
+                        void removeFacet(facet)
+                      }}
                     >
-                      <img
-                        src={thumbUrl(item.id, 'mid')}
-                        alt={item.name}
-                        loading="lazy"
-                        draggable={false}
-                        className="w-full block bg-[var(--card)]"
-                        style={{ aspectRatio: item.width > 0 && item.height > 0 ? `${item.width} / ${item.height}` : '3 / 4' }}
-                      />
-                      {marks.length > 0 && (
-                        <div className="flex flex-wrap gap-1 px-2 py-1.5 bg-[var(--card)]">
-                          {marks.map((tag) => (
-                            <span
-                              key={tag.id}
-                              className="inline-flex items-center gap-1 text-[11px] text-[var(--faint)]"
-                            >
-                              <span
-                                className="w-[5px] h-[5px] rounded-full"
-                                style={{ background: valueName.get(tag.id)?.color ?? '#7aa2f7' }}
-                              />
-                              {valueName.get(tag.id)?.name}
-                            </span>
-                          ))}
+                      <button
+                        className="flex w-full items-center gap-1.5 h-8 rounded-lg px-2 hover:bg-[var(--panel-2)]"
+                        onClick={() => toggleFacetOpen(facet.id)}
+                        title="展开/收起；右键删除维度"
+                      >
+                        <ChevronDown
+                          size={14}
+                          strokeWidth={1.75}
+                          className={`transition-transform ${open ? '' : '-rotate-90'}`}
+                        />
+                        <span className="text-[12px] font-bold text-[var(--text)]">{facet.name}</span>
+                        <span className="text-[11px] text-[var(--faint)]">
+                          {facet.multi ? '可多选' : '单选'}
+                        </span>
+                        {active.length > 0 && (
+                          <span className="ml-auto text-[11px] tabular-nums text-[var(--accent-text)]">
+                            {active.length}
+                          </span>
+                        )}
+                      </button>
+                      {open && (
+                        <div className="flex flex-wrap gap-1 px-2 pb-2 pt-1">
+                          {facet.values.map((value) => {
+                            const on = active.includes(value.id)
+                            return (
+                              <button
+                                key={value.id}
+                                className={`inline-flex items-center gap-1 h-[23px] px-1.5 rounded-lg border text-[12px] transition-colors ${
+                                  on
+                                    ? 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                                    : 'border-[var(--border)] bg-[var(--panel-2)] text-[var(--faint)] hover:text-[var(--text)]'
+                                }`}
+                                onClick={() => toggleFilter(facet.id, value.id)}
+                              >
+                                {value.name}
+                                {value.count > 0 && (
+                                  <span className="tabular-nums opacity-60">{value.count}</span>
+                                )}
+                              </button>
+                            )
+                          })}
+                          <button
+                            className="inline-flex items-center h-[23px] px-1.5 rounded-lg border border-dashed border-[var(--border)] text-[11px] text-[var(--faint)] hover:text-[var(--text)]"
+                            onClick={() => {
+                              setAddingValueFor(addingValueFor === facet.id ? null : facet.id)
+                              setValueDraft('')
+                            }}
+                            title="新增选项"
+                          >
+                            <Plus size={12} strokeWidth={1.75} />
+                          </button>
+                          {facet.values.length === 0 && (
+                            <span className="text-[11px] text-[var(--faint)]">还没有选项</span>
+                          )}
                         </div>
                       )}
-                    </button>
+                      {open && addingValueFor === facet.id && (
+                        <div className="flex items-center gap-1 px-2 pb-2">
+                          <input
+                            className="input h-7 min-w-0 flex-1 text-[12px]"
+                            value={valueDraft}
+                            autoFocus
+                            placeholder="新增选项"
+                            onChange={(event) => setValueDraft(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') void addValue(facet.id)
+                              if (event.key === 'Escape') setAddingValueFor(null)
+                            }}
+                          />
+                          <button className="btn h-7 px-2 text-[12px]" onClick={() => void addValue(facet.id)}>
+                            加
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )
                 })}
               </div>
-            </>
-          )}
-        </main>
 
-        {/* 右：详情 */}
-        <aside className="flex w-[306px] min-h-0 shrink-0 flex-col border-l border-[var(--border)]">
-          {!current ? (
-            <div className="p-3 text-[12px] leading-5 text-[var(--faint)]">
-              点一张照片查看细节，{modLabel} 点可选多张。
-              <br />
-              选中后在下方按分类打标，多选时批量生效。
-            </div>
-          ) : (
-            <>
-              <div className="shrink-0 space-y-3 px-3 pt-3">
-                <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-                  <img
-                    src={photoUrl(current.id)}
-                    alt={current.name}
-                    className="max-h-[190px] w-full object-contain bg-black/20"
-                    draggable={false}
+              <div className="my-3 border-t border-[var(--border)]" />
+              {creatingFacet ? (
+                <div className="flex items-center gap-1 px-1">
+                  <input
+                    className="input h-8 min-w-0 flex-1 text-[12px]"
+                    value={facetDraft}
+                    autoFocus
+                    placeholder="维度名，如 服装"
+                    onChange={(event) => setFacetDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void addFacet()
+                      if (event.key === 'Escape') setCreatingFacet(false)
+                    }}
                   />
+                  <button className="btn h-8 px-2 text-[12px]" onClick={() => void addFacet()}>
+                    建
+                  </button>
                 </div>
-                <div>
-                  <div className="truncate text-[12px] text-[var(--text)]">{current.name}</div>
-                  <div className="mt-0.5 text-[11px] tabular-nums text-[var(--faint)]">
-                    {current.width} × {current.height}
-                    {current.rating > 0 ? (
-                      <>
-                        {' · '}
-                        <span className="text-[var(--star)]">{'★'.repeat(current.rating)}</span>
-                      </>
+              ) : (
+                <button
+                  className="btn btn-ghost h-8 w-full justify-center text-[12px]"
+                  onClick={() => setCreatingFacet(true)}
+                >
+                  <Plus size={14} strokeWidth={1.75} /> 新建维度
+                </button>
+              )}
+              <button
+                className="mt-3 flex w-full items-center justify-between px-2 py-1.5 text-[11px] text-[var(--faint)] hover:text-[var(--text)]"
+                onClick={() => setStatusFilter('excluded')}
+              >
+                <span>被判无人</span>
+                <span className="tabular-nums">{portraitStatus?.excludedByHuman ?? 0} · 抽查 →</span>
+              </button>
+            </aside>
+
+            <main className="flex-1 min-w-0 overflow-y-auto px-3 py-3">
+              {loading && items.length === 0 ? (
+                <div className="grid grid-cols-3 gap-4">
+                  {[0, 1, 2].map((n) => (
+                    <div key={n} className="h-[220px] rounded-2xl bg-[var(--panel-2)]" />
+                  ))}
+                </div>
+              ) : !portraitStatus?.modelReady ? (
+                <div className="h-full grid place-items-center">
+                  <div className="max-w-[360px] text-center">
+                    <div className="text-[15px] font-bold text-[var(--text)]">人像识别需要一个本地模型</div>
+                    <div className="mt-1.5 text-[12px] leading-5 text-[var(--muted)]">
+                      下载后只在这台电脑上运行，照片不外传。约 41 MB，只需下载一次。
+                    </div>
+                    {modelDownload ? (
+                      <div className="mt-3">
+                        <div className="h-1 overflow-hidden rounded-lg bg-[var(--border)]">
+                          <div
+                            className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
+                            style={{
+                              width: `${
+                                modelDownload.total
+                                  ? Math.round((modelDownload.received / modelDownload.total) * 100)
+                                  : 0
+                              }%`
+                            }}
+                          />
+                        </div>
+                        <div className="mt-1 text-[11px] tabular-nums text-[var(--faint)]">
+                          {modelDownload.total
+                            ? `${Math.round((modelDownload.received / modelDownload.total) * 100)}%`
+                            : '正在准备下载…'}
+                        </div>
+                      </div>
                     ) : (
-                      ''
+                      <button
+                        className="btn btn-primary mt-3 h-10 px-4"
+                        onClick={() => void downloadPortraitModel()}
+                      >
+                        下载模型（41 MB）
+                      </button>
+                    )}
+                    {portraitMsg && (
+                      <div className="mt-2 text-[12px] leading-4 text-[var(--danger-text)]">{portraitMsg}</div>
+                    )}
+                    <button className="btn btn-ghost mt-3 h-8 px-2 text-[12px]" onClick={onBack}>
+                      回图库
+                    </button>
+                  </div>
+                </div>
+              ) : items.length === 0 ? (
+                <div className="h-full grid place-items-center">
+                  <div className="max-w-[320px] text-center text-[12px] leading-5 text-[var(--faint)]">
+                    这个范围里还没有照片。
+                    <div className="mt-2">
+                      <button className="btn btn-ghost h-8 px-2 text-[12px]" onClick={onBack}>
+                        回图库导入
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : shownItems.length === 0 ? (
+                <div className="h-full grid place-items-center">
+                  <div className="max-w-[340px] text-center text-[12px] leading-5 text-[var(--faint)]">
+                    {statusFilter === 'excluded' ? (
+                      '这个范围里没有被判无人的照片。'
+                    ) : portraitScanning && portraitProgress ? (
+                      `正在辨认人像 ${portraitProgress.done} / ${portraitProgress.total}`
+                    ) : (
+                      <>
+                        这个范围里还没有人像。
+                        <br />
+                        换个范围，或去「被判无人」抽查。
+                      </>
+                    )}
+                    {statusFilter !== 'all' && (
+                      <div className="mt-2">
+                        <button
+                          className="btn btn-ghost h-8 px-2 text-[12px]"
+                          onClick={() => setStatusFilter('all')}
+                        >
+                          返回人像
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {portraitScanning && portraitProgress && (
+                    <div className="mb-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-2">
+                      <div className="flex items-center justify-between text-[12px] text-[var(--muted)]">
+                        <span>正在辨认人像</span>
+                        <span className="tabular-nums">
+                          {portraitProgress.done} / {portraitProgress.total}
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1 overflow-hidden rounded-lg bg-[var(--border)]">
+                        <div
+                          className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
+                          style={{
+                            width: `${Math.round(
+                              (portraitProgress.done / Math.max(1, portraitProgress.total)) * 100
+                            )}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {portraitMsg && (
+                    <div className="mb-2 text-[12px] text-[var(--danger-text)]">{portraitMsg}</div>
+                  )}
+                  <div style={{ columnCount: columns, columnGap: 16 }}>
+                    {shownItems.map((item, index) => {
+                      const on = selection.includes(item.id)
+                      const marks = item.tags.filter((tag) => valueName.has(tag.id)).slice(0, 3)
+                      return (
+                        <button
+                          key={item.id}
+                          data-gallery-id={item.id}
+                          className="group relative block w-full mb-4 break-inside-avoid text-left rounded-2xl overflow-hidden bg-[var(--card)] shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)]"
+                          onClick={(event) => selectCard(item, event)}
+                          onDoubleClick={() => setLightIndex(index)}
+                        >
+                          <img
+                            src={thumbUrl(item.id, 'mid')}
+                            alt={item.name}
+                            loading="lazy"
+                            draggable={false}
+                            className="w-full block bg-[var(--card)]"
+                            style={{
+                              aspectRatio:
+                                item.width > 0 && item.height > 0
+                                  ? `${item.width} / ${item.height}`
+                                  : '3 / 4'
+                            }}
+                          />
+                          {on && (
+                            <span className="absolute right-2 top-2 z-10 grid h-[26px] w-[26px] place-items-center rounded-full bg-[var(--accent)] text-[var(--on-accent)] shadow">
+                              <Check size={16} strokeWidth={1.75} />
+                            </span>
+                          )}
+                          {marks.length > 0 && (
+                            <div
+                              className={`pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-6 transition-opacity ${
+                                on ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                              }`}
+                            >
+                              <div className="flex flex-wrap gap-1">
+                                {marks.map((tag) => (
+                                  <span key={tag.id} className="text-[11px] text-white/85">
+                                    {valueName.get(tag.id)?.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </main>
 
-              <div className="mt-2 min-h-0 flex-1">
-                <PhotoInspector
-                  item={current}
-                  host="portrait"
-                  compact
-                  showPreview={false}
-                  facet={{ targetIds: targets, onApplyValue: applyValue }}
-                  study={{
-                    aiReady,
-                    canAsk: canAsk && !currentScopeBlocked,
-                    scopeBlocked: currentScopeBlocked,
-                    scopeHint: currentScopeHint
-                  }}
-                />
+            <aside className="w-[252px] flex min-h-0 shrink-0 flex-col border-l border-[var(--border)]">
+              <div className="shrink-0 border-b border-[var(--border)] p-2.5">
+                {targets.length === 0 ? (
+                  <>
+                    <div className="text-[13.5px] font-bold text-[var(--text)]">本场人像</div>
+                    <div className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
+                      已确认{' '}
+                      {(portraitStatus?.confirmedByModel ?? 0) + (portraitStatus?.confirmedByHuman ?? 0)} ·
+                      可能 {portraitStatus?.likely ?? 0} · 待确认 {portraitStatus?.unresolved ?? 0}
+                    </div>
+                    {reviewCount > 0 && portraitStatus?.modelReady && (
+                      <button className="btn btn-primary mt-2 h-9 w-full" onClick={() => setReviewOpen(true)}>
+                        开始过待确认
+                      </button>
+                    )}
+                    <div className="mt-3 space-y-1 text-[11px] leading-4 text-[var(--faint)]">
+                      <div>1. 先过待确认</div>
+                      <div>2. 留用 / 淘汰</div>
+                      <div>3. 加入选片</div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="truncate text-[12px] font-bold text-[var(--text)]">
+                      {targets.length === 1 && current ? current.name : `已选 ${targets.length} 张`}
+                    </div>
+                    {targets.length === 1 && current && (
+                      <div className="mt-2 flex items-center gap-1">
+                        <button
+                          className={`h-7 rounded-lg px-2 text-[11px] ${
+                            portraitFlags[current.id]?.override === 1
+                              ? 'bg-[var(--accent-soft)] text-[var(--accent-text)] font-bold'
+                              : 'text-[var(--muted)] hover:bg-[var(--panel-2)]'
+                          }`}
+                          onClick={() => void judgePortrait(current.id, 1)}
+                        >
+                          是人像
+                        </button>
+                        <button
+                          className={`h-7 rounded-lg px-2 text-[11px] ${
+                            portraitFlags[current.id]?.override === 0
+                              ? 'bg-[var(--panel-3)] text-[var(--danger-text)] font-bold'
+                              : 'text-[var(--muted)] hover:bg-[var(--panel-2)]'
+                          }`}
+                          onClick={() => void judgePortrait(current.id, 0)}
+                        >
+                          不是
+                        </button>
+                        <button
+                          className="h-7 rounded-lg px-2 text-[11px] text-[var(--faint)] hover:bg-[var(--panel-2)]"
+                          onClick={() => void clearPortraitVerdict(current.id)}
+                        >
+                          清除
+                        </button>
+                      </div>
+                    )}
+                    <div className="mt-2 flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          className={`h-6 w-6 rounded text-[12px] tabular-nums ${
+                            current && targets.length === 1 && current.rating >= n
+                              ? 'text-[var(--star)]'
+                              : 'text-[var(--muted)] hover:text-[var(--star)]'
+                          }`}
+                          onClick={() => void rateTargets(n)}
+                          title={`${n} 星`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-1">
+                      <button className="btn btn-ghost h-7 px-2 text-[11px]" onClick={() => void flagTargets(1)}>
+                        留用
+                      </button>
+                      <button className="btn btn-ghost h-7 px-2 text-[11px]" onClick={() => void flagTargets(-1)}>
+                        淘汰
+                      </button>
+                      <button className="btn btn-ghost h-7 px-2 text-[11px]" onClick={() => void flagTargets(0)}>
+                        清除
+                      </button>
+                    </div>
+                    <button
+                      className="btn btn-primary mt-2 h-9 w-full"
+                      onClick={() => void onAddToPick(targets)}
+                    >
+                      加入选片
+                    </button>
+                  </>
+                )}
               </div>
-            </>
-          )}
-        </aside>
-      </div>
+              <div className="min-h-0 flex-1">
+                {current ? (
+                  <PhotoInspector
+                    item={current}
+                    host="portrait"
+                    compact
+                    showPreview={false}
+                    facet={{ targetIds: targets, onApplyValue: applyValue }}
+                    study={{
+                      aiReady,
+                      canAsk: canAsk && !currentScopeBlocked,
+                      scopeBlocked: currentScopeBlocked,
+                      scopeHint: currentScopeHint
+                    }}
+                  />
+                ) : (
+                  <div className="p-3 text-[12px] leading-5 text-[var(--faint)]">
+                    点一张看细节；Ctrl 点选多张。
+                    <br />
+                    选中后这里会出现可选的动作。
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
+        </>
+      )}
 
       {lightboxItem && lightIndex !== null && (
         <Lightbox
@@ -848,4 +1011,5 @@ export default function PortraitWorkspace({
       )}
     </div>
   )
+
 }

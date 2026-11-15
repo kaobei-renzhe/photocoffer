@@ -32,6 +32,7 @@ import {
   getThumbCacheLimitMB,
   getThumbQuality,
   getPortraitThumbSize,
+  getPortraitColumns,
   getPickDefaults,
   getFinalsDefaults,
   getAiFolderIds,
@@ -56,6 +57,7 @@ import {
   getAiScoreMinRating,
   saveThumbQuality,
   savePortraitThumbSize,
+  savePortraitColumns,
   setIndexDirFor,
   updateConfig
 } from './settings'
@@ -1360,6 +1362,12 @@ export function registerIpc(): void {
   ipcMain.handle('settings:portraitThumbSize:get', () => getPortraitThumbSize())
 
   ipcMain.handle('settings:portraitThumbSize:save', (_e, size: number) => savePortraitThumbSize(size))
+
+  ipcMain.handle('settings:portraitColumns:get', () => getPortraitColumns())
+
+  ipcMain.handle('settings:portraitColumns:save', (_e, columns: number) =>
+    savePortraitColumns(columns)
+  )
 
   ipcMain.handle('thumbs:cacheStats', () => thumbCacheStats())
 

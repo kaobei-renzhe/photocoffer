@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { clamp, LAYOUT_DEFAULT, LAYOUT_LIMITS, normalizeLayout } from './layout'
+import {
+  clamp,
+  columnsFromThumbSize,
+  LAYOUT_DEFAULT,
+  LAYOUT_LIMITS,
+  normalizeLayout,
+  normalizePortraitColumns,
+  PORTRAIT_COLUMNS
+} from './layout'
 
 describe('clamp', () => {
   it('夹在上下界之间', () => {
@@ -37,5 +45,22 @@ describe('normalizeLayout', () => {
       detail: number
     }
     expect(normalizeLayout(broken)).toEqual({ sidebar: 300, detail: LAYOUT_DEFAULT.detail })
+  })
+})
+
+describe('人像列数', () => {
+  it('旧 thumbSize 映射到 2/3/4 列', () => {
+    expect(columnsFromThumbSize(140)).toBe(4)
+    expect(columnsFromThumbSize(180)).toBe(4)
+    expect(columnsFromThumbSize(190)).toBe(3)
+    expect(columnsFromThumbSize(240)).toBe(3)
+    expect(columnsFromThumbSize(241)).toBe(2)
+    expect(columnsFromThumbSize(320)).toBe(2)
+  })
+
+  it('非法值落回默认 3 列，越界收进 2/4', () => {
+    expect(normalizePortraitColumns('x')).toBe(PORTRAIT_COLUMNS.default)
+    expect(normalizePortraitColumns(9)).toBe(4)
+    expect(normalizePortraitColumns(1)).toBe(2)
   })
 })

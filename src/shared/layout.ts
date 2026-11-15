@@ -19,7 +19,7 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
-/** 人像工作台瀑布流的卡片宽度（CSS 像素）；存一份，主进程与界面共用 */
+/** 人像工作台瀑布流的卡片宽度（CSS 像素）；旧键保留做一次性迁移，@deprecated 用 PORTRAIT_COLUMNS */
 export const PORTRAIT_THUMB = {
   default: 190,
   min: 140,
@@ -30,6 +30,21 @@ export const PORTRAIT_THUMB = {
 export function normalizePortraitThumb(value: unknown): number {
   const num = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : PORTRAIT_THUMB.default
   return clamp(num, PORTRAIT_THUMB.min, PORTRAIT_THUMB.max)
+}
+
+/** 人像工作台列数：2 / 3 / 4，默认 3 */
+export const PORTRAIT_COLUMNS = { default: 3, min: 2, max: 4 } as const
+
+export function normalizePortraitColumns(value: unknown): number {
+  const num =
+    typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : PORTRAIT_COLUMNS.default
+  return clamp(num, PORTRAIT_COLUMNS.min, PORTRAIT_COLUMNS.max)
+}
+
+/** 旧 thumbSize 一次性映射成列数：<=180 → 4，<=240 → 3，>240 → 2 */
+export function columnsFromThumbSize(size: number): number {
+  const normalized = normalizePortraitThumb(size)
+  return normalizePortraitColumns(normalized <= 180 ? 4 : normalized <= 240 ? 3 : 2)
 }
 
 /** 把存下来的宽度收进合法范围；配置文件被手改也不会把界面搞崩 */

@@ -765,16 +765,6 @@ export default function Sidebar({
   /** 摄影功能：manage 模式下没长出来的收进「更多」，点开一次后常驻主导航 */
   const photoNav = [
     {
-      key: 'portrait' as GrownFeature,
-      label: '人像工作台',
-      title: '按景别、光线、氛围等人像分类筛选与打标',
-      icon: <Camera size={14} strokeWidth={1.75} />,
-      count: 0,
-      active: false,
-      visible: true,
-      open: onPortrait
-    },
-    {
       key: 'clientPicked' as GrownFeature,
       label: '浏览页已选',
       title: '最近一次浏览页里「要的 + 要修的」照片',
@@ -837,6 +827,14 @@ export default function Sidebar({
           全部图片
           <span className="count">{stats.total}</span>
         </div>
+        <div
+          className="side-item"
+          onClick={onPortrait}
+          title="按景别、光线、氛围等人像分类筛选与打标"
+        >
+          <Camera size={14} strokeWidth={1.75} />
+          人像
+        </div>
 
         {primaryNav.map((entry) => (
           <div
@@ -895,7 +893,7 @@ export default function Sidebar({
             <div
               className="section-title cursor-pointer select-none hover:text-[var(--muted)]"
               onClick={() => setMoreFeaturesOpen((open) => !open)}
-              title={moreFeaturesOpen ? '收起更多功能' : '展开：人像工作台、选片交付等'}
+              title={moreFeaturesOpen ? '收起更多功能' : '展开：选片交付等'}
             >
               {moreFeaturesOpen ? <ChevronDown size={14} strokeWidth={1.75} /> : <ChevronRight size={14} strokeWidth={1.75} />}
               <span className="ml-1">更多</span>
@@ -908,7 +906,6 @@ export default function Sidebar({
                   className="side-item"
                   onClick={() => {
                     onGrowFeature(entry.key)
-                    if (entry.key === 'portrait') onGrowFeature('facets')
                     entry.open()
                   }}
                   title={`${entry.title}（点开后会固定在导航里）`}

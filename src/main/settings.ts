@@ -17,7 +17,7 @@ import type {
 } from '../shared/types'
 import { PICK_WATERMARK_DEFAULT, normalizePickWatermark } from '../shared/pick'
 import type { LayoutSizes } from '../shared/layout'
-import { normalizeLayout, normalizePortraitThumb } from '../shared/layout'
+import { columnsFromThumbSize, normalizeLayout, normalizePortraitColumns, normalizePortraitThumb } from '../shared/layout'
 import type { ThumbQualityPref } from '../shared/thumbs'
 import { THUMB_CACHE_LIMIT_DEFAULT, THUMB_QUALITY_DEFAULT, isThumbQualityPref } from '../shared/thumbs'
 import type { LlmStoredSettings } from '../shared/llm'
@@ -51,6 +51,8 @@ export interface AppConfig {
   thumbQuality?: ThumbQualityPref
   /** 人像工作台瀑布流卡片宽度（CSS 像素） */
   portraitThumbSize?: number
+  /** 人像工作台列数：2/3/4；旧 portraitThumbSize 一次性映射到这里 */
+  portraitColumns?: number
   /** 高清缩略图缓存上限（MB），0 = 不限 */
   thumbCacheLimitMB?: number
   /** AI 评分的最低星级：0 = 全部；>0 时只评 rating >= N，未标星（0 星）不参与 */
@@ -266,6 +268,23 @@ export function getPortraitThumbSize(): number {
 export function savePortraitThumbSize(value: number): number {
   const next = normalizePortraitThumb(value)
   updateConfig({ portraitThumbSize: next })
+  return next
+}
+
+/** 优先读新键；没有就把旧 thumbSize 映射成列数并写回，旧键保留做回滚安全 */
+export function getPortraitColumns(): number {
+  const config = readConfig()
+  if (typeof config.portraitColumns === 'number') {
+    return normalizePortraitColumns(config.portraitColumns)
+  }
+  const mapped = columnsFromThumbSize(normalizePortraitThumb(config.portraitThumbSize))
+  updateConfig({ portraitColumns: mapped })
+  return mapped
+}
+
+export function savePortraitColumns(value: number): number {
+  const next = normalizePortraitColumns(value)
+  updateConfig({ portraitColumns: next })
   return next
 }
 

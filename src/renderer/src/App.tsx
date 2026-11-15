@@ -1436,6 +1436,27 @@ export default function App() {
     }
   }, [pickItemIds, pickTitle, notify])
 
+  /** 人像工作台：把当前选中的照片加入选片草稿 */
+  const addPortraitToPick = useCallback(
+    async (ids: number[]): Promise<void> => {
+      if (!ids.length) return
+      try {
+        await window.api.pickCreateDraft({
+          itemIds: ids,
+          title: `人像选片 ${new Date().toLocaleDateString('zh-CN')}`
+        })
+        notify(`已加入选片：${ids.length} 张`)
+        setPickDeliveryTick((value) => value + 1)
+      } catch (error) {
+        const text = (error as Error).message
+          .replace(/^Error invoking remote method '[^']+':\s*/, '')
+          .replace(/^Error:\s*/, '')
+        notify(`加入选片失败：${text}`)
+      }
+    },
+    [notify]
+  )
+
   // 条件/排序/模式变化时让瀑布流回到顶部
   const listResetKey = [
     filter.sort ?? '',
@@ -1515,6 +1536,7 @@ export default function App() {
         aiReady={aiReady}
         canAsk={aiCaps['photo.socratic'] !== false}
         aiScope={aiScope}
+        onAddToPick={addPortraitToPick}
       />
     )
   }

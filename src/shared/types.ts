@@ -832,6 +832,8 @@ export interface Api {
   /** 人像工作台瀑布流卡片宽度 */
   getPortraitThumbSize: () => Promise<number>
   savePortraitThumbSize: (size: number) => Promise<number>
+  getPortraitColumns: () => Promise<number>
+  savePortraitColumns: (columns: number) => Promise<number>
   /** 三档缩略图各占多少磁盘 */
   thumbCacheStats: () => Promise<ThumbCacheStats>
   /** 清理缩略图缓存（high = 只删高清档） */

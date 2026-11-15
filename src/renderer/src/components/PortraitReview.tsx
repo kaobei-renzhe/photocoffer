@@ -111,9 +111,7 @@ export default function PortraitReview({ items, flags, onJudge, onUndo, onExit, 
         )}
         <button
           className="btn btn-ghost h-7 px-2 text-[12px]"
-          onClick={() => {
-            if (item) advance(item.id)
-          }}
+          onClick={() => setHandled(new Set(queue.map((entry) => entry.id)))}
           disabled={!item}
         >
           跳过全部 <ArrowRight size={14} strokeWidth={1.75} />
@@ -169,6 +167,7 @@ export default function PortraitReview({ items, flags, onJudge, onUndo, onExit, 
                 onClick={() => advance(item.id)}
                 disabled={busy}
                 title="跳过这张"
+                aria-label="跳过这张"
               >
                 <ArrowRight size={16} strokeWidth={1.75} />
               </button>

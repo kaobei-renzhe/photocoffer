@@ -125,6 +125,7 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
         style={noDrag}
         onClick={onSettings}
         title="设置"
+        aria-label="设置"
       >
         <SettingsIcon size={16} strokeWidth={1.75} />
       </button>

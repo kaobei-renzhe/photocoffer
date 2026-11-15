@@ -2024,7 +2024,11 @@ export default function App() {
       )}
 
       {toast && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-[13.5px] text-[var(--text)] shadow-xl">
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-4 py-2 text-[13.5px] text-[var(--text)] shadow-xl"
+        >
           <span>{toast.text}</span>
           {toast.undo && (
             <button

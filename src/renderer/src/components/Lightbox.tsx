@@ -696,6 +696,7 @@ export default function Lightbox({
           className="ml-auto grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => setHelpOpen((open) => !open)}
           title="快捷键"
+          aria-label="快捷键"
         >
           <CircleHelp size={16} strokeWidth={1.75} />
         </button>
@@ -714,6 +715,7 @@ export default function Lightbox({
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={onClose}
           title="关闭 (Esc)"
+          aria-label="关闭"
         >
           <X size={16} strokeWidth={1.75} />
         </button>

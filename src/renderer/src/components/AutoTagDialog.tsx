@@ -72,7 +72,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
       const outcome = await window.api.autoTag()
       setResult(outcome)
       await refreshStatus()
-      onFinished(`自动分类完成 · ${outcome.assigned}/${outcome.total} 张已归类`)
+      onFinished(`自动归类完成 · ${outcome.assigned}/${outcome.total} 张已归类`)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -83,7 +83,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
 
   const clear = async (): Promise<void> => {
     const ok = await window.api.confirm(
-      '清除自动分类？',
+      '清除自动归类？',
       '只会移除自动生成的分类标签，手动添加的标签不受影响。'
     )
     if (!ok) return
@@ -92,7 +92,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
       const outcome = await window.api.clearAutoTags()
       setResult(null)
       await refreshStatus()
-      onFinished(`已清除 ${outcome.removed} 张照片的自动分类`)
+      onFinished(`已清除 ${outcome.removed} 张照片的自动归类`)
     } finally {
       setClearing(false)
     }
@@ -110,7 +110,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <Tags size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">自动分类</span>
+          <span className="text-[13.5px] font-bold">自动归类</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
             <X size={16} />
           </button>
@@ -121,7 +121,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
             用本地识图模型给照片分类，结果就是普通标签，能照常筛选和删除。
             目前{' '}
             {status
-              ? `使用 ${status.modelLabel} · 已索引 ${status.indexed}/${status.total} 张，已自动分类 ${status.tagged} 张`
+              ? `使用 ${status.modelLabel} · 已索引 ${status.indexed}/${status.total} 张，已自动归类 ${status.tagged} 张`
               : '正在读取…'}
           </div>
 
@@ -251,7 +251,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
               disabled={running || clearing}
               onClick={() => void clear()}
             >
-              <Trash2 size={14} /> 清除自动分类
+              <Trash2 size={14} /> 清除自动归类
             </button>
           )}
           <div className="ml-auto flex items-center gap-2">

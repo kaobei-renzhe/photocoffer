@@ -71,7 +71,7 @@ export const MENU_SECTIONS: MenuSection[] = [
       { id: 'view.portrait', label: '人像', accelerator: 'CmdOrCtrl+2' },
       { id: 'view.delivery', label: '选片交付', accelerator: 'CmdOrCtrl+3' },
       '---',
-      { id: 'view.fullscreen', label: '全屏', accelerator: 'F11' }
+      { id: 'view.fullscreen', label: '全屏' }
     ]
   },
   {

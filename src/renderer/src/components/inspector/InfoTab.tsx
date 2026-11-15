@@ -316,7 +316,7 @@ export default function InfoTab({
             <label className="inline-flex h-[22px] cursor-pointer items-center gap-1 rounded-lg border border-dashed border-[var(--border-strong)] px-1.5 text-[12px] text-[var(--muted)]">
               <FolderPlus size={14} />
               <select
-                className="cursor-pointer border-0 bg-transparent text-[12px] text-[var(--muted)] outline-none"
+                className="cursor-pointer border-0 bg-transparent text-[12px] text-[var(--muted)]"
                 value=""
                 onChange={(event) => void addFolder(Number(event.target.value))}
               >

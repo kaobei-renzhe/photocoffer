@@ -1516,11 +1516,38 @@ export default function App() {
         case 'photo.flag.clear':
           void setFlagSelected(0)
           return
+        case 'edit.undo':
+          void undoLast()
+          return
+        case 'edit.selectAll': {
+          const count = selectAll()
+          if (count > 0) notify(`已选中当前加载的 ${count} 张`)
+          return
+        }
+        case 'edit.copy': {
+          const id = selectedIds[0] ?? activeId
+          if (!id) return
+          void window.api.copyImage(id).then((ok) => {
+            notify(ok ? '已复制照片到剪贴板' : '复制失败，试试其它照片')
+          })
+          return
+        }
         default:
           return
       }
     },
-    [openImportDialog, openSettings, rateSelected, savePickDraft, setFlagSelected]
+    [
+      activeId,
+      notify,
+      openImportDialog,
+      openSettings,
+      rateSelected,
+      savePickDraft,
+      selectAll,
+      selectedIds,
+      setFlagSelected,
+      undoLast
+    ]
   )
 
   useEffect(() => window.api.onMenuAction(handleMenuAction), [handleMenuAction])

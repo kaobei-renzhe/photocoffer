@@ -43,6 +43,11 @@ export function installAppMenu(): void {
       if (role) {
         return { role, label: entry.label, accelerator: entry.accelerator }
       }
+      // Windows 不注册 edit 加速键：Ctrl+Z/A/C 由渲染层 useShortcuts 处理，
+      // 原生菜单只保留可点击项，避免菜单 role 抢走图库的撤销/全选/复制。
+      if (!isMac && section.id === 'edit') {
+        return { label: entry.label, click: () => sendMenuAction(entry.id) }
+      }
       return {
         label: entry.label,
         accelerator: entry.accelerator,

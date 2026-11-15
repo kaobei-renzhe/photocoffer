@@ -473,7 +473,7 @@ export default function Lightbox({
       }
       if (typing) return
 
-      if (e.key === 'Tab') {
+      if (e.key === '`') {
         e.preventDefault()
         setImmersive((value) => !value)
         return
@@ -681,7 +681,12 @@ export default function Lightbox({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-[var(--lightbox)]">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="照片查看器"
+      className="fixed inset-0 z-50 overflow-hidden bg-[var(--lightbox)]"
+    >
       <div
         className={`absolute left-1/2 top-2 z-20 flex h-11 -translate-x-1/2 items-center gap-3 rounded-full border border-[var(--lb-rule)] bg-[var(--lb-chrome)] px-4 text-[13.5px] backdrop-blur-[18px] ${chromeCls}`}
         style={{ width: 620, maxWidth: '62%', left: inspectorOpen ? 'calc(50% - 160px)' : '50%' }}
@@ -716,6 +721,7 @@ export default function Lightbox({
           onClick={onClose}
           title="关闭 (Esc)"
           aria-label="关闭"
+          autoFocus
         >
           <X size={16} strokeWidth={1.75} />
         </button>
@@ -734,6 +740,8 @@ export default function Lightbox({
             ['← →', '上一张 / 下一张'],
             ['S', '幻灯片'],
             ['F11', '全屏'],
+            ['`', '沉浸模式'],
+            ['?', '快捷键'],
             ['N', '档案面板'],
             ['F', '框选'],
             ['Esc', '关闭']
@@ -834,6 +842,9 @@ export default function Lightbox({
             }`}
             onClick={() => onNavigate(index - 1)}
             title="上一张"
+            aria-label="上一张"
+            tabIndex={chromeVisible ? 0 : -1}
+            aria-hidden={!chromeVisible}
           >
             <ChevronLeft size={24} strokeWidth={1.5} />
           </button>
@@ -845,6 +856,9 @@ export default function Lightbox({
             }`}
             onClick={() => onNavigate(index + 1)}
             title="下一张"
+            aria-label="下一张"
+            tabIndex={chromeVisible ? 0 : -1}
+            aria-hidden={!chromeVisible}
           >
             <ChevronRight size={24} strokeWidth={1.5} />
           </button>
@@ -897,10 +911,14 @@ export default function Lightbox({
         <span className="inline-block w-[56px] tabular-nums">
           {item.exif?.iso ? `ISO ${item.exif.iso}` : 'ISO —'}
         </span>
-        <span className="h-4 w-px bg-[var(--lb-rule)]" />
-        <span className="max-w-[320px] truncate text-[11px]">
-          {[item.exif?.camera, item.exif?.lens].filter(Boolean).join(' · ') || '没有器材信息'}
-        </span>
+        {!inspectorOpen && (
+          <>
+            <span className="h-4 w-px bg-[var(--lb-rule)]" />
+            <span className="w-[240px] shrink-0 truncate text-[11px]">
+              {[item.exif?.camera, item.exif?.lens].filter(Boolean).join(' · ') || '没有器材信息'}
+            </span>
+          </>
+        )}
       </div>
 
       <div
@@ -916,6 +934,7 @@ export default function Lightbox({
           }`}
           onClick={() => setSlideshow((value) => !value)}
           title="幻灯片 (S)"
+          aria-label={slideshow ? '暂停幻灯片' : '播放幻灯片'}
         >
           {slideshow ? <Pause size={16} strokeWidth={1.75} /> : <Play size={16} strokeWidth={1.75} />}
         </button>
@@ -932,6 +951,7 @@ export default function Lightbox({
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => void toggleFullscreen()}
           title="全屏 (F11)"
+          aria-label={fullscreen ? '退出全屏' : '全屏'}
         >
           {fullscreen ? <Minimize size={16} strokeWidth={1.75} /> : <Maximize size={16} strokeWidth={1.75} />}
         </button>
@@ -940,6 +960,7 @@ export default function Lightbox({
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => rotateBy(-90)}
           title="向左旋转 (Shift+R)"
+          aria-label="向左旋转"
         >
           <RotateCcw size={16} strokeWidth={1.75} />
         </button>
@@ -947,6 +968,7 @@ export default function Lightbox({
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => rotateBy(90)}
           title="向右旋转 (R)"
+          aria-label="向右旋转"
         >
           <RotateCw size={16} strokeWidth={1.75} />
         </button>
@@ -955,6 +977,7 @@ export default function Lightbox({
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => zoomStep(1 / 1.25)}
           title="缩小 (-)"
+          aria-label="缩小"
         >
           <Minus size={16} strokeWidth={1.75} />
         </button>
@@ -963,6 +986,7 @@ export default function Lightbox({
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => zoomStep(1.25)}
           title="放大 (+)"
+          aria-label="放大"
         >
           <Plus size={16} strokeWidth={1.75} />
         </button>

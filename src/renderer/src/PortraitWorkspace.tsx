@@ -32,6 +32,13 @@ interface PortraitWorkspaceProps {
 
 const PAGE_LIMIT = 500
 
+function errorText(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+  return message
+    .replace(/^Error invoking remote method '[^']+':\s*/, '')
+    .replace(/^Error:\s*/, '')
+}
+
 /**
  * 人像工作台：左维度 / 中瀑布流 / 右详情。
  * 维度与取值本质是带 facet_id 的普通标签，所以照片上已有的标记、筛选都能直接复用。
@@ -109,18 +116,18 @@ export default function PortraitWorkspace({
       setItems(result.items)
       setTotal(result.total)
     } catch (error) {
-      setMessage(`读取照片失败：${(error as Error).message}`)
+      setMessage(`读取照片失败：${errorText(error)}`)
     } finally {
       setLoading(false)
     }
   }, [picked, folderId])
 
   useEffect(() => {
-    void loadFacets().catch((error) => setMessage(`读取维度失败：${(error as Error).message}`))
+    void loadFacets().catch((error) => setMessage(`读取维度失败：${errorText(error)}`))
   }, [loadFacets])
 
   useEffect(() => {
-    void loadFolders().catch((error) => setMessage(`读取文件夹失败：${(error as Error).message}`))
+    void loadFolders().catch((error) => setMessage(`读取文件夹失败：${errorText(error)}`))
     void loadTags().catch(() => undefined)
   }, [loadFolders, loadTags])
 
@@ -145,7 +152,7 @@ export default function PortraitWorkspace({
     try {
       setPortraitStatus(await window.api.portraitStatus())
     } catch (error) {
-      setPortraitMsg(`读取人像模型状态失败：${(error as Error).message}`)
+      setPortraitMsg(`读取人像模型状态失败：${errorText(error)}`)
     }
   }, [])
 
@@ -182,7 +189,7 @@ export default function PortraitWorkspace({
       void window.api.portraitStatus().then(setPortraitStatus).catch(() => undefined)
     })()
       .catch((error) => {
-        if (scanToken.current === token) setPortraitMsg(`人像识别失败：${(error as Error).message}`)
+        if (scanToken.current === token) setPortraitMsg(`人像识别失败：${errorText(error)}`)
       })
       .finally(() => {
         if (scanToken.current === token) {
@@ -229,7 +236,7 @@ export default function PortraitWorkspace({
       await window.api.portraitDownloadModel()
       setPortraitStatus(await window.api.portraitStatus())
     } catch (error) {
-      setPortraitMsg(`模型下载失败：${(error as Error).message}`)
+      setPortraitMsg(`模型下载失败：${errorText(error)}`)
     } finally {
       off()
       setModelDownload(null)
@@ -323,7 +330,7 @@ export default function PortraitWorkspace({
       }
       await Promise.all([loadItems(), loadFacets()])
     } catch (error) {
-      setMessage(`标记失败：${(error as Error).message}`)
+      setMessage(`标记失败：${errorText(error)}`)
     }
   }
 
@@ -336,7 +343,7 @@ export default function PortraitWorkspace({
       setAddingValueFor(null)
       await loadFacets()
     } catch (error) {
-      setMessage(`新增取值失败：${(error as Error).message}`)
+      setMessage(`新增取值失败：${errorText(error)}`)
     }
   }
 
@@ -349,7 +356,7 @@ export default function PortraitWorkspace({
       setCreatingFacet(false)
       await loadFacets()
     } catch (error) {
-      setMessage(`新建维度失败：${(error as Error).message}`)
+      setMessage(`新建维度失败：${errorText(error)}`)
     }
   }
 
@@ -368,7 +375,7 @@ export default function PortraitWorkspace({
       })
       await Promise.all([loadFacets(), loadItems()])
     } catch (error) {
-      setMessage(`删除失败：${(error as Error).message}`)
+      setMessage(`删除失败：${errorText(error)}`)
     }
   }
 
@@ -380,7 +387,7 @@ export default function PortraitWorkspace({
     () =>
       items.filter((item) => {
         const flag = portraitFlags[item.id]
-        return !flag || flag.verdict === 'unresolved'
+        return !flag || (flag.override == null && flag.verdict === 'unresolved')
       }),
     [items, portraitFlags]
   )
@@ -417,7 +424,7 @@ export default function PortraitWorkspace({
       })
       await loadPortraitStatus()
     } catch (error) {
-      setMessage(`人工判定失败：${(error as Error).message}`)
+      setMessage(`人工判定失败：${errorText(error)}`)
     }
   }
 
@@ -439,7 +446,7 @@ export default function PortraitWorkspace({
       })
       await loadPortraitStatus()
     } catch (error) {
-      setMessage(`清除判定失败：${(error as Error).message}`)
+      setMessage(`清除判定失败：${errorText(error)}`)
     }
   }
 
@@ -449,7 +456,7 @@ export default function PortraitWorkspace({
       await window.api.bulkUpdate(targets, { rating })
       await loadItems()
     } catch (error) {
-      setMessage(`设置星级失败：${(error as Error).message}`)
+      setMessage(`设置星级失败：${errorText(error)}`)
     }
   }
 
@@ -459,7 +466,7 @@ export default function PortraitWorkspace({
       await window.api.bulkUpdate(targets, { flag })
       await loadItems()
     } catch (error) {
-      setMessage(`设置去留失败：${(error as Error).message}`)
+      setMessage(`设置去留失败：${errorText(error)}`)
     }
   }
 
@@ -568,7 +575,9 @@ export default function PortraitWorkspace({
                     status={portraitStatus}
                     onShowConfirmed={() => setStatusFilter('confirmed')}
                     onShowLikely={() => setStatusFilter('likely')}
-                    onShowReview={() => setReviewOpen(true)}
+                    onShowReview={() => {
+                      if (portraitStatus?.modelReady) setReviewOpen(true)
+                    }}
                   />
                 ) : (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] text-[var(--faint)]">

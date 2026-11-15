@@ -214,7 +214,8 @@ export function portraitStatus(): PortraitStatus {
            SUM(CASE WHEN f.override IS NULL AND f.model = @tag
                      AND f.score >= 0.50 AND f.score < 0.80
                     THEN 1 ELSE 0 END) AS likely,
-           COUNT(*) AS flagged
+           SUM(CASE WHEN f.model = @tag OR f.override IS NOT NULL
+                    THEN 1 ELSE 0 END) AS flagged
          FROM person_flags f
          JOIN items i ON i.id = f.item_id
          WHERE i.trashed = 0 AND i.missing = 0`
@@ -272,6 +273,8 @@ export function setPortraitOverride(ids: number[], value: 0 | 1 | null): number 
   const clear = db.prepare(
     'UPDATE person_flags SET override = NULL, override_at = NULL, override_model = NULL WHERE item_id = ?'
   )
+  // 只由人工判定插进来的行（model=''）清除后没有模型数据，直接删掉，避免留下幽灵行
+  const deleteOverrideOnly = db.prepare("DELETE FROM person_flags WHERE item_id = ? AND model = ''")
   // model 写空串而不是 MODEL_TAG：从未被模型扫过、只被人工判过的照片，
   // 不会被 portraitStatus().detected（WHERE model = MODEL_TAG）误算成「已扫」。
   const set = db.prepare(
@@ -284,8 +287,12 @@ export function setPortraitOverride(ids: number[], value: 0 | 1 | null): number 
   )
   const tx = db.transaction((rows: number[]) => {
     for (const id of rows) {
-      if (value === null) clear.run(id)
-      else set.run(id, value, Date.now(), value, Date.now(), MODEL_TAG)
+      if (value === null) {
+        deleteOverrideOnly.run(id)
+        clear.run(id)
+      } else {
+        set.run(id, value, Date.now(), value, Date.now(), MODEL_TAG)
+      }
     }
   })
   tx(list)

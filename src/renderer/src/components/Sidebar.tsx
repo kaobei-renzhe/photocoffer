@@ -827,14 +827,15 @@ export default function Sidebar({
           全部照片
           <span className="count">{stats.total}</span>
         </div>
-        <div
-          className="side-item"
+        <button
+          type="button"
+          className="side-item w-full border-0 bg-transparent text-left"
           onClick={onPortrait}
           title="按景别、光线、氛围等人像分类筛选与打标"
         >
           <Camera size={14} strokeWidth={1.75} />
           人像
-        </div>
+        </button>
 
         {primaryNav.map((entry) => (
           <div

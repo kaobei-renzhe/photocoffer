@@ -25,7 +25,15 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
     }
     const command = EDIT_COMMANDS[id]
     if (command) {
-      document.execCommand(command)
+      const target = document.activeElement as HTMLElement | null
+      const typing =
+        !!target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      if (typing) {
+        document.execCommand(command)
+        return
+      }
+      onMenuAction(id)
       return
     }
     onMenuAction(id)
@@ -39,19 +47,20 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
     return (
       <>
         <div className="fixed inset-0 z-40" onClick={() => setOpen(null)} />
-        <div className="absolute left-0 top-[34px] z-50 w-[230px] rounded-xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl">
+        <div className="absolute left-0 top-[34px] z-50 w-[230px] rounded-xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl" role="menu">
           {data.items.map((entry, index) =>
             entry === '---' ? (
               <div key={`sep-${index}`} className="my-1 h-px bg-[var(--border)]" />
             ) : (
               <button
                 key={entry.id}
+                role="menuitem"
                 className="flex h-8 w-full items-center gap-2 rounded-lg px-2 text-left text-[12px] text-[var(--text)] hover:bg-[var(--panel-2)]"
                 onClick={() => run(entry.id)}
               >
                 <span>{entry.label}</span>
                 {entry.accelerator && (
-                  <span className="ml-auto text-[10.5px] tabular-nums text-[var(--faint)]">
+                  <span className="ml-auto text-[11px] tabular-nums text-[var(--faint)]">
                     {entry.accelerator.replace('CmdOrCtrl', isMac ? '⌘' : 'Ctrl')}
                   </span>
                 )}
@@ -67,11 +76,14 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
     <div
       className="relative z-40 flex h-9 shrink-0 select-none items-center border-b border-[var(--border)] bg-[var(--chrome)]"
       style={drag}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpen(null)
+      }}
     >
       {isMac && <div className="w-[78px] shrink-0" />}
 
       <div className="flex items-center gap-2 pl-4" style={noDrag}>
-        <span className="text-[13px] font-bold tracking-[0.06em] text-[var(--text)]">存照</span>
+        <span className="text-[13.5px] font-bold tracking-[0.06em] text-[var(--text)]">存照</span>
         {isMac && (
           <>
             <span className="h-3 w-px bg-[var(--border)]" />
@@ -91,12 +103,14 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
           {MENU_SECTIONS.map((entry) => (
             <div key={entry.id} className="relative">
               <button
-                className={`h-7 rounded-[10px] px-2.5 text-[13px] ${
+                className={`h-7 rounded-lg px-2.5 text-[13.5px] ${
                   open === entry.id
                     ? 'bg-[var(--panel-2)] text-[var(--text)]'
                     : 'text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]'
                 }`}
                 onClick={() => setOpen((value) => (value === entry.id ? null : entry.id))}
+                aria-haspopup="menu"
+                aria-expanded={open === entry.id}
               >
                 {entry.label}
               </button>
@@ -130,8 +144,8 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
         <SettingsIcon size={16} strokeWidth={1.75} />
       </button>
 
-      {/* Windows 原生三键 overlay 的 148px 禁区 */}
-      <div className="w-[148px] shrink-0" />
+      {/* Windows 原生三键 overlay 的 148px 禁区；mac 不渲染 */}
+      {!isMac && <div className="w-[148px] shrink-0" />}
     </div>
   )
 }

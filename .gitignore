@@ -20,7 +20,8 @@ Thumbs.db
 design/_audit/
 design/icon-drafts/
 design/theme-v2*
-scripts/_*.mjs
+design/mockups/overview/
+scripts/_*
 scripts/gen-icons*.mjs
 scripts/gen-sheet.mjs
 scripts/rename-product.py

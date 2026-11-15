@@ -224,6 +224,7 @@ export default function Toolbar({
           />
           <input
             className="input w-full"
+            data-search-input
             style={{ paddingLeft: 32, paddingRight: 36 }}
             placeholder={
               semanticMode ? '描述画面，比如「海边的日落」…' : '搜索文件名、标签、备注…'
@@ -328,7 +329,11 @@ export default function Toolbar({
         </div>
 
         <span className="ml-auto text-[12px] text-[var(--muted)] tabular-nums">
-          {loading ? '加载中…' : `${total} 张`}
+          {loading ? (
+            <span className="inline-block h-3 w-10 animate-pulse rounded bg-[var(--panel-2)]" />
+          ) : (
+            `${total} 张`
+          )}
         </span>
       </div>
 
@@ -715,7 +720,7 @@ export default function Toolbar({
                   <button
                     className="btn btn-ghost h-6 px-2 text-[12px]"
                     onClick={onStackSelected}
-                    title="把选中的图片堆成一组"
+                    title="把选中的照片堆成一组"
                   >
                     <Layers size={16} strokeWidth={1.75} /> 堆叠
                   </button>

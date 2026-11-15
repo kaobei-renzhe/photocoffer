@@ -92,7 +92,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
       const outcome = await window.api.clearAutoTags()
       setResult(null)
       await refreshStatus()
-      onFinished(`已清除 ${outcome.removed} 张图片的自动分类`)
+      onFinished(`已清除 ${outcome.removed} 张照片的自动分类`)
     } finally {
       setClearing(false)
     }
@@ -122,7 +122,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
             目前{' '}
             {status
               ? `使用 ${status.modelLabel} · 已索引 ${status.indexed}/${status.total} 张，已自动分类 ${status.tagged} 张`
-              : '读取中…'}
+              : '正在读取…'}
           </div>
 
           {status && status.indexed < status.total && (
@@ -186,7 +186,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
                 <span className="text-[var(--muted)]">
                   {progress.phase === 'prepare'
                     ? `准备类目向量${progress.current ? ` · ${progress.current}` : ''}`
-                    : '正在归类图片'}
+                    : '正在归类照片'}
                 </span>
                 <span className="ml-auto text-[var(--text)] tabular-nums">
                   {progress.total ? `${progress.done}/${progress.total}` : '…'}

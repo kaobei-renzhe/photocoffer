@@ -90,7 +90,7 @@ export default function RelocateDialog({ onClose, onFinished }: RelocateDialogPr
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           <div className="text-[12px] text-[var(--muted)] leading-5">
-            选一个图片现在所在的文件夹，我会按「目录结构 → 文件名 + 大小 → 画面指纹 → EXIF
+            选一个照片现在所在的文件夹，我会按「目录结构 → 文件名 + 大小 → 画面指纹 → EXIF
             拍摄信息」逐层匹配。只改数据库里的路径，不会移动、复制或删除任何磁盘文件。
           </div>
 

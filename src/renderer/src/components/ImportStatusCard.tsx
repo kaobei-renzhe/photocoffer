@@ -65,7 +65,7 @@ export default function ImportStatusCard({
         )}
 
         <div className="mt-2 text-[12px] text-[var(--muted)] truncate" title={progress?.current ?? ''}>
-          {progress?.current || '准备中…'}
+          {progress?.current || '正在准备…'}
         </div>
 
         {!scanning && (

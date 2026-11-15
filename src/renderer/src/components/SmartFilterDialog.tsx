@@ -9,9 +9,9 @@ import { llmHint } from '../lib/llmHint'
 import { modLabel } from '../lib/platform'
 
 interface SmartFilterDialogProps {
-  /** 当前已加载的图片，用来做候选与展示名字/缩略图 */
+  /** 当前已加载的照片，用来做候选与展示名字/缩略图 */
   items: Item[]
-  /** 当前筛选下的总数，用于说明"只看了样本" */
+  /** 这个范围里的总数，用于说明"只看了样本" */
   total: number
   onApply: (rule: string, ids: number[]) => void
   onClose: () => void

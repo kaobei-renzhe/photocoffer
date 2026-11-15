@@ -236,7 +236,7 @@ export default function InfoTab({
           <button
             className="btn btn-ghost ml-auto h-6 px-2 text-[12px]"
             onClick={onFindSimilar}
-            title="以图搜图：找出画面相近的图片"
+            title="以图搜图：找出画面相近的照片"
           >
             <ScanSearch size={14} /> 找相似
           </button>
@@ -407,9 +407,9 @@ export default function InfoTab({
           <button
             className="btn h-7 px-2 text-[12px]"
             onClick={() => void window.api.copyImage(item.id)}
-            title={`把图片复制到剪贴板（${modLabel}+C）`}
+            title={`把照片复制到剪贴板（${modLabel}+C）`}
           >
-            <Copy size={14} /> 复制图片
+            <Copy size={14} /> 复制照片
           </button>
           <button
             className="btn h-7 px-2 text-[12px]"

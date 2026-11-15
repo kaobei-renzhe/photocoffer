@@ -310,7 +310,7 @@ export default function Lightbox({
     setPan({ x: 0, y: 0 })
   }, [])
 
-  /** 旋转 90 度（delta 为负则逆时针）；旋转后先回正位置，避免图片飘出画面 */
+  /** 旋转 90 度（delta 为负则逆时针）；旋转后先回正位置，避免照片飘出画面 */
   const rotateBy = useCallback((delta: number) => {
     setRotation((prev) => (prev + delta + 360) % 360)
     setPan({ x: 0, y: 0 })
@@ -322,7 +322,7 @@ export default function Lightbox({
   }, [])
 
   /**
-   * 开关框选。旋转后图片的包围盒和画面不一致，硬算旋转矩阵容易出玄学，
+   * 开关框选。旋转后照片的包围盒和画面不一致，硬算旋转矩阵容易出玄学，
    * 所以文档里的做法：转正了才让框。
    */
   const changeDrawing = useCallback(
@@ -388,7 +388,7 @@ export default function Lightbox({
     return () => stage.removeEventListener('wheel', onWheel)
   }, [natural.w, zoomAt])
 
-  // 切换图片时回到「适应窗口」，并且清掉上一张的旋转与框选
+  // 切换照片时回到「适应窗口」，并且清掉上一张的旋转与框选
   useEffect(() => {
     setManualZoom(null)
     setPan({ x: 0, y: 0 })
@@ -568,7 +568,7 @@ export default function Lightbox({
   /** 旋转后要占的画面尺寸 */
   const displayW = ready ? Math.round(shownW * zoom * dpr) / dpr : 0
   const displayH = ready ? Math.round(shownH * zoom * dpr) / dpr : 0
-  /** 图片自身的布局尺寸（旋转前），90/270 度时与 displayW/H 互换 */
+  /** 照片自身的布局尺寸（旋转前），90/270 度时与 displayW/H 互换 */
   const layerW = ready ? Math.round(natural.w * zoom * dpr) / dpr : 0
   const layerH = ready ? Math.round(natural.h * zoom * dpr) / dpr : 0
   const layerLeft = snap((displayW - layerW) / 2)
@@ -584,7 +584,7 @@ export default function Lightbox({
     else resetFit()
   }
 
-  /** 屏幕坐标 → 图片内的归一化坐标；只取图片实际显示的那块（旋转时禁用框选） */
+  /** 屏幕坐标 → 照片内的归一化坐标；只取照片实际显示的那块（旋转时禁用框选） */
   const pointInImage = (clientX: number, clientY: number): { x: number; y: number } | null => {
     const rect = imageRef.current?.getBoundingClientRect()
     if (!rect || !rect.width || !rect.height) return null
@@ -763,8 +763,8 @@ export default function Lightbox({
           onPointerUp={endDrag}
           onPointerCancel={cancelDrag}
         >
-        {/* 图片按目标物理像素尺寸渲染，浏览器按这个尺寸重新采样，放大时才不糊；
-            旋转放在内层图片上，外层盒子用旋转后的尺寸参与居中与平移 */}
+        {/* 照片按目标物理像素尺寸渲染，浏览器按这个尺寸重新采样，放大时才不糊；
+            旋转放在内层照片上，外层盒子用旋转后的尺寸参与居中与平移 */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div
             className="absolute left-0 top-0"

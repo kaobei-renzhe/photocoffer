@@ -153,7 +153,7 @@ export default function PickExportDialog({
 
               {result.bytes > 20 * 1024 * 1024 && (
                 <div className="mt-3 rounded-2xl border border-[var(--warn)]/40 bg-[var(--panel-2)] px-3 py-2.5 text-[12px] leading-5 text-[var(--warn)]">
-                  文件超过 20 MB，微信传输可能失败。建议把图片长边改成 800，或分两批导出。
+                  文件超过 20 MB，微信传输可能失败。建议把照片长边改成 800，或分两批导出。
                 </div>
               )}
 
@@ -197,7 +197,7 @@ export default function PickExportDialog({
                   />
                 </div>
                 <div className="w-[132px]">
-                  <label className="block text-[12px] text-[var(--muted)] mb-1">图片长边</label>
+                  <label className="block text-[12px] text-[var(--muted)] mb-1">照片长边</label>
                   <select
                     className="input w-full"
                     value={maxEdge}
@@ -324,7 +324,7 @@ export default function PickExportDialog({
                           onClick={() => void chooseLogo()}
                           disabled={exporting}
                         >
-                          <ImagePlus size={14} /> 选择图片
+                          <ImagePlus size={14} /> 选择照片
                         </button>
                       )}
                     </div>
@@ -369,7 +369,7 @@ export default function PickExportDialog({
                       正在压缩并加水印
                     </span>
                     <span className="tabular-nums">
-                      {progress ? `${progress.done}/${progress.total}` : '准备中…'}
+                      {progress ? `${progress.done}/${progress.total}` : '正在准备…'}
                     </span>
                   </div>
                   <div className="mt-2 h-[4px] rounded-full bg-[var(--panel-3)] overflow-hidden">

@@ -824,7 +824,7 @@ export default function Sidebar({
           onClick={() => onFilter({ sort: filter.sort })}
         >
           <Images size={14} strokeWidth={1.75} />
-          全部图片
+          全部照片
           <span className="count">{stats.total}</span>
         </div>
         <div
@@ -1048,7 +1048,7 @@ export default function Sidebar({
           </div>
         )}
         {openSections.tags && tags.length === 0 && facets.length === 0 && (
-          <div className="px-2 py-1 text-[12px] text-[var(--faint)]">在右侧详情里给图片打标签</div>
+          <div className="px-2 py-1 text-[12px] text-[var(--faint)]">在右侧详情里给照片打标签</div>
         )}
 
         <div
@@ -1120,7 +1120,7 @@ export default function Sidebar({
             <div
               className="side-item"
               onClick={onIndexClip}
-              title="为图片建立本地语义向量，用于自然语言搜图和找相似"
+              title="为照片建立本地语义向量，用于自然语言搜图和找相似"
             >
               <Sparkles size={14} strokeWidth={1.75} />
               语义索引
@@ -1137,7 +1137,7 @@ export default function Sidebar({
             <div
               className="side-item"
               onClick={onAutoTag}
-              title="用本地模型把图片自动归到风景、人像等分类标签"
+              title="用本地模型把照片自动归到风景、人像等分类标签"
             >
               <TagIcon size={14} strokeWidth={1.75} />
               自动分类
@@ -1148,7 +1148,7 @@ export default function Sidebar({
               title={
                 lastRelocateDir
                   ? `上次定位：${lastRelocateDir}`
-                  : '文件搬家后，按目录结构和内容接回丢失的图片'
+                  : '文件搬家后，按目录结构和内容接回丢失的照片'
               }
             >
               <TriangleAlert size={14} strokeWidth={1.75} />
@@ -1175,10 +1175,6 @@ export default function Sidebar({
               <FileSpreadsheet size={14} strokeWidth={1.75} />
               导出素材清单
             </div>
-            <div className="side-item" onClick={onSettings} title="外观、大模型、语义索引与存储位置">
-              <SettingsIcon size={14} strokeWidth={1.75} />
-              设置
-            </div>
           </>
         )}
       </div>
@@ -1187,9 +1183,9 @@ export default function Sidebar({
         <button
           className={`btn flex-1 justify-center ${stats.total === 0 ? 'btn-primary' : ''}`}
           onClick={onImportFiles}
-          title={stats.total === 0 ? '导入第一张照片' : '继续导入图片'}
+          title={stats.total === 0 ? '导入第一张照片' : '继续导入照片'}
         >
-          <Upload size={16} strokeWidth={1.75} /> 导入图片
+          <Upload size={16} strokeWidth={1.75} /> 导入照片
         </button>
         <button
           className={`btn px-2 ${moreOpen ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''}`}

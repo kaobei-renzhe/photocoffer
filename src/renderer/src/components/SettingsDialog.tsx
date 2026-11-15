@@ -1259,7 +1259,7 @@ export default function SettingsDialog({
                                   className="btn btn-ghost h-6 px-2 text-[12px]"
                                   disabled={testingId !== null || !hint}
                                   onClick={() => void testModel(model.id)}
-                                  title="先测文本，再发一张 32×32 图片确认能不能看图"
+                                  title="先测文本，再发一张 32×32 照片确认能不能看图"
                                 >
                                   {testingId === model.id ? '测试中…' : '测试'}
                                 </button>
@@ -1495,7 +1495,7 @@ export default function SettingsDialog({
                       </div>
                     ))
                   ) : (
-                    <div className="px-3 py-2 text-[12px] text-[var(--faint)]">读取中…</div>
+                    <div className="px-3 py-2 text-[12px] text-[var(--faint)]">正在读取…</div>
                   )}
                 </div>
                 {modelMsg && (
@@ -1564,7 +1564,7 @@ export default function SettingsDialog({
                     范围内的照片才会出现 AI 按钮；已有的评分和笔记照常能看。
                   </div>
                   <div className="text-[11px] leading-4 text-[var(--faint)]">
-                    当前有 {scoreCounts ? `${scoreCounts.matched} / ${scoreCounts.total} 张` : '读取中…'}在范围内
+                    当前有 {scoreCounts ? `${scoreCounts.matched} / ${scoreCounts.total} 张` : '正在读取…'}在范围内
                     {`（星级：${scoreMinRating ? `≥ ${scoreMinRating} 星` : '不限'}；文件夹：${
                       (scopeFolders ?? []).length > 0 ? `${(scopeFolders ?? []).length} 个` : '全部'
                     }）`}
@@ -1618,7 +1618,7 @@ export default function SettingsDialog({
               <>
                 <div className="text-[13.5px]">索引与缓存</div>
                 {!storage ? (
-                  <div className="text-[12px] text-[var(--faint)]">读取中…</div>
+                  <div className="text-[12px] text-[var(--faint)]">正在读取…</div>
                 ) : (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
                     <div>
@@ -1732,7 +1732,7 @@ export default function SettingsDialog({
                   </div>
                   <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
                     {!xmp ? (
-                      <div className="text-[12px] text-[var(--faint)]">读取中…</div>
+                      <div className="text-[12px] text-[var(--faint)]">正在读取…</div>
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
@@ -1913,13 +1913,13 @@ export default function SettingsDialog({
                   <PathRow
                     label="应用设置"
                     path={appInfo?.userData ?? null}
-                    emptyHint="读取中…"
+                    emptyHint="正在读取…"
                     onOpen={(path) => void openDir(path)}
                   />
                   <PathRow
                     label="AI 模型"
                     path={appInfo?.modelsDir ?? null}
-                    emptyHint="读取中…"
+                    emptyHint="正在读取…"
                     onOpen={(path) => void openDir(path)}
                   />
                 </div>

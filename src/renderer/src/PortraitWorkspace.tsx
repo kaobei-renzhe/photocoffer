@@ -116,7 +116,7 @@ export default function PortraitWorkspace({
   }, [picked, folderId])
 
   useEffect(() => {
-    void loadFacets().catch((error) => setMessage(`读取分类失败：${(error as Error).message}`))
+    void loadFacets().catch((error) => setMessage(`读取维度失败：${(error as Error).message}`))
   }, [loadFacets])
 
   useEffect(() => {
@@ -349,13 +349,13 @@ export default function PortraitWorkspace({
       setCreatingFacet(false)
       await loadFacets()
     } catch (error) {
-      setMessage(`新建分类失败：${(error as Error).message}`)
+      setMessage(`新建维度失败：${(error as Error).message}`)
     }
   }
 
   const removeFacet = async (facet: Facet): Promise<void> => {
     const ok = await window.api.confirm(
-      `删除分类「${facet.name}」？`,
+      `删除维度「${facet.name}」？`,
       '只解除标签归属，照片上的标记与标签本身都会保留，之后可以在标签里继续用。'
     )
     if (!ok) return

@@ -472,10 +472,10 @@ export default function Gallery({
             )}
           </div>
           <div className="text-[15px] text-[var(--text)]">
-            {hasFilter ? '没有符合筛选条件的图片' : '图库还是空的'}
+            {hasFilter ? '没有符合筛选条件的照片' : '图库还是空的'}
           </div>
           <div className="text-[12px] text-[var(--muted)] mt-1.5 leading-5">
-            {hasFilter ? '换个关键词，或清空筛选再找找看' : '把图片或文件夹拖进窗口，也可以点击下面的按钮'}
+            {hasFilter ? '换个关键词，或清空筛选再找找看' : '把照片或文件夹拖进窗口，也可以点击下面的按钮'}
           </div>
           {hasFilter && otherHint && otherHint.total > 0 && (
             <button
@@ -487,7 +487,7 @@ export default function Gallery({
           )}
           {!hasFilter && (
             <button className="btn btn-primary mt-5" onClick={onImportFiles}>
-              选择图片导入
+              选择照片导入
             </button>
           )}
         </div>

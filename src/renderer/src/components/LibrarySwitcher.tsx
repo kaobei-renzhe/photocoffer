@@ -163,7 +163,7 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
           <ArrowLeftRight size={16} color="var(--accent-2)" />
           <span className="text-[13.5px] font-bold">切换图库</span>
           <span className="text-[12px] text-[var(--faint)]">
-            {libraries ? `${libraries.length} 个` : '读取中…'}
+            {libraries ? `${libraries.length} 个` : '正在读取…'}
           </span>
           <button className="btn btn-ghost ml-auto h-7 px-1.5" onClick={onClose} title="关闭（Esc）">
             <X size={16} />

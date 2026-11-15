@@ -116,7 +116,7 @@ export default function ImportDialog({
             onClick={() => void start('files')}
             disabled={busy !== null}
           >
-            <ImagePlus size={14} /> 选择图片
+            <ImagePlus size={14} /> 选择照片
           </button>
           <button
             className="btn btn-primary h-7 px-4 text-[12px]"

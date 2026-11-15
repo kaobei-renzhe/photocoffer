@@ -243,7 +243,7 @@ export default function Welcome({ onReady, onBack, backLabel, notice }: WelcomeP
           </div>
           <h1 className="text-[26px] font-bold m-0">存照</h1>
           <p className="text-[13.5px] text-[var(--muted)] mt-2 mb-8">
-            本地优先的图片素材库 · 照片、相机与文字都归在这里
+            本地优先的照片素材库 · 照片、相机与文字都归在这里
           </p>
 
           <div className="flex flex-col gap-2">

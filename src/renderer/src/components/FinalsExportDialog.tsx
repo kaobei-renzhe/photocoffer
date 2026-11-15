@@ -414,7 +414,7 @@ export default function FinalsExportDialog({
                       正在导出
                     </span>
                     <span className="tabular-nums">
-                      {progress ? `${progress.done}/${progress.total}` : '准备中…'}
+                      {progress ? `${progress.done}/${progress.total}` : '正在准备…'}
                     </span>
                   </div>
                   <div className="mt-2 h-[4px] overflow-hidden rounded-full bg-[var(--panel-3)]">

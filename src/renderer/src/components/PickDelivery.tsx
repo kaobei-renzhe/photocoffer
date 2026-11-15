@@ -270,7 +270,7 @@ export default function PickDelivery({
         </button>
         <div className="text-[15px] font-bold">选片交付</div>
         <span className="text-[12px] text-[var(--faint)]">
-          {sessions === null ? '读取中…' : `共 ${sessions.length} 单`}
+          {sessions === null ? '正在读取…' : `共 ${sessions.length} 单`}
         </span>
         <button className="btn btn-primary ml-auto h-8 px-3" onClick={onPickNew}>
           <Images size={14} /> 去图库选片
@@ -287,7 +287,7 @@ export default function PickDelivery({
         <aside className="w-[272px] shrink-0 overflow-y-auto border-r border-[var(--border)] bg-[var(--panel)]">
           {sessions === null ? (
             <div className="flex items-center gap-2 px-3 py-4 text-[12px] text-[var(--muted)]">
-              <Loader2 size={14} className="animate-spin" /> 读取中…
+              <Loader2 size={14} className="animate-spin" /> 正在读取…
             </div>
           ) : (
             groups.map((group) => (

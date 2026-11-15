@@ -10,10 +10,11 @@ let indexPath = ''
 
 /**
  * 结构化 schema 版本，存在 SQLite 的 `PRAGMA user_version` 里。
- * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次；4 = 人像检测缓存。
+ * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次；4 = 人像检测缓存；
+ * 5 = 人像人工纠错（override 三列）。
  * 以后每次加表 / 加列都必须 +1 并在 MIGRATION_STEPS 里补一步。
  */
-export const CURRENT_SCHEMA = 4
+export const CURRENT_SCHEMA = 5
 
 /** 迁移步骤必须幂等：老库可能从任意版本开始，补齐缺失的表与列即可收敛 */
 const SCHEMA = /* sql */ `
@@ -329,11 +330,34 @@ function migrationV4(db: Database.Database): void {
   })
 }
 
+/** v5：人像人工纠错（override 三列）——人工结论永久优先，重扫不覆盖 */
+function migrationV5(db: Database.Database): void {
+  subStep('补人工纠错列', () => {
+    // 老库若在 v4 之后被手工删过表，先补建（幂等），再补列
+    db.exec(`
+    CREATE TABLE IF NOT EXISTS person_flags (
+      item_id    INTEGER PRIMARY KEY,
+      has_person INTEGER NOT NULL DEFAULT 0,
+      score      REAL NOT NULL DEFAULT 0,
+      model      TEXT NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_person_flags_model ON person_flags(model);
+    `)
+    // NULL = 无人工结论 / 1 = 确认人像 / 0 = 不是人像
+    ensureColumn(db, 'person_flags', 'override', 'override INTEGER')
+    ensureColumn(db, 'person_flags', 'override_at', 'override_at INTEGER')
+    ensureColumn(db, 'person_flags', 'override_model', 'override_model TEXT')
+    db.exec('CREATE INDEX IF NOT EXISTS idx_person_flags_override ON person_flags(override)')
+  })
+}
+
 const MIGRATION_STEPS: MigrationStep[] = [
   { version: 1, up: migrationV1 },
   { version: 2, up: migrationV2 },
   { version: 3, up: migrationV3 },
-  { version: 4, up: migrationV4 }
+  { version: 4, up: migrationV4 },
+  { version: 5, up: migrationV5 }
 ]
 
 /** 按 user_version 逐级升级；每一步独立事务，版本号跟着步骤走 */

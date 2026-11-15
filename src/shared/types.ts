@@ -989,6 +989,8 @@ export interface Api {
   portraitDownloadModel: () => Promise<string>
   onPortraitDownload: (cb: (progress: ClipDownloadProgress) => void) => () => void
   portraitScan: (ids: number[]) => Promise<PortraitFlag[]>
+  /** 写入人工判定：1=确认人像，0=不是人像，null=清除人工结论 */
+  portraitOverride: (ids: number[], value: 0 | 1 | null) => Promise<number>
   autoTagCategories: () => Promise<AutoTagCategory[]>
   getAutoTagSettings: () => Promise<AutoTagSettings>
   saveAutoTagSettings: (patch: Partial<AutoTagSettings>) => Promise<AutoTagSettings>
@@ -1147,12 +1149,33 @@ export interface PortraitStatus {
   detected: number
   /** 库内可检测的照片总数 */
   total: number
+  /** 模型确认的人像（未被人工作废） */
+  confirmedByModel: number
+  /** 人工确认为人像 */
+  confirmedByHuman: number
+  /** 人工排除（不是人像） */
+  excludedByHuman: number
+  /** 人工结论来自旧模型 */
+  staleOverrides: number
+  /** 模型判定为可能人像（0.50–0.80） */
+  likely: number
+  /** 尚未完成检测的照片数（主进程计算，UI 不做减法） */
+  unresolved: number
 }
+
+export type PortraitVerdict = 'person' | 'likely' | 'no-person' | 'unresolved'
 
 export interface PortraitFlag {
   id: number
-  hasPerson: boolean
+  /** 权威结论：person / likely / no-person / unresolved */
+  verdict: PortraitVerdict
   score: number
+  /** 兼容旧字段：仅 person / likely 为 true */
+  hasPerson: boolean
+  /** 人工结论，最高优先级：1=确认人像，0=不是人像，null=无人工结论 */
+  override?: 0 | 1 | null
+  /** 仅 unresolved 有意义 */
+  reason?: 'error' | 'no-source'
 }
 
 export interface PortraitScanProgress {

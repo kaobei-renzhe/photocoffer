@@ -6,6 +6,7 @@ import type {
   FacetValue,
   Folder,
   Item,
+  PortraitFlag,
   PortraitScanProgress,
   PortraitStatus,
   Tag
@@ -61,7 +62,7 @@ export default function PortraitWorkspace({
   /** 人像检测：默认只看人像；模型与结果都由主进程缓存 */
   const [portraitOnly, setPortraitOnly] = useState(true)
   const [portraitStatus, setPortraitStatus] = useState<PortraitStatus | null>(null)
-  const [portraitFlags, setPortraitFlags] = useState<Record<number, boolean>>({})
+  const [portraitFlags, setPortraitFlags] = useState<Record<number, PortraitFlag>>({})
   const [portraitScanning, setPortraitScanning] = useState(false)
   const [portraitProgress, setPortraitProgress] = useState<PortraitScanProgress | null>(null)
   const [portraitMsg, setPortraitMsg] = useState('')
@@ -165,7 +166,7 @@ export default function PortraitWorkspace({
         if (scanToken.current !== token) return
         setPortraitFlags((prev) => {
           const next = { ...prev }
-          for (const flag of flags) next[flag.id] = flag.hasPerson
+          for (const flag of flags) next[flag.id] = flag
           return next
         })
         done += Math.min(CHUNK, missing.length - i)
@@ -191,7 +192,13 @@ export default function PortraitWorkspace({
   const shownItems = useMemo(() => {
     if (!portraitOnly) return items
     if (!portraitStatus?.modelReady) return []
-    return items.filter((item) => portraitFlags[item.id] === true)
+    return items.filter((item) => {
+      const flag = portraitFlags[item.id]
+      if (!flag) return false
+      if (flag.override === 1) return true
+      if (flag.override === 0) return false
+      return flag.verdict === 'person' || flag.verdict === 'likely'
+    })
   }, [items, portraitOnly, portraitStatus?.modelReady, portraitFlags])
 
   // 切换筛选后，右侧详情不能继续显示已经被隐藏的照片

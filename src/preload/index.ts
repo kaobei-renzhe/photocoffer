@@ -294,6 +294,8 @@ const api: Api = {
     return () => ipcRenderer.removeListener('portrait:download-progress', handler)
   },
   portraitScan: (ids: number[]) => ipcRenderer.invoke('portrait:scan', ids),
+  portraitOverride: (ids: number[], value: 0 | 1 | null) =>
+    ipcRenderer.invoke('portrait:override', ids, value),
   onAutoTagProgress: (cb: (progress: AutoTagProgress) => void) => {
     const handler = (_e: unknown, payload: AutoTagProgress): void => cb(payload)
     ipcRenderer.on('clip:autotag-progress', handler)

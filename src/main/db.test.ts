@@ -120,4 +120,52 @@ describe('openLibrary 迁移', () => {
       }).c
     ).toBe(1)
   })
+
+  it('新库 v5 带人工纠错三列与索引', () => {
+    const library = join(root, 'V5Library')
+    openLibrary(library)
+    const db = getDb()
+    expect(db.pragma('user_version', { simple: true })).toBe(5)
+    const columns = (
+      db.prepare('PRAGMA table_info(person_flags)').all() as Array<{ name: string }>
+    ).map((column) => column.name)
+    for (const column of ['override', 'override_at', 'override_model']) {
+      expect(columns).toContain(column)
+    }
+    expect(
+      db
+        .prepare(
+          "SELECT COUNT(*) AS c FROM sqlite_master WHERE type = 'index' AND name = 'idx_person_flags_override'"
+        )
+        .get() as { c: number }
+    ).toEqual({ c: 1 })
+  })
+
+  it('v4 老库只追加 v5，不重跑前四步', () => {
+    const library = join(root, 'V4Library')
+    createV0Library(library)
+    const raw = new Database(join(library, 'library.db'))
+    raw.exec(`
+      CREATE TABLE IF NOT EXISTS person_flags (
+        item_id    INTEGER PRIMARY KEY,
+        has_person INTEGER NOT NULL DEFAULT 0,
+        score      REAL NOT NULL DEFAULT 0,
+        model      TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_person_flags_model ON person_flags(model);
+    `)
+    raw.pragma('user_version = 4')
+    raw.close()
+
+    openLibrary(library)
+    const db = getDb()
+    expect(db.pragma('user_version', { simple: true })).toBe(5)
+    const columns = (
+      db.prepare('PRAGMA table_info(person_flags)').all() as Array<{ name: string }>
+    ).map((column) => column.name)
+    for (const column of ['override', 'override_at', 'override_model']) {
+      expect(columns).toContain(column)
+    }
+  })
 })

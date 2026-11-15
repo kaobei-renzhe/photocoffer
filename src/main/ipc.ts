@@ -80,7 +80,12 @@ import { applyRelocate, buildRelocatePlan, getLastRelocateDir, rememberRelocateD
 import { deleteGear, deleteKit, gearCatalog, gearScenarios, gearSuggestions, gearUsage, listGear, listKits, recommendGear, saveGear, saveKit } from './gear'
 import { startWatching, stopWatching } from './watcher'
 import { startVolumeWatch, volumeStatus } from './volumes'
-import { downloadPersonModel, portraitStatus, scanPortrait } from './portrait'
+import {
+  downloadPersonModel,
+  portraitStatus,
+  scanPortrait,
+  setPortraitOverride
+} from './portrait'
 import { clearThumbCache, pruneHighCache, thumbCacheStats } from './thumbs'
 import { syncLibrary } from './sync'
 import { moveIndexTo } from './libraryStore'
@@ -1457,6 +1462,13 @@ export function registerIpc(): void {
 
   ipcMain.handle('portrait:scan', (_e, ids: number[]) =>
     scanPortrait(Array.isArray(ids) ? ids : [])
+  )
+
+  ipcMain.handle('portrait:override', (_e, ids: number[], value: 0 | 1 | null) =>
+    setPortraitOverride(
+      Array.isArray(ids) ? ids : [],
+      value === 0 || value === 1 ? value : null
+    )
   )
 
   ipcMain.handle('clip:autoTagCategories', () => listAutoTagCategories())

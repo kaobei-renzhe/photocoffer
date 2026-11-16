@@ -124,7 +124,7 @@ export default function PickExportDialog({
       >
         <div className="h-[46px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <FolderOpen size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">生成浏览页</span>
+          <span className="text-[15px] font-bold">生成浏览页</span>
           <span className="text-[12px] text-[var(--faint)]">已选 {itemIds.length} 张</span>
           <button
             className="btn btn-ghost h-7 px-1.5 ml-auto"

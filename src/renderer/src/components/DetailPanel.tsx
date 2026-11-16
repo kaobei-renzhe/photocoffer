@@ -59,7 +59,7 @@ export default function DetailPanel({
       className="flex min-h-0 shrink-0 flex-col overflow-x-hidden bg-[var(--chrome)]"
       style={{ width: 'var(--detail-w, 320px)' }}
     >
-      <div className="flex h-[42px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">
+      <div className="flex h-11 shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">
         <div className="truncate text-[13.5px] font-bold" title={item.name}>
           {item.name}
         </div>

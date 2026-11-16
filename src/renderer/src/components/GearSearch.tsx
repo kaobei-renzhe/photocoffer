@@ -151,7 +151,7 @@ export default function GearSearch({
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <Search size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">
+          <span className="text-[15px] font-bold">
             {mode === 'replace' ? '更换型号' : '添加设备'}
           </span>
           <span className="text-[12px] text-[var(--faint)] ml-1">搜索型号，参数自动带出</span>

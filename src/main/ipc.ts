@@ -1217,6 +1217,29 @@ export function registerIpc(): void {
   })
   ipcMain.handle('window:isFullScreen', () => activeWindow()?.isFullScreen() ?? false)
 
+  // 灯箱沉浸：看片时让原生窗口三键消失，退出时恢复主题色
+  // Windows 的 overlay 在网页层之上，网页挡不住它；把按钮颜色设成和舞台同色即可「看不见」
+  // macOS 直接隐藏红绿灯，比染色更干净
+  ipcMain.handle('window:setOverlayImmersive', (_e, immersive: boolean) => {
+    if (process.platform === 'win32') {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.setTitleBarOverlay(
+          immersive
+            ? { color: '#0B0B0B', symbolColor: '#0B0B0B', height: 36 }
+            : { ...titleBarColors(), height: 36 }
+        )
+      }
+      return true
+    }
+    if (process.platform === 'darwin') {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.setWindowButtonVisibility(!immersive)
+      }
+      return true
+    }
+    return false
+  })
+
   // Alt + 拖拽卡片：交给系统原生拖拽，可直接拖到资源管理器 / 其它应用
   ipcMain.on('shell:startDrag', (event, itemId: number) => {
     const file = getItemFile(itemId)

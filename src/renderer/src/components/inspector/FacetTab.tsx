@@ -96,7 +96,7 @@ export default function FacetTab({
                 {facet.multi ? '多选' : '单选'}
               </span>
               <button
-                className="ml-auto grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--text)]"
+                className="ml-auto grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
                 onClick={() => setOpenPicker(open ? null : facet.id)}
                 title="添加取值"
               >

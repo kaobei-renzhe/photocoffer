@@ -1856,7 +1856,7 @@ export default function App() {
             }}
           />
           {similar && (
-            <div className="shrink-0 px-4 py-2 bg-[var(--panel-2)] flex items-center gap-3 text-[12px]">
+            <div className="shrink-0 px-4 py-2 bg-[var(--panel)] flex items-center gap-3 text-[12px]">
               <span className="text-[var(--text)]">
                 与「{similar.name}」相似 · {total} 张
               </span>

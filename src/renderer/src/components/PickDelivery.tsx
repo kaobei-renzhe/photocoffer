@@ -263,7 +263,7 @@ export default function PickDelivery({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col bg-[var(--bg)]">
+    <div className="fixed inset-x-0 bottom-0 top-9 z-30 flex flex-col bg-[var(--bg)]">
       <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-[var(--border)] bg-[var(--panel)] px-4">
         <button className="btn btn-ghost h-8 px-2" onClick={onBack} title="返回图库">
           <ArrowLeft size={14} /> 返回图库

@@ -10,11 +10,13 @@
 :root {
   color-scheme: dark;
   --bg: #171818;
+  /* 分区统一：标题栏 / 侧栏 / 工具栏 / 详情栏 / 卡片共用一个表面色，
+     只在画布 --bg 与交互层 --panel-2/3 之间做两级层次，不再出现五六种近黑。 */
   --chrome: #1B1B1B;
-  --panel: #1F1F1F;
+  --panel: #1B1B1B;
   --panel-2: #242424;
   --panel-3: #2C2C2C;
-  --card: #1E1E1E;
+  --card: #1B1B1B;
   --canvas: #141414;
   --stage: #0F0F0F;
   --overlay: rgba(10,10,10,.62);
@@ -107,11 +109,12 @@
 :root[data-theme='light'] {
   color-scheme: light;
   --bg: #FAF6EE;
+  /* 同一套纸面：标题栏 / 侧栏 / 工具栏 / 卡片统一暖白，内层控件再降一档 */
   --chrome: #FFFDF9;
-  --panel: #F4EEE3;
-  --panel-2: #EFE7D9;
-  --panel-3: #E5DAC8;
-  --card: #FFFFFF;
+  --panel: #FFFDF9;
+  --panel-2: #F4EEE3;
+  --panel-3: #E8DECE;
+  --card: #FFFDF9;
   --canvas: #F6F1E7;
   --stage: #F2ECE1;
   --overlay: rgba(60,48,30,.35);
@@ -168,11 +171,13 @@
 :root[data-skin='night'] {
   color-scheme: dark;
   --bg: #171818;
+  /* 分区统一：标题栏 / 侧栏 / 工具栏 / 详情栏 / 卡片共用一个表面色，
+     只在画布 --bg 与交互层 --panel-2/3 之间做两级层次，不再出现五六种近黑。 */
   --chrome: #1B1B1B;
-  --panel: #1F1F1F;
+  --panel: #1B1B1B;
   --panel-2: #242424;
   --panel-3: #2C2C2C;
-  --card: #1E1E1E;
+  --card: #1B1B1B;
   --canvas: #141414;
   --stage: #0F0F0F;
   --overlay: rgba(10,10,10,.62);
@@ -226,11 +231,12 @@
 :root[data-skin='paper'] {
   color-scheme: light;
   --bg: #FAF6EE;
+  /* 同一套纸面：标题栏 / 侧栏 / 工具栏 / 卡片统一暖白，内层控件再降一档 */
   --chrome: #FFFDF9;
-  --panel: #F4EEE3;
-  --panel-2: #EFE7D9;
-  --panel-3: #E5DAC8;
-  --card: #FFFFFF;
+  --panel: #FFFDF9;
+  --panel-2: #F4EEE3;
+  --panel-3: #E8DECE;
+  --card: #FFFDF9;
   --canvas: #F6F1E7;
   --stage: #F2ECE1;
   --overlay: rgba(60,48,30,.35);
@@ -284,7 +290,8 @@
 :root[data-skin='contrast'] {
   color-scheme: dark;
   --bg: #0A0A0A;
-  --chrome: #101010;
+  /* 高对比也收成单一表面：分区只靠更强的描边区分，不靠不同底色 */
+  --chrome: #141414;
   --panel: #141414;
   --panel-2: #1A1A1A;
   --panel-3: #232323;
@@ -385,17 +392,10 @@
   margin: 0 2px;
 }
 
-/* 设置页左侧导航：R2′（填充 + accent-text + 700 + ✓，不再用描边/指示条） */
+/* 设置页左侧导航：填充 + accent-text + 700 就够，不再叠 ✓ */
 .settings-nav-active {
   background: var(--accent-soft);
   color: var(--accent-text);
-  font-weight: var(--fw-700);
-}
-.settings-nav-active::after {
-  content: '✓';
-  margin-left: auto;
-  color: var(--accent);
-  font-size: var(--fs-1);
   font-weight: var(--fw-700);
 }
 
@@ -567,17 +567,10 @@ select.input {
   background: var(--panel-2);
   color: var(--text);
 }
-/* R2′ 选中态：填充 + accent-text + 700 + ✓，取消旧 1px 描边与 2px 指示条 */
+/* 选中态：填充 + accent-text + 700 就够，不再叠 ✓ */
 .side-item.active {
   background: var(--accent-soft);
   color: var(--accent-text);
-  font-weight: var(--fw-700);
-}
-.side-item.active::after {
-  content: '✓';
-  margin-left: 6px;
-  color: var(--accent);
-  font-size: var(--fs-1);
   font-weight: var(--fw-700);
 }
 .side-item .count {

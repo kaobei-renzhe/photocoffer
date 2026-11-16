@@ -82,7 +82,7 @@ export default function RelocateDialog({ onClose, onFinished }: RelocateDialogPr
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <TriangleAlert size={16} color="var(--danger-text)" />
-          <span className="text-[13.5px] font-bold">重新定位丢失文件</span>
+          <span className="text-[15px] font-bold">重新定位丢失文件</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
             <X size={16} />
           </button>

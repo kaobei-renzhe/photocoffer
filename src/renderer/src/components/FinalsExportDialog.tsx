@@ -130,7 +130,7 @@ export default function FinalsExportDialog({
       >
         <div className="flex h-[46px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
           <HardDriveDownload size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">导出成品</span>
+          <span className="text-[15px] font-bold">导出成品</span>
           <span className="text-[12px] text-[var(--faint)]">已选 {itemIds.length} 张</span>
           <button
             className="btn btn-ghost ml-auto h-7 px-1.5"

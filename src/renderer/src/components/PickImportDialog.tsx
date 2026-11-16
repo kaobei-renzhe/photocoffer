@@ -117,7 +117,7 @@ export default function PickImportDialog({
       >
         <div className="h-[46px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <ClipboardPaste size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">导入浏览页结果</span>
+          <span className="text-[15px] font-bold">导入浏览页结果</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose} title="关闭（Esc）">
             <X size={16} />
           </button>

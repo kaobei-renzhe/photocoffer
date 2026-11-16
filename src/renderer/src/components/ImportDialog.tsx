@@ -72,7 +72,7 @@ export default function ImportDialog({
       >
         <div className="h-[48px] px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <Upload size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">导入照片</span>
+          <span className="text-[15px] font-bold">导入照片</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
             <X size={16} />
           </button>

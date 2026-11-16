@@ -6,8 +6,9 @@ import { pickThumbQuality, type ThumbQuality, type ThumbQualityPref } from '@sha
 import { RAW_EXT } from '@shared/formats'
 import { scoreColor, thumbUrl } from '../lib/format'
 
-const GAP = 10
-const PAD = 14
+/* 4px 网格：卡片间距 8、外沿 16，和标题栏/工具栏的 8/12/16 节奏对齐 */
+const GAP = 8
+const PAD = 16
 
 interface GalleryProps {
   items: Item[]

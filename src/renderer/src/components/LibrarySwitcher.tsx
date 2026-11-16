@@ -161,7 +161,7 @@ export default function LibrarySwitcher({ current, onClose, onSwitched }: Librar
       >
         <div className="flex h-[46px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
           <ArrowLeftRight size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">切换图库</span>
+          <span className="text-[15px] font-bold">切换图库</span>
           <span className="text-[12px] text-[var(--faint)]">
             {libraries ? `${libraries.length} 个` : '正在读取…'}
           </span>

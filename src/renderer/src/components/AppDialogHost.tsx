@@ -77,7 +77,7 @@ export default function AppDialogHost() {
         <div className="flex items-start gap-3 px-4 pt-4 pb-3">
           <Icon size={18} color={color} className="mt-0.5 shrink-0" />
           <div className="min-w-0 flex-1">
-            <div className="text-[13.5px] font-bold leading-5 text-[var(--text)]">{current.title}</div>
+            <div className="text-[15px] font-bold leading-5 text-[var(--text)]">{current.title}</div>
             {current.detail && (
               <div className="mt-1.5 text-[12px] leading-5 text-[var(--muted)]">{current.detail}</div>
             )}

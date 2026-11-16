@@ -397,7 +397,7 @@ export default function StudyTab({
                   {aiTurns > 0 && <span>· 反问 {Math.min(aiTurns, 2)}/2</span>}
                   <span className="ml-auto tabular-nums">{formatDate(thread.root.createdAt)}</span>
                   <button
-                    className="grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--danger-text)]"
+                    className="grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel-2)] hover:text-[var(--danger-text)]"
                     onClick={() => void remove(thread)}
                     title="删除这条笔记"
                   >
@@ -528,7 +528,7 @@ export default function StudyTab({
               <span className="flex items-center gap-1 text-[11px] text-[var(--accent-text)]">
                 已框选一块区域 · {Math.round(region.w * 100)}% × {Math.round(region.h * 100)}%
                 <button
-                  className="grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel)] hover:text-[var(--text)]"
+                  className="grid h-5 w-5 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
                   onClick={() => onRegionChange?.(null)}
                   title="清除框选"
                 >

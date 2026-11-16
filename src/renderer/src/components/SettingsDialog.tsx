@@ -966,7 +966,7 @@ export default function SettingsDialog({
       >
         <div className="h-[48px] px-4 flex items-center gap-2 border-b border-[var(--border)] shrink-0">
           <SettingsIcon size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">设置</span>
+          <span className="text-[15px] font-bold">设置</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
             <X size={16} />
           </button>
@@ -1468,7 +1468,7 @@ export default function SettingsDialog({
                         <div className="text-[11px] text-[var(--faint)] mt-0.5 leading-4">
                           {model.note}
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[10.5px] text-[var(--faint)]">
+                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-[var(--faint)]">
                           {[
                             ['中文', model.zhStrength],
                             ['速度', model.speed],

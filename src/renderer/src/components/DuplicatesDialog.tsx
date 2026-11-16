@@ -40,7 +40,7 @@ export default function DuplicatesDialog({ onClose, onRemove }: DuplicatesDialog
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <Copy size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">重复照片</span>
+          <span className="text-[15px] font-bold">重复照片</span>
           {!loading && (
             <span className="text-[12px] text-[var(--faint)]">
               {groups.length} 组 · 可清理 {total} 张

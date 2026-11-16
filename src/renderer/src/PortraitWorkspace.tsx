@@ -515,22 +515,27 @@ export default function PortraitWorkspace({
                 </option>
               ))}
             </select>
-            <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5">
-              {[2, 3, 4].map((n) => (
-                <button
-                  key={n}
-                  className={`h-7 w-7 rounded-lg text-[12px] ${
-                    columns === n
-                      ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                      : 'text-[var(--faint)] hover:text-[var(--text)]'
-                  }`}
-                  onClick={() => changeColumns(n)}
-                  aria-pressed={columns === n}
-                  title={`${n} 列`}
-                >
-                  {n}
-                </button>
-              ))}
+            {/* 列数切换＝缩略图大小。光秃秃的数字看不出含义，前面加「每行」标注 */}
+            <div className="flex items-center gap-1.5" title="调整每行显示几张，也就是缩略图大小">
+              <span className="text-[11px] text-[var(--faint)]">每行</span>
+              <div className="flex items-center rounded-lg border border-[var(--border)] bg-[var(--card)] p-0.5">
+                {[2, 3, 4].map((n) => (
+                  <button
+                    key={n}
+                    className={`h-7 w-7 rounded-lg text-[12px] tabular-nums ${
+                      columns === n
+                        ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                        : 'text-[var(--faint)] hover:text-[var(--text)]'
+                    }`}
+                    onClick={() => changeColumns(n)}
+                    aria-pressed={columns === n}
+                    aria-label={`每行 ${n} 张`}
+                    title={`每行 ${n} 张`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
             </div>
             {statusFilter !== 'all' && (
               <button
@@ -725,6 +730,7 @@ export default function PortraitWorkspace({
                   <div className="max-w-[360px] text-center">
                     <div className="text-[15px] font-bold text-[var(--text)]">人像识别需要一个本地模型</div>
                     <div className="mt-1.5 text-[12px] leading-5 text-[var(--muted)]">
+                      人像检测有专用模型，和「语义索引」用的那个是两套，互不替代。
                       下载后只在这台电脑上运行，照片不外传。约 41 MB，只需下载一次。
                     </div>
                     {modelDownload ? (

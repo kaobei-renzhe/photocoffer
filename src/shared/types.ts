@@ -1008,6 +1008,8 @@ export interface Api {
   /** 切换窗口全屏；不传参数时取反，返回切换后的状态 */
   setFullScreen: (value?: boolean) => Promise<boolean>
   isFullScreen: () => Promise<boolean>
+  /** 灯箱沉浸：把 Windows 原生三键融进黑色舞台（非 Windows 返回 false） */
+  setOverlayImmersive: (value: boolean) => Promise<boolean>
   pickRelocateDir: () => Promise<RelocatePlan | null>
   planRelocate: (dir: string) => Promise<RelocatePlan>
   lastRelocateDir: () => Promise<string | null>

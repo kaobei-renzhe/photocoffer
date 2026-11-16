@@ -110,7 +110,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
       >
         <div className="h-[48px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <Tags size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">自动归类</span>
+          <span className="text-[15px] font-bold">自动归类</span>
           <button className="btn btn-ghost h-7 px-1.5 ml-auto" onClick={onClose}>
             <X size={16} />
           </button>
@@ -118,7 +118,8 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="text-[12px] text-[var(--muted)] leading-5">
-            用本地识图模型给照片分类，结果就是普通标签，能照常筛选和删除。
+            用本地识图模型给照片做粗分类。实测不同类目的分数很接近，结果只作弱提示，
+            适合粗筛，别当权威标签；打出来的就是普通标签，能照常筛选和删除。
             目前{' '}
             {status
               ? `使用 ${status.modelLabel} · 已索引 ${status.indexed}/${status.total} 张，已自动归类 ${status.tagged} 张`
@@ -137,12 +138,14 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
               <span className="text-[12px] text-[var(--text)] tabular-nums">
                 {settings.threshold.toFixed(2)}
               </span>
-              <span className="text-[12px] text-[var(--faint)] ml-auto">越高越严格，越低越容易归类</span>
+              <span className="text-[12px] text-[var(--faint)] ml-auto">
+                越高越严格；默认 0.40，只保留相对有把握的
+              </span>
             </div>
             <input
               type="range"
-              min={status?.thresholdMin ?? 0.15}
-              max={status?.thresholdMax ?? 0.35}
+              min={status?.thresholdMin ?? 0.2}
+              max={status?.thresholdMax ?? 0.5}
               step={status?.thresholdStep ?? 0.01}
               value={settings.threshold}
               disabled={running}

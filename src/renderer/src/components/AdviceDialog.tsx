@@ -75,7 +75,7 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
       >
         <div className="h-[46px] shrink-0 px-4 flex items-center gap-2 border-b border-[var(--border)]">
           <Sparkles size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">后期建议</span>
+          <span className="text-[15px] font-bold">后期建议</span>
           <span className="truncate text-[12px] text-[var(--faint)]" title={item.name}>
             {item.name}
           </span>

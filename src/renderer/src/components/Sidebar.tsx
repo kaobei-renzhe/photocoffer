@@ -800,7 +800,7 @@ export default function Sidebar({
       className="shrink-0 bg-[var(--chrome)] flex flex-col min-h-0 overflow-x-hidden"
       style={{ width: 'var(--sidebar-w, 236px)' }}
     >
-      <div className="px-4 pt-3.5 pb-3 border-b border-[var(--border)]">
+      <div className="px-4 pt-3 pb-3 border-b border-[var(--border)]">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <div className="truncate text-[13.5px] font-bold" title={library}>

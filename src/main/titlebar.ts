@@ -9,5 +9,5 @@ export function titleBarColors(): { color: string; symbolColor: string } {
     skin.mode === 'dark' || (skin.mode === 'auto' && nativeTheme.shouldUseDarkColors)
   return dark
     ? { color: '#1B1B1B', symbolColor: '#A6A6A6' }
-    : { color: '#FFFDF9', symbolColor: '#4A5464' }
+    : { color: '#FFFDF9', symbolColor: '#5A5348' }
 }

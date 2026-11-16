@@ -7,10 +7,11 @@ import type {
 import {
   ChevronLeft,
   ChevronRight,
-  CircleHelp,
   Minus,
   MoreHorizontal,
   Plus,
+  RotateCcw,
+  RotateCw,
   X
 } from 'lucide-react'
 import type { Folder, Item, NoteRegion, NoteThread, PhotoNote, Tag } from '@shared/types'
@@ -53,7 +54,7 @@ const PEEK_BAND = 68
 const PEEK_HOLD_MS = 3000
 /** ⋯ 二级面板里的低频按钮 */
 const MORE_BTN =
-  'rounded-lg bg-white/8 px-2 py-1 text-[11.5px] text-[var(--lb-text)] hover:bg-white/16'
+  'rounded-lg bg-white/8 px-2 py-1 text-[12px] text-[var(--lb-text)] hover:bg-white/16'
 
 export default function Lightbox({
   items,
@@ -149,6 +150,14 @@ export default function Lightbox({
     interacting: moreOpen || slideshow
   })
   /** 关掉沉浸 = 锁定工具常显 */
+  // 灯箱一打开就把 Windows 原生三键融进黑色舞台；关闭时恢复主题色
+  // 原生 overlay 在网页层之上，网页挡不住它，只能改它自己的颜色
+  useEffect(() => {
+    void window.api.setOverlayImmersive(true)
+    return () => {
+      void window.api.setOverlayImmersive(false)
+    }
+  }, [])
   const chromeLocked = !immersive
   /** 透明度三档：静止 .38 / 触发 .72 / 常显或聚焦 1 */
   const ctrlOpacity = chromeVisible
@@ -614,6 +623,12 @@ export default function Lightbox({
   const ready = natural.w > 0 && zoom > 0
   const canPan = zoom > fitScale + 1e-4
   const percent = ready ? `${Math.round(zoom * dpr * 100)}%` : '—'
+
+  // 没有任何拍摄信息时，底左 EXIF 整条不渲染；避免出现「f/— — ISO — 没有器材信息」的占位噪音
+  const hasExif = Boolean(
+    item.exif &&
+      (item.exif.aperture || item.exif.shutter || item.exif.iso || item.exif.camera || item.exif.lens)
+  )
   /**
    * 显示尺寸与偏移都对齐到「整物理像素」：
    * CSS 像素宽度取整会在 1.75 倍屏上变成 2999.5 物理像素，浏览器就会把图整体重采样一遍，
@@ -911,41 +926,32 @@ export default function Lightbox({
         )}
       </div>
 
-      {/* 底左：EXIF 浮字，不再套胶囊 */}
-      <div
-        data-lb-chrome
-        className={`pointer-events-none absolute bottom-3 left-5 z-20 flex items-center gap-3 text-[11.5px] tabular-nums text-[var(--lb-faint)] ${infoOpacity} ${chromeMotion}`}
-      >
-        <span className="inline-block w-[40px]">{item.exif?.aperture ?? 'f/—'}</span>
-        <span className="inline-block w-[56px]">{item.exif?.shutter ?? '—'}</span>
-        <span className="inline-block w-[56px]">
-          {item.exif?.iso ? `ISO ${item.exif.iso}` : 'ISO —'}
-        </span>
-        {!inspectorOpen && (
-          <>
-            <span className="h-4 w-px bg-[var(--lb-rule)]" />
-            <span className="w-[240px] shrink-0 truncate text-[11px]">
-              {[item.exif?.camera, item.exif?.lens].filter(Boolean).join(' · ') || '没有器材信息'}
-            </span>
-          </>
-        )}
-      </div>
+      {/* 底左：EXIF 浮字。没有任何拍摄信息时整条不渲染，不留占位符 */}
+      {hasExif && (
+        <div
+          data-lb-chrome
+          className={`pointer-events-none absolute bottom-3 left-5 z-20 flex items-center gap-3 text-[12px] tabular-nums text-[var(--lb-faint)] ${infoOpacity} ${chromeMotion}`}
+        >
+          {item.exif?.aperture && <span>{item.exif.aperture}</span>}
+          {item.exif?.shutter && <span>{item.exif.shutter}</span>}
+          {item.exif?.iso ? <span>ISO {item.exif.iso}</span> : null}
+          {!inspectorOpen && (item.exif?.camera || item.exif?.lens) && (
+            <>
+              <span className="h-4 w-px bg-[var(--lb-rule)]" />
+              <span className="min-w-0 max-w-[240px] shrink-0 truncate text-[11px]">
+                {[item.exif?.camera, item.exif?.lens].filter(Boolean).join(' · ')}
+              </span>
+            </>
+          )}
+        </div>
+      )}
 
-      {/* 底部单行浮字条：? − 百分比 + 适应 ⋯ ×，低频功能收进 ⋯ */}
+      {/* 底部单行浮字条：− 百分比 + 适应 | 旋转 档案 | ⋯ ×，低频功能收进 ⋯ */}
       <div
         data-lb-chrome
         className={`absolute bottom-3 z-20 flex -translate-x-1/2 items-center gap-2 text-[12px] text-[var(--lb-faint)] ${ctrlOpacity} ${chromePointer} ${chromeMotion} hover:opacity-100`}
         style={{ left: inspectorOpen ? 'calc(50% - 160px)' : '50%' }}
       >
-        <button
-          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
-          onClick={() => setMoreOpen((value) => !value)}
-          title="快捷键"
-          aria-label="快捷键"
-          aria-expanded={moreOpen}
-        >
-          <CircleHelp size={16} strokeWidth={1.75} />
-        </button>
         <button
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => zoomStep(1 / 1.25)}
@@ -969,6 +975,36 @@ export default function Lightbox({
           title="适应窗口 (0)"
         >
           适应
+        </button>
+
+        <span className="h-4 w-px bg-[var(--lb-rule)]" />
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={() => rotateBy(-90)}
+          title="向左旋转 (Shift+R)"
+          aria-label="向左旋转"
+        >
+          <RotateCcw size={16} strokeWidth={1.75} />
+        </button>
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={() => rotateBy(90)}
+          title="向右旋转 (R)"
+          aria-label="向右旋转"
+        >
+          <RotateCw size={16} strokeWidth={1.75} />
+        </button>
+        <button
+          className={`h-7 rounded-full px-2 text-[12px] ${
+            inspectorOpen
+              ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+              : 'text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]'
+          }`}
+          onClick={() => setInspectorOpen((value) => !value)}
+          title="照片档案 (N)"
+          aria-pressed={inspectorOpen}
+        >
+          档案
         </button>
 
         <div
@@ -1003,17 +1039,8 @@ export default function Lightbox({
                 >
                   {slideDelay / 1000} 秒
                 </button>
-                <button className={MORE_BTN} onClick={() => rotateBy(-90)}>
-                  左转
-                </button>
-                <button className={MORE_BTN} onClick={() => rotateBy(90)}>
-                  右转
-                </button>
                 <button className={MORE_BTN} onClick={() => void toggleFullscreen()}>
                   {fullscreen ? '退出全屏' : '全屏'}
-                </button>
-                <button className={MORE_BTN} onClick={() => setInspectorOpen((value) => !value)}>
-                  {inspectorOpen ? '收起档案' : '档案'}
                 </button>
               </div>
               <div className="my-1 h-px bg-[var(--lb-rule)]" />

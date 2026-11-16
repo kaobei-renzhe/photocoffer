@@ -196,7 +196,7 @@ export default function DraftPhotoPicker({
       >
         <div className="flex h-[46px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-4">
           <ImagePlus size={16} color="var(--accent-2)" />
-          <span className="text-[13.5px] font-bold">管理这单的照片</span>
+          <span className="text-[15px] font-bold">管理这单的照片</span>
           <span className="text-[12px] text-[var(--faint)]">
             {session.title} · 已选 {picked.size} 张
           </span>

@@ -98,11 +98,15 @@ interface ThresholdProfile {
 }
 
 /**
- * 两个模型的余弦分布完全不同：Chinese-CLIP 正常匹配在 0.2–0.4，
+ * 两个模型的余弦分布完全不同：Chinese-CLIP 正常匹配在 0.2–0.5，
  * SigLIP 2 只有 0.05–0.1，共用一个阈值会让自动分类直接全空。
+ *
+ * Chinese-CLIP 的实测（3 万张图库）：14 个类目的分数全部挤在 0.35–0.49，
+ * 类目平均分只差 0.026，区分度很低。默认阈值定在 0.40，
+ * 只给相对有把握的照片打标，避免 99.7% 的图都被强行归类。
  */
 const THRESHOLD_PROFILES: Record<EmbeddingModelId, ThresholdProfile> = {
-  'chinese-clip': { min: 0.15, max: 0.35, fallback: 0.2, step: 0.01 },
+  'chinese-clip': { min: 0.2, max: 0.5, fallback: 0.4, step: 0.01 },
   siglip2: { min: 0.02, max: 0.12, fallback: 0.06, step: 0.01 }
 }
 

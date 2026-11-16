@@ -129,6 +129,8 @@ export default function Toolbar({
   const [filtersOpen, setFiltersOpen] = useState(false)
   /** 主色筛选再收一层，展开才显示色块 */
   const [colorOpen, setColorOpen] = useState(false)
+  /** 筛选行同一时间只开一个下拉（原生 select 的高亮不受主题控制，这里统一成自绘） */
+  const [filterMenu, setFilterMenu] = useState<string | null>(null)
   /** 视图菜单：缩略图大小与连拍展开都放这里 */
   const [viewOpen, setViewOpen] = useState(false)
   /** 批量备注：展开输入行，避免一直占着选中条 */
@@ -225,7 +227,7 @@ export default function Toolbar({
     : '用自然语言描述画面来找图（本地模型，不上传）'
 
   return (
-    <div className="relative z-20 shrink-0 bg-[var(--panel)] px-3 py-2.5">
+    <div className="relative z-20 shrink-0 bg-[var(--panel)] px-4 py-2">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-[420px]">
           <Search
@@ -260,9 +262,14 @@ export default function Toolbar({
 
         <button
           className={`btn h-8 px-2.5 shrink-0 ${
-            !filtersOpen && activeCount > 0 ? 'border-[var(--accent-border)] text-[var(--accent-2)]' : ''
+            filtersOpen || activeCount > 0
+              ? 'border-transparent bg-[var(--accent-soft)] text-[var(--accent-text)]'
+              : ''
           }`}
-          onClick={() => setFiltersOpen((open) => !open)}
+          onClick={() => {
+            setFiltersOpen((open) => !open)
+            setFilterMenu(null)
+          }}
           title={filtersOpen ? '收起筛选条件' : '展开筛选条件'}
         >
           <SlidersHorizontal size={16} strokeWidth={1.75} /> 筛选
@@ -362,7 +369,7 @@ export default function Toolbar({
               className={`rounded-lg px-2 py-0.5 transition-colors ${
                 semanticCap === opt.id
                   ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-                  : 'hover:bg-[var(--panel)]'
+                  : 'hover:bg-[var(--panel-3)]'
               }`}
               onClick={() => onSemanticCap(opt.id)}
               title={opt.hint}
@@ -392,61 +399,83 @@ export default function Toolbar({
       {filtersOpen && (
         <div className="mt-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-2">
-        <select
-          className="input h-7 text-[12px]"
+        <FilterSelect
+          id="rating"
+          label="星级"
           value={filter.minRating ?? 0}
-          onChange={(e) => patch({ minRating: Number(e.target.value) })}
-        >
-          <option value={0}>星级</option>
-          <option value={1}>星级 · 1★以上</option>
-          <option value={2}>星级 · 2★以上</option>
-          <option value={3}>星级 · 3★以上</option>
-          <option value={4}>星级 · 4★以上</option>
-          <option value={5}>星级 · 5★</option>
-        </select>
+          defaultValue={0}
+          options={[
+            { value: 0, label: '星级' },
+            { value: 1, label: '星级 · 1★以上' },
+            { value: 2, label: '星级 · 2★以上' },
+            { value: 3, label: '星级 · 3★以上' },
+            { value: 4, label: '星级 · 4★以上' },
+            { value: 5, label: '星级 · 5★' }
+          ]}
+          onChange={(value) => patch({ minRating: value })}
+          open={filterMenu === 'rating'}
+          onOpen={setFilterMenu}
+          title="按星级筛选"
+        />
 
         {aiReady && canScore && (
-          <select
-            className="input h-7 text-[12px]"
+          <FilterSelect
+            id="aiScore"
+            label="AI 评分"
             value={filter.unscored ? 'unscored' : String(filter.minAiScore ?? 0)}
-            onChange={(e) => {
-              const value = e.target.value
+            defaultValue="0"
+            options={[
+              { value: '0', label: 'AI 评分' },
+              { value: '60', label: 'AI 评分 · ≥60' },
+              { value: '70', label: 'AI 评分 · ≥70' },
+              { value: '80', label: 'AI 评分 · ≥80' },
+              { value: '90', label: 'AI 评分 · ≥90' },
+              { value: 'unscored', label: 'AI 评分 · 未评' }
+            ]}
+            onChange={(value) => {
               if (value === 'unscored') patch({ unscored: true, minAiScore: 0 })
               else patch({ unscored: false, minAiScore: Number(value) })
             }}
+            open={filterMenu === 'aiScore'}
+            onOpen={setFilterMenu}
             title="按大模型质量评分筛选"
-          >
-            <option value="0">AI 评分</option>
-            <option value="60">AI 评分 · ≥60</option>
-            <option value="70">AI 评分 · ≥70</option>
-            <option value="80">AI 评分 · ≥80</option>
-            <option value="90">AI 评分 · ≥90</option>
-            <option value="unscored">AI 评分 · 未评</option>
-          </select>
+          />
         )}
 
-        <select
-          className="input h-7 text-[12px]"
+        <FilterSelect
+          id="orientation"
+          label="构图"
           value={filter.orientation ?? ''}
-          onChange={(e) => patch({ orientation: (e.target.value || null) as FilterState['orientation'] })}
-        >
-          <option value="">构图</option>
-          <option value="landscape">构图 · 横向</option>
-          <option value="portrait">构图 · 纵向</option>
-          <option value="square">构图 · 方形</option>
-        </select>
+          defaultValue=""
+          options={[
+            { value: '', label: '构图' },
+            { value: 'landscape', label: '构图 · 横向' },
+            { value: 'portrait', label: '构图 · 纵向' },
+            { value: 'square', label: '构图 · 方形' }
+          ]}
+          onChange={(value) => patch({ orientation: (value || null) as FilterState['orientation'] })}
+          open={filterMenu === 'orientation'}
+          onOpen={setFilterMenu}
+          title="按画面构图筛选"
+        />
 
-        <select
-          className="input h-7 text-[12px]"
+        <FilterSelect
+          id="flag"
+          label="旗标"
           value={filter.flag ?? 0}
-          onChange={(e) => patch({ flag: Number(e.target.value) })}
-        >
-          <option value={0}>旗标</option>
-          <option value={1}>旗标 · 留用</option>
-          <option value={-1}>旗标 · 淘汰</option>
-          <option value={FLAG_FILTER_NOT_REJECTED}>旗标 · 非淘汰</option>
-          <option value={FLAG_FILTER_NOT_PICKED}>旗标 · 非留用</option>
-        </select>
+          defaultValue={0}
+          options={[
+            { value: 0, label: '旗标' },
+            { value: 1, label: '旗标 · 留用' },
+            { value: -1, label: '旗标 · 淘汰' },
+            { value: FLAG_FILTER_NOT_REJECTED, label: '旗标 · 非淘汰' },
+            { value: FLAG_FILTER_NOT_PICKED, label: '旗标 · 非留用' }
+          ]}
+          onChange={(value) => patch({ flag: value })}
+          open={filterMenu === 'flag'}
+          onOpen={setFilterMenu}
+          title="按旗标筛选"
+        />
 
         {filter.missing && (
           <button
@@ -461,7 +490,7 @@ export default function Toolbar({
         {aiReady && canSmartFilter && (
           <button
             className={`btn h-7 px-2 text-[12px] ${
-              aiRule ? 'border-[var(--accent)] text-[var(--accent-2)]' : ''
+              aiRule ? 'border-transparent bg-[var(--accent-soft)] text-[var(--accent-text)]' : ''
             }`}
             onClick={onOpenSmartFilter}
             title="用一句话描述要挑哪些图，让大模型帮你筛（会调用模型）"
@@ -470,28 +499,51 @@ export default function Toolbar({
           </button>
         )}
 
-        <button
-          className={`btn h-7 px-2 text-[12px] ${
-            filter.colorFamily ? 'border-[var(--accent-border)] text-[var(--accent-2)]' : ''
+        <div
+          className={`inline-flex h-7 items-center rounded-lg transition-colors ${
+            filter.colorFamily ? 'bg-[var(--accent-soft)]' : 'bg-[var(--panel)]'
           }`}
-          onClick={() => setColorOpen((open) => !open)}
-          aria-expanded={colorOpen}
-          title="按照片画面的主色筛图，点开选一个色块"
         >
-          <span
-            className="w-[10px] h-[10px] rounded-full shrink-0"
-            style={{
-              background: activeColor?.hex ?? 'var(--panel-3)',
-              boxShadow: '0 0 0 1px rgba(255,255,255,0.18)'
-            }}
-          />
-          主色
-          {colorOpen ? <ChevronUp size={16} strokeWidth={1.75} /> : <ChevronDown size={16} strokeWidth={1.75} />}
-        </button>
+          <button
+            type="button"
+            className={`inline-flex h-7 items-center gap-1 rounded-lg pl-2 text-[12px] ${
+              filter.colorFamily
+                ? 'pr-0.5 text-[var(--accent-text)]'
+                : 'pr-2 text-[var(--text)] hover:bg-[var(--panel-3)]'
+            }`}
+            onClick={() => setColorOpen((open) => !open)}
+            aria-expanded={colorOpen}
+            title="按照片画面的主色筛图，点开选一个色块"
+          >
+            <span
+              className="w-[10px] h-[10px] rounded-full shrink-0"
+              style={{
+                background: activeColor?.hex ?? 'var(--panel-3)',
+                boxShadow: '0 0 0 1px rgba(255,255,255,0.18)'
+              }}
+            />
+            主色
+            {colorOpen ? <ChevronUp size={14} strokeWidth={1.75} /> : <ChevronDown size={14} strokeWidth={1.75} />}
+          </button>
+          {filter.colorFamily && (
+            <button
+              type="button"
+              className="mr-1 grid h-5 w-5 place-items-center rounded-full text-[var(--accent-text)] opacity-60 transition-opacity hover:opacity-100"
+              onClick={() => {
+                patch({ colorFamily: null })
+                setColorOpen(false)
+              }}
+              title="清除主色筛选"
+              aria-label="清除主色筛选"
+            >
+              <X size={12} strokeWidth={2} />
+            </button>
+          )}
+        </div>
 
         {filter.dir && (
           <button
-            className="btn h-7 px-2 text-[12px] max-w-[260px]"
+            className="btn h-7 px-2 text-[12px] max-w-[260px] border-transparent bg-[var(--accent-soft)] text-[var(--accent-text)]"
             onClick={() => patch({ dir: null })}
             title={filter.dir}
           >
@@ -503,7 +555,7 @@ export default function Toolbar({
 
         {aiRule && (
           <button
-            className="btn h-7 px-2 text-[12px] max-w-[260px] border-[var(--accent-border)] text-[var(--accent-2)]"
+            className="btn h-7 px-2 text-[12px] max-w-[260px] border-transparent bg-[var(--accent-soft)] text-[var(--accent-text)]"
             onClick={onClearAi}
             title={`AI 筛选：${aiRule}（点击取消）`}
           >
@@ -831,6 +883,111 @@ export default function Toolbar({
             <X size={16} strokeWidth={1.75} />
           </button>
         </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * 筛选行专用下拉：原生 select 的弹层高亮由系统画（Windows 是蓝灰），和暖黄强调色不统一，
+ * 这里改成自绘。选中项与按钮激活态都用同一套 accent-soft / accent-text，和侧栏选中一致。
+ */
+function FilterSelect<T extends string | number>({
+  id,
+  label,
+  value,
+  defaultValue,
+  options,
+  onChange,
+  open,
+  onOpen,
+  title
+}: {
+  id: string
+  label: string
+  value: T
+  defaultValue: T
+  options: Array<{ value: T; label: string }>
+  onChange: (value: T) => void
+  open: boolean
+  onOpen: (id: string | null) => void
+  title?: string
+}) {
+  const active = value !== defaultValue
+  const current = options.find((option) => option.value === value) ?? options[0]
+  return (
+    <div className="relative inline-flex items-center">
+      <div
+        className={`inline-flex h-7 items-center rounded-lg transition-colors ${
+          active ? 'bg-[var(--accent-soft)]' : 'bg-[var(--panel)]'
+        }`}
+      >
+        <button
+          type="button"
+          className={`inline-flex h-7 items-center gap-1 rounded-lg pl-2 text-[12px] ${
+            active
+              ? 'pr-0.5 text-[var(--accent-text)]'
+              : 'pr-2 text-[var(--text)] hover:bg-[var(--panel-3)]'
+          }`}
+          onClick={() => onOpen(open ? null : id)}
+          title={title}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+        >
+          {active ? current.label : label}
+          {open ? (
+            <ChevronUp size={14} strokeWidth={1.75} />
+          ) : (
+            <ChevronDown size={14} strokeWidth={1.75} />
+          )}
+        </button>
+        {/* 单项清除：只清这一项，不牵动其它筛选 */}
+        {active && (
+          <button
+            type="button"
+            className="mr-1 grid h-5 w-5 place-items-center rounded-full text-[var(--accent-text)] opacity-60 transition-opacity hover:opacity-100"
+            onClick={() => {
+              onChange(defaultValue)
+              onOpen(null)
+            }}
+            title={`清除${label}筛选`}
+            aria-label={`清除${label}筛选`}
+          >
+            <X size={12} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => onOpen(null)} />
+          <div
+            role="listbox"
+            className="absolute left-0 top-full z-40 mt-1 min-w-[176px] rounded-xl border border-[var(--border)] bg-[var(--panel)] p-1 shadow-2xl"
+          >
+            {options.map((option) => {
+              const selected = option.value === value
+              return (
+                <button
+                  key={String(option.value)}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  className={`flex h-7 w-full items-center rounded-lg px-2 text-left text-[12px] transition-colors ${
+                    selected
+                      ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent-text)]'
+                      : 'text-[var(--text)] hover:bg-[var(--panel-2)]'
+                  }`}
+                  onClick={() => {
+                    onChange(option.value)
+                    onOpen(null)
+                  }}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )

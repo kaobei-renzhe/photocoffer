@@ -193,6 +193,7 @@ const api: Api = {
   showInFolder: (path: string) => ipcRenderer.invoke('shell:showItem', path),
   setFullScreen: (value?: boolean) => ipcRenderer.invoke('window:setFullScreen', value),
   isFullScreen: () => ipcRenderer.invoke('window:isFullScreen'),
+  setOverlayImmersive: (value: boolean) => ipcRenderer.invoke('window:setOverlayImmersive', value),
   openPath: (path: string) => ipcRenderer.invoke('shell:openPath', path),
   pickRelocateDir: () => ipcRenderer.invoke('relocate:pick'),
   planRelocate: (dir) => ipcRenderer.invoke('relocate:plan', dir),

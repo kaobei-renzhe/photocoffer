@@ -61,7 +61,7 @@ import {
   setIndexDirFor,
   updateConfig
 } from './settings'
-import { titleBarColors } from './titlebar'
+import { TITLEBAR_OVERLAY_HEIGHT, titleBarColors } from './titlebar'
 import { startAutoBackup } from './scheduler'
 import { checkForUpdates, onUpdateStatus, quitAndInstall, updateStatus, updatesEnabled } from './updater'
 import {
@@ -320,7 +320,7 @@ function applySkinNative(id: SkinId): void {
   for (const win of BrowserWindow.getAllWindows()) {
     win.setBackgroundColor(background)
     if (process.platform === 'win32') {
-      win.setTitleBarOverlay({ ...titleBarColors(), height: 36 })
+      win.setTitleBarOverlay({ ...titleBarColors(), height: TITLEBAR_OVERLAY_HEIGHT })
     }
   }
 }
@@ -1225,8 +1225,12 @@ export function registerIpc(): void {
       for (const win of BrowserWindow.getAllWindows()) {
         win.setTitleBarOverlay(
           immersive
-            ? { color: '#0B0B0B', symbolColor: '#0B0B0B', height: 36 }
-            : { ...titleBarColors(), height: 36 }
+            ? {
+                color: '#0B0B0B',
+                symbolColor: '#0B0B0B',
+                height: TITLEBAR_OVERLAY_HEIGHT
+              }
+            : { ...titleBarColors(), height: TITLEBAR_OVERLAY_HEIGHT }
         )
       }
       return true

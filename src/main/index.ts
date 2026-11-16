@@ -12,7 +12,7 @@ import { getSkin, getTheme } from './settings'
 import { log } from './logger'
 import { installCrashGuards } from './crash'
 import { installAppMenu, isMac, platformName } from './platform'
-import { titleBarColors } from './titlebar'
+import { TITLEBAR_OVERLAY_HEIGHT, titleBarColors } from './titlebar'
 import { scheduleUpdateCheck } from './updater'
 import { isInside } from './pathGuard'
 import { EMBEDDING_MODELS, modelDirFor, resolveModelDir } from './clip/models'
@@ -133,7 +133,12 @@ function createWindow(): void {
     titleBarStyle: 'hidden',
     ...(isMac
       ? { trafficLightPosition: { x: 16, y: 12 } }
-      : { titleBarOverlay: { ...titleBarColors(), height: 36 } }),
+      : {
+          titleBarOverlay: {
+            ...titleBarColors(),
+            height: TITLEBAR_OVERLAY_HEIGHT
+          }
+        }),
     show: !headless,
     // 隐藏态也要出帧，否则调试端口截到的是空白
     paintWhenInitiallyHidden: true,

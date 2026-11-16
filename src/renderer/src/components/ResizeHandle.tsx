@@ -58,9 +58,9 @@ export default function ResizeHandle({ title, onStart, onDrag, onCommit, onReset
       onPointerUp={end}
       onPointerCancel={end}
       onDoubleClick={onReset}
-      className="group relative w-[6px] shrink-0 cursor-col-resize select-none"
+      className="group relative z-10 w-[6px] shrink-0 cursor-col-resize select-none before:absolute before:inset-y-0 before:left-1/2 before:-translate-x-1/2 before:w-[10px] before:content-['']"
     >
-      <span className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-[var(--border)] transition-colors group-hover:w-[2px] group-hover:bg-[var(--accent)]" />
+      <span className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-[var(--border)] transition-colors group-hover:w-[2px] group-hover:bg-[var(--accent-strong)] group-active:w-[2px] group-active:bg-[var(--accent-strong)]" />
     </div>
   )
 }

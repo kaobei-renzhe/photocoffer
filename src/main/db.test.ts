@@ -121,11 +121,11 @@ describe('openLibrary 迁移', () => {
     ).toBe(1)
   })
 
-  it('新库 v5 带人工纠错三列与索引', () => {
+  it('新库带人工纠错三列与索引', () => {
     const library = join(root, 'V5Library')
     openLibrary(library)
     const db = getDb()
-    expect(db.pragma('user_version', { simple: true })).toBe(5)
+    expect(db.pragma('user_version', { simple: true })).toBe(CURRENT_SCHEMA)
     const columns = (
       db.prepare('PRAGMA table_info(person_flags)').all() as Array<{ name: string }>
     ).map((column) => column.name)
@@ -141,7 +141,7 @@ describe('openLibrary 迁移', () => {
     ).toEqual({ c: 1 })
   })
 
-  it('v4 老库只追加 v5，不重跑前四步', () => {
+  it('v4 老库继续升级到当前版本，不重跑前四步', () => {
     const library = join(root, 'V4Library')
     createV0Library(library)
     const raw = new Database(join(library, 'library.db'))
@@ -160,12 +160,73 @@ describe('openLibrary 迁移', () => {
 
     openLibrary(library)
     const db = getDb()
-    expect(db.pragma('user_version', { simple: true })).toBe(5)
+    expect(db.pragma('user_version', { simple: true })).toBe(CURRENT_SCHEMA)
     const columns = (
       db.prepare('PRAGMA table_info(person_flags)').all() as Array<{ name: string }>
     ).map((column) => column.name)
     for (const column of ['override', 'override_at', 'override_model']) {
       expect(columns).toContain(column)
     }
+  })
+
+  it('v5 老库升级到 v6：回填 ai_score 并建索引', () => {
+    const library = join(root, 'V5ToV6Library')
+    openLibrary(library)
+    const db = getDb()
+    const items = db.prepare(
+      `INSERT INTO items(path, name, ext, added_at) VALUES(?, ?, '.jpg', 1)`
+    )
+    const scored = Number(items.run('C:\\v5\\scored.jpg', 'scored.jpg').lastInsertRowid)
+    const plain = Number(items.run('C:\\v5\\plain.jpg', 'plain.jpg').lastInsertRowid)
+    db.prepare('INSERT INTO quality_scores(item_id, overall, updated_at) VALUES(?, ?, ?)').run(
+      scored,
+      88,
+      1
+    )
+    // 模拟 v5 库：拆掉物化列与索引，把版本退回去
+    db.exec('DROP INDEX IF EXISTS idx_items_ai_score')
+    db.exec('ALTER TABLE items DROP COLUMN ai_score')
+    db.pragma('user_version = 5')
+    closeLibrary()
+
+    openLibrary(library)
+    const upgraded = getDb()
+    expect(upgraded.pragma('user_version', { simple: true })).toBe(CURRENT_SCHEMA)
+    const rows = upgraded
+      .prepare('SELECT id, ai_score FROM items WHERE id IN (?, ?) ORDER BY id')
+      .all(scored, plain)
+    expect(rows).toEqual([
+      { id: scored, ai_score: 88 },
+      { id: plain, ai_score: -1 }
+    ])
+    expect(
+      upgraded
+        .prepare(
+          "SELECT COUNT(*) AS c FROM sqlite_master WHERE type = 'index' AND name = 'idx_items_ai_score'"
+        )
+        .get()
+    ).toEqual({ c: 1 })
+    // 检索不受物化列与触发器改动影响
+    const hit = upgraded
+      .prepare(`SELECT rowid FROM items_fts WHERE items_fts MATCH '"scored"'`)
+      .all() as Array<{ rowid: number }>
+    expect(hit).toEqual([{ rowid: scored }])
+  })
+
+  it('改 ai_score 不会重写 FTS 索引', () => {
+    const library = join(root, 'TriggerLibrary')
+    openLibrary(library)
+    const db = getDb()
+    const id = Number(
+      db
+        .prepare(`INSERT INTO items(path, name, ext, added_at) VALUES(?, ?, '.jpg', 1)`)
+        .run('C:\\t\\moonrise.jpg', 'moonrise.jpg').lastInsertRowid
+    )
+    db.prepare('UPDATE items SET ai_score = 42 WHERE id = ?').run(id)
+    db.prepare('UPDATE items SET rating = 3 WHERE id = ?').run(id)
+    const hit = db
+      .prepare(`SELECT rowid FROM items_fts WHERE items_fts MATCH '"moonrise"'`)
+      .all() as Array<{ rowid: number }>
+    expect(hit).toEqual([{ rowid: id }])
   })
 })

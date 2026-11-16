@@ -305,12 +305,13 @@ function buildWhere(filter: FilterState, params: Array<string | number>): string
     where.push('i.rating >= ?')
     params.push(filter.minRating)
   }
+  // ai_score 由 quality_scores 同步物化，-1 = 未评分，过滤不必再回表 EXISTS
   if (filter.minAiScore && filter.minAiScore > 0) {
-    where.push('EXISTS (SELECT 1 FROM quality_scores qs WHERE qs.item_id = i.id AND qs.overall >= ?)')
+    where.push('i.ai_score >= ?')
     params.push(filter.minAiScore)
   }
   if (filter.unscored) {
-    where.push('NOT EXISTS (SELECT 1 FROM quality_scores qs WHERE qs.item_id = i.id)')
+    where.push('i.ai_score < 0')
   }
   if (filter.onlyIds && filter.onlyIds.length > 0) {
     where.push(`i.id IN (${filter.onlyIds.map(() => '?').join(',')})`)
@@ -434,8 +435,8 @@ export function listItems(
     mtime: 'i.mtime DESC',
     rating: 'i.rating DESC, i.added_at DESC',
     size: 'i.size DESC',
-    // 没评过分的排在最后，避免空值把高分图挤下去
-    ai: 'coalesce(qs.overall, -1) DESC, i.added_at DESC'
+    // 没评过分的（ai_score = -1）排在最后，走 idx_items_ai_score 索引
+    ai: 'i.ai_score DESC, i.added_at DESC'
   }
   const order = orderMap[sort] ?? orderMap.added
 
@@ -451,10 +452,8 @@ export function listItems(
     totalCache.set(cacheKey, { value: total, at: Date.now() })
   }
 
-  // ai 排序用 LEFT JOIN 一次带出分数，避免对每一行跑相关子查询
-  const from = sort === 'ai' ? 'items i LEFT JOIN quality_scores qs ON qs.item_id = i.id' : 'items i'
   const rows = db
-    .prepare(`SELECT i.* FROM ${from} ${whereSql} ORDER BY ${order} LIMIT ? OFFSET ?`)
+    .prepare(`SELECT i.* FROM items i ${whereSql} ORDER BY ${order} LIMIT ? OFFSET ?`)
     .all(...params, limit, offset) as ItemRow[]
 
   return { items: mapItems(rows), total }
@@ -636,6 +635,8 @@ export function saveQualityScores(
        model = excluded.model,
        updated_at = excluded.updated_at`
   )
+  // 列表的 ai 排序读 items.ai_score，写评分时同步一份，排序才能走索引
+  const syncScore = db.prepare('UPDATE items SET ai_score = ? WHERE id = ?')
   const now = Date.now()
   const tx = db.transaction((list: typeof scores) => {
     for (const score of list) {
@@ -650,6 +651,7 @@ export function saveQualityScores(
         model.slice(0, 80),
         now
       )
+      syncScore.run(score.overall, score.itemId)
     }
   })
   tx(scores)

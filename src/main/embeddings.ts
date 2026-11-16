@@ -24,8 +24,10 @@ import type {
 export interface ClipSearchResult {
   items: Item[]
   scores: number[]
-  /** 过滤后的命中总数，翻页用 */
+  /** 本次结果范围（cap 之后）的总数，翻页用 */
   total: number
+  /** cap 之前的完整命中数，用来告诉用户「候选有多少」 */
+  matched: number
 }
 
 interface RankedEntry {
@@ -331,7 +333,10 @@ export function listEmbeddingModels(): EmbeddingModelInfo[] {
     ready: resolveModelDir(spec.id) !== null,
     active: spec.id === active.id,
     indexed: (countIndexed.get(spec.tag) as { c: number }).c,
-    total
+    total,
+    zhStrength: spec.zhStrength,
+    speed: spec.speed,
+    bestFor: spec.bestFor
   }))
 }
 
@@ -508,29 +513,45 @@ async function rankedAll(
   return ranked
 }
 
-function pageResult(ranked: RankedEntry[], limit: number, offset: number): ClipSearchResult {
+function pageResult(
+  ranked: RankedEntry[],
+  limit: number,
+  offset: number,
+  matched = ranked.length
+): ClipSearchResult {
   const start = Math.max(0, Math.floor(offset))
   const page = ranked.slice(start, start + Math.max(1, Math.floor(limit)))
   return {
     items: getItemsByIds(page.map((entry) => entry.id)),
     scores: page.map((entry) => Number(entry.score.toFixed(3))),
-    total: ranked.length
+    total: ranked.length,
+    matched
   }
 }
+
+/**
+ * 语义搜图默认只保留最相关的 top N。
+ * CLIP 的分数分布很平（top1→top500 只衰减 9–15%），绝对阈值划不出干净界线，
+ * 所以按固定条数收敛：精确 50 / 标准 200 / 全部 0（不限）。
+ */
+export const DEFAULT_SEMANTIC_CAP = 200
 
 export async function searchByText(
   query: string,
   filter: FilterState,
   limit = 200,
-  offset = 0
+  offset = 0,
+  cap = DEFAULT_SEMANTIC_CAP
 ): Promise<ClipSearchResult> {
   const text = query.trim()
-  if (!text) return { items: [], scores: [], total: 0 }
+  if (!text) return { items: [], scores: [], total: 0, matched: 0 }
   const model = activeModel()
   const vector = await embedText(text)
   const key = `text|${model.tag}|${text}|${JSON.stringify({ ...filter, query: '' })}`
   const ranked = await rankedAll(vector, filter, undefined, key)
-  return pageResult(ranked, limit, offset)
+  // total 跟着 cap 收敛，翻页到上限就停；matched 保留完整候选数给界面显示
+  const capped = cap > 0 && cap < ranked.length ? ranked.slice(0, cap) : ranked
+  return pageResult(capped, limit, offset, ranked.length)
 }
 
 export async function searchSimilar(

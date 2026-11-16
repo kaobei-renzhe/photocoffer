@@ -15,4 +15,19 @@ describe('isChromeVisible', () => {
     expect(isChromeVisible({ immersive: false, peekBand: false, slideIdle: true })).toBe(false)
     expect(isChromeVisible({ immersive: false, peekBand: false, slideIdle: false })).toBe(true)
   })
+
+  it('键盘聚焦 / 框选 / 档案 / 二级面板期间强制常显', () => {
+    for (const key of ['focusWithin', 'drawing', 'inspectorOpen', 'interacting'] as const) {
+      expect(isChromeVisible({ immersive: true, peekBand: false, slideIdle: true, [key]: true })).toBe(
+        true
+      )
+    }
+  })
+
+  it('沉浸态下交互结束后回到按唤回带判定', () => {
+    const base = { immersive: true, peekBand: false, slideIdle: false, focusWithin: false }
+    expect(isChromeVisible(base)).toBe(false)
+    expect(isChromeVisible({ ...base, focusWithin: true })).toBe(true)
+    expect(isChromeVisible({ ...base, focusWithin: false, peekBand: true })).toBe(true)
+  })
 })

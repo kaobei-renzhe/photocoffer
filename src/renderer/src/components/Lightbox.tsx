@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type {
+  FocusEvent as ReactFocusEvent,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent
+} from 'react'
 import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
-  Info,
-  Maximize,
-  Minimize,
   Minus,
-  Pause,
-  Play,
+  MoreHorizontal,
   Plus,
-  RotateCcw,
-  RotateCw,
   X
 } from 'lucide-react'
 import type { Folder, Item, NoteRegion, NoteThread, PhotoNote, Tag } from '@shared/types'
@@ -42,11 +40,20 @@ interface LightboxProps {
   aiScope: AiScope | null
 }
 
-/** 适应窗口时四周留出的边距 */
-const FIT_PADDING = 48
+/**
+ * 适应窗口时四周留出的边距：这里减去的是「两边之和」，
+ * 96 对应每边 48px —— 工具条与图注都浮在照片下方的黑区里，不压照片。
+ */
+const FIT_PADDING = 96
 /** 相对原图的最大放大倍率（按屏幕物理像素算，8 倍已经能看清单个像素） */
 const MAX_ZOOM = 8
 const MIN_ZOOM = 0.02
+/** 指针进入上下这条带才唤出工具，离开后留 3 秒再退回去 */
+const PEEK_BAND = 68
+const PEEK_HOLD_MS = 3000
+/** ⋯ 二级面板里的低频按钮 */
+const MORE_BTN =
+  'rounded-lg bg-white/8 px-2 py-1 text-[11.5px] text-[var(--lb-text)] hover:bg-white/16'
 
 export default function Lightbox({
   items,
@@ -111,7 +118,8 @@ export default function Lightbox({
   const draftRef = useRef<NoteRegion | null>(null)
   const drawStartRef = useRef<{ x: number; y: number } | null>(null)
   const [hint, setHint] = useState('')
-  const [helpOpen, setHelpOpen] = useState(false)
+  /** ⋯ 二级面板：hover / Tab 聚焦即展开 */
+  const [moreOpen, setMoreOpen] = useState(false)
   /** 全屏状态：Esc 先退全屏再关灯箱 */
   const [fullscreen, setFullscreen] = useState(false)
   /** 幻灯片是否在放；间隔只有 3 秒 / 5 秒两档 */
@@ -119,21 +127,41 @@ export default function Lightbox({
   const [slideDelay, setSlideDelay] = useState<3000 | 5000>(3000)
   /** 任何键鼠操作都让计时重新开始 */
   const [slideTick, setSlideTick] = useState(0)
-  /** 沉浸（Tab）/ 幻灯片静止 / 指针唤回带：三个状态源各自只有一个写入者 */
-  const [immersive, setImmersive] = useState(false)
+  /** 沉浸（工具按需浮出）默认开启；按 ` 关掉 = 锁定工具常显 */
+  const [immersive, setImmersive] = useState(true)
   const [slideIdle, setSlideIdle] = useState(false)
   const [peekY, setPeekY] = useState<number | null>(null)
   const lastUserInputRef = useRef(Date.now())
+  const shellRef = useRef<HTMLDivElement>(null)
+  /** 焦点落在任一控件上：整条淡入并冻结自动隐藏 */
+  const [focusWithin, setFocusWithin] = useState(false)
   /** 只有本灯箱自己进的全屏才负责退出，别动用户原本就有的全屏 */
   const ownFullscreenRef = useRef(false)
-  const peekBand = peekY !== null && (peekY < 68 || peekY > window.innerHeight - 68)
-  const chromeVisible = isChromeVisible({ immersive, peekBand, slideIdle })
-  const chromeCls =
-    immersive || slideIdle
-      ? `transition-opacity ${slideIdle ? 'duration-[60ms]' : 'duration-200'} ${
-          chromeVisible ? 'opacity-100' : 'opacity-0'
-        }`
-      : 'opacity-100'
+  const peekBand =
+    peekY !== null && (peekY < PEEK_BAND || peekY > window.innerHeight - PEEK_BAND)
+  const chromeVisible = isChromeVisible({
+    immersive,
+    peekBand,
+    slideIdle,
+    focusWithin,
+    drawing,
+    inspectorOpen,
+    interacting: moreOpen || slideshow
+  })
+  /** 关掉沉浸 = 锁定工具常显 */
+  const chromeLocked = !immersive
+  /** 透明度三档：静止 .38 / 触发 .72 / 常显或聚焦 1 */
+  const ctrlOpacity = chromeVisible
+    ? chromeLocked || focusWithin
+      ? 'opacity-100'
+      : 'opacity-[0.72]'
+    : 'opacity-[0.38]'
+  const infoOpacity = chromeVisible ? 'opacity-[0.72]' : 'opacity-[0.38]'
+  const arrowOpacity = chromeVisible
+    ? 'opacity-[0.45] hover:opacity-100 focus-visible:opacity-100'
+    : 'opacity-0'
+  const chromeMotion = `transition-opacity ${chromeVisible ? 'duration-150' : 'duration-200'} motion-reduce:transition-none`
+  const chromePointer = chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'
 
   /** 旋转 90/270 度后，图像的横向和纵向尺寸互换 */
   const upright = rotation % 180 === 0
@@ -232,24 +260,51 @@ export default function Lightbox({
     }
     const timer = window.setInterval(() => {
       const quiet = Date.now() - lastUserInputRef.current > 3000
-      setSlideIdle(quiet && !drawing && !helpOpen && !immersive)
+      setSlideIdle(quiet && !drawing && !moreOpen && !immersive)
     }, 500)
     return () => window.clearInterval(timer)
-  }, [slideshow, drawing, helpOpen, immersive])
+  }, [slideshow, drawing, moreOpen, immersive])
 
-  // 沉浸态：只在 window 上听一次 pointermove，passive
+  /**
+   * 沉浸态：指针进入上下 68px 唤回带才浮出工具，离开后留 3 秒再退回去。
+   * 不在任意 pointermove 上唤出 —— 单张凝视时手一抖工具条反复弹隐比常显更烦。
+   */
   useEffect(() => {
     if (!immersive) {
       setPeekY(null)
       return
     }
-    const onMove = (event: PointerEvent): void => setPeekY(event.clientY)
+    let hideTimer: number | null = null
+    const clearHide = (): void => {
+      if (hideTimer === null) return
+      window.clearTimeout(hideTimer)
+      hideTimer = null
+    }
+    const onMove = (event: PointerEvent): void => {
+      const inBand =
+        event.clientY < PEEK_BAND || event.clientY > window.innerHeight - PEEK_BAND
+      if (inBand) {
+        clearHide()
+        setPeekY(event.clientY)
+        return
+      }
+      if (hideTimer !== null) return
+      hideTimer = window.setTimeout(() => {
+        hideTimer = null
+        setPeekY(null)
+      }, PEEK_HOLD_MS)
+    }
     window.addEventListener('pointermove', onMove, { passive: true })
-    return () => window.removeEventListener('pointermove', onMove)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      clearHide()
+    }
   }, [immersive])
 
-  // 关闭查看器时重置沉浸，避免用户忘了自己按过 Tab
-  useEffect(() => () => setImmersive(false), [])
+  // 打开时把焦点收进弹层，Tab 才不会漏到背后的列表；根节点自身不算「聚焦控件」
+  useEffect(() => {
+    shellRef.current?.focus({ preventScroll: true })
+  }, [])
 
   const clampPan = useCallback(
     (next: { x: number; y: number }, scale: number) => {
@@ -443,11 +498,11 @@ export default function Lightbox({
           target.blur()
           return
         }
-        // 先退全屏，再按一次才关灯箱
-        if (immersive) {
+        // 先关最上面一层：二级面板 → 全屏 → 框选 → 档案，最后才关灯箱
+        if (moreOpen) {
           e.preventDefault()
           e.stopPropagation()
-          setImmersive(false)
+          setMoreOpen(false)
           return
         }
         if (fullscreen) {
@@ -480,7 +535,7 @@ export default function Lightbox({
       }
       if (e.key === '?') {
         e.preventDefault()
-        setHelpOpen((value) => !value)
+        setMoreOpen((value) => !value)
         return
       }
       if (e.key === 'F11') {
@@ -543,8 +598,8 @@ export default function Lightbox({
     index,
     inspectorOpen,
     inspectorTab,
-    immersive,
     items.length,
+    moreOpen,
     onNavigate,
     openInspector,
     resetFit,
@@ -682,77 +737,31 @@ export default function Lightbox({
 
   return (
     <div
+      ref={shellRef}
       role="dialog"
       aria-modal="true"
       aria-label="照片查看器"
-      className="fixed inset-0 z-50 overflow-hidden bg-[var(--lightbox)]"
+      tabIndex={-1}
+      className="lightbox-fixed-dark fixed inset-0 z-50 overflow-hidden bg-[var(--lightbox)] outline-none"
+      onFocus={(event: ReactFocusEvent<HTMLDivElement>) => {
+        // 焦点落在弹层根节点本身不算「抓住控件」，否则一打开就永远不自动隐藏
+        if (event.target !== event.currentTarget) setFocusWithin(true)
+      }}
+      onBlur={(event: ReactFocusEvent<HTMLDivElement>) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusWithin(false)
+      }}
     >
+      {/* 顶部只留文件名 + 计数：无底、无框、无 blur */}
       <div
-        className={`absolute left-1/2 top-2 z-20 flex h-11 -translate-x-1/2 items-center gap-3 rounded-full border border-[var(--lb-rule)] bg-[var(--lb-chrome)] px-4 text-[13.5px] backdrop-blur-[18px] ${chromeCls}`}
+        data-lb-chrome
+        className={`pointer-events-none absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-3 text-[13.5px] ${infoOpacity} ${chromeMotion}`}
         style={{ width: 620, maxWidth: '62%', left: inspectorOpen ? 'calc(50% - 160px)' : '50%' }}
-        inert={!chromeVisible}
-        aria-hidden={!chromeVisible}
       >
         <span className="truncate text-[15px] font-bold text-[var(--lb-text)]">{item.name}</span>
         <span className="min-w-[62px] shrink-0 text-[12px] tabular-nums text-[var(--lb-faint)]">
           {index + 1} / {items.length}
         </span>
-        <button
-          className="ml-auto grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
-          onClick={() => setHelpOpen((open) => !open)}
-          title="快捷键"
-          aria-label="快捷键"
-        >
-          <CircleHelp size={16} strokeWidth={1.75} />
-        </button>
-        <button
-          className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[12px] ${
-            inspectorOpen
-              ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
-              : 'text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]'
-          }`}
-          onClick={() => setInspectorOpen((open) => !open)}
-          title="照片档案"
-        >
-          <Info size={16} strokeWidth={1.75} /> 档案
-        </button>
-        <button
-          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
-          onClick={onClose}
-          title="关闭 (Esc)"
-          aria-label="关闭"
-          autoFocus
-        >
-          <X size={16} strokeWidth={1.75} />
-        </button>
       </div>
-
-      {helpOpen && (
-        <div
-          className="absolute right-4 top-16 z-30 w-[240px] rounded-2xl border border-[var(--lb-rule)] bg-[var(--lb-chrome)] p-3 text-[12px] shadow-xl backdrop-blur-[18px]"
-          onMouseLeave={() => setHelpOpen(false)}
-        >
-          {[
-            ['滚轮', '缩放'],
-            ['双击', '100%'],
-            ['0', '适应窗口'],
-            ['R / Shift+R', '旋转'],
-            ['← →', '上一张 / 下一张'],
-            ['S', '幻灯片'],
-            ['F11', '全屏'],
-            ['`', '沉浸模式'],
-            ['?', '快捷键'],
-            ['N', '档案面板'],
-            ['F', '框选'],
-            ['Esc', '关闭']
-          ].map(([key, value]) => (
-            <div key={key} className="flex justify-between py-[3px]">
-              <span className="text-[var(--lb-faint)]">{key}</span>
-              <span className="text-[var(--lb-text)]">{value}</span>
-            </div>
-          ))}
-        </div>
-      )}
 
       <div className="flex h-full min-h-0">
         <div
@@ -807,7 +816,9 @@ export default function Lightbox({
                       height: `${layerH}px`,
                       maxWidth: 'none',
                       maxHeight: 'none',
-                      transform: `rotate(${rotation}deg)`
+                      transform: `rotate(${rotation}deg)`,
+                      // 10% 白勾边：夜景 / 低调人像的暗部才不会和纯黑背景糊成一片
+                      boxShadow: '0 0 0 1px var(--lb-matte)'
                     }
                   : {
                       maxWidth: '100%',
@@ -837,35 +848,34 @@ export default function Lightbox({
 
         {index > 0 && (
           <button
-            className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-200 ${
-              chromeVisible ? 'opacity-40 hover:opacity-100' : 'opacity-0 pointer-events-none'
+            data-lb-chrome
+            className={`absolute left-5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 ${arrowOpacity} ${chromeMotion} ${
+              chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'
             }`}
             onClick={() => onNavigate(index - 1)}
             title="上一张"
             aria-label="上一张"
-            tabIndex={chromeVisible ? 0 : -1}
-            aria-hidden={!chromeVisible}
           >
             <ChevronLeft size={24} strokeWidth={1.5} />
           </button>
         )}
         {index < items.length - 1 && (
           <button
-            className={`absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 transition-opacity duration-200 ${
-              chromeVisible ? 'opacity-40 hover:opacity-100' : 'opacity-0 pointer-events-none'
+            data-lb-chrome
+            className={`absolute right-5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/8 hover:bg-white/16 grid place-items-center text-white/80 ${arrowOpacity} ${chromeMotion} ${
+              chromeVisible ? 'pointer-events-auto' : 'pointer-events-none'
             }`}
             onClick={() => onNavigate(index + 1)}
             title="下一张"
             aria-label="下一张"
-            tabIndex={chromeVisible ? 0 : -1}
-            aria-hidden={!chromeVisible}
           >
             <ChevronRight size={24} strokeWidth={1.5} />
           </button>
         )}
 
         {(drawing || hint) && (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-[12px] text-white/85">
+          // 提示条抬到工具条上方，别和居中后的底部浮字条叠在一起
+          <div className="pointer-events-none absolute bottom-16 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1.5 text-[12px] text-white/85">
             {/* 提示优先：框太小时框选模式还开着，别把提示盖掉 */}
             {hint || '在画面上拖拽，框出一块区域'}
           </div>
@@ -901,14 +911,14 @@ export default function Lightbox({
         )}
       </div>
 
+      {/* 底左：EXIF 浮字，不再套胶囊 */}
       <div
-        className={`absolute bottom-3 left-4 z-20 flex h-11 items-center gap-3 rounded-full border border-[var(--lb-rule)] bg-[var(--lb-chrome)] px-4 text-[12px] text-[var(--lb-faint)] backdrop-blur-[18px] ${chromeCls}`}
-        inert={!chromeVisible}
-        aria-hidden={!chromeVisible}
+        data-lb-chrome
+        className={`pointer-events-none absolute bottom-3 left-5 z-20 flex items-center gap-3 text-[11.5px] tabular-nums text-[var(--lb-faint)] ${infoOpacity} ${chromeMotion}`}
       >
-        <span className="inline-block w-[40px] tabular-nums">{item.exif?.aperture ?? 'f/—'}</span>
-        <span className="inline-block w-[56px] tabular-nums">{item.exif?.shutter ?? '—'}</span>
-        <span className="inline-block w-[56px] tabular-nums">
+        <span className="inline-block w-[40px]">{item.exif?.aperture ?? 'f/—'}</span>
+        <span className="inline-block w-[56px]">{item.exif?.shutter ?? '—'}</span>
+        <span className="inline-block w-[56px]">
           {item.exif?.iso ? `ISO ${item.exif.iso}` : 'ISO —'}
         </span>
         {!inspectorOpen && (
@@ -921,58 +931,21 @@ export default function Lightbox({
         )}
       </div>
 
+      {/* 底部单行浮字条：? − 百分比 + 适应 ⋯ ×，低频功能收进 ⋯ */}
       <div
-        className={`absolute bottom-3 z-20 flex h-11 items-center gap-1 rounded-full border border-[var(--lb-rule)] bg-[var(--lb-chrome)] px-2 text-[12px] text-[var(--lb-faint)] backdrop-blur-[18px] ${
-          inspectorOpen ? 'right-[336px]' : 'right-4'
-        } ${chromeCls}`}
-        inert={!chromeVisible}
-        aria-hidden={!chromeVisible}
+        data-lb-chrome
+        className={`absolute bottom-3 z-20 flex -translate-x-1/2 items-center gap-2 text-[12px] text-[var(--lb-faint)] ${ctrlOpacity} ${chromePointer} ${chromeMotion} hover:opacity-100`}
+        style={{ left: inspectorOpen ? 'calc(50% - 160px)' : '50%' }}
       >
         <button
-          className={`grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--lb-hover)] ${
-            slideshow ? 'text-[var(--accent-2)]' : 'text-[var(--lb-faint)] hover:text-[var(--lb-text)]'
-          }`}
-          onClick={() => setSlideshow((value) => !value)}
-          title="幻灯片 (S)"
-          aria-label={slideshow ? '暂停幻灯片' : '播放幻灯片'}
-        >
-          {slideshow ? <Pause size={16} strokeWidth={1.75} /> : <Play size={16} strokeWidth={1.75} />}
-        </button>
-        <button
-          className={`h-7 rounded-full px-1.5 tabular-nums hover:bg-[var(--lb-hover)] ${
-            slideshow ? 'text-[var(--lb-text)]' : 'text-[var(--lb-faint)]'
-          }`}
-          onClick={() => setSlideDelay((value) => (value === 3000 ? 5000 : 3000))}
-          title="切换幻灯片间隔"
-        >
-          {slideDelay / 1000} 秒
-        </button>
-        <button
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
-          onClick={() => void toggleFullscreen()}
-          title="全屏 (F11)"
-          aria-label={fullscreen ? '退出全屏' : '全屏'}
+          onClick={() => setMoreOpen((value) => !value)}
+          title="快捷键"
+          aria-label="快捷键"
+          aria-expanded={moreOpen}
         >
-          {fullscreen ? <Minimize size={16} strokeWidth={1.75} /> : <Maximize size={16} strokeWidth={1.75} />}
+          <CircleHelp size={16} strokeWidth={1.75} />
         </button>
-        <span className="mx-1 h-4 w-px bg-[var(--lb-rule)]" />
-        <button
-          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
-          onClick={() => rotateBy(-90)}
-          title="向左旋转 (Shift+R)"
-          aria-label="向左旋转"
-        >
-          <RotateCcw size={16} strokeWidth={1.75} />
-        </button>
-        <button
-          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
-          onClick={() => rotateBy(90)}
-          title="向右旋转 (R)"
-          aria-label="向右旋转"
-        >
-          <RotateCw size={16} strokeWidth={1.75} />
-        </button>
-        <span className="w-[34px] text-center tabular-nums text-[var(--lb-faint)]">{rotation}°</span>
         <button
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
           onClick={() => zoomStep(1 / 1.25)}
@@ -996,6 +969,92 @@ export default function Lightbox({
           title="适应窗口 (0)"
         >
           适应
+        </button>
+
+        <div
+          className="relative"
+          onMouseEnter={() => setMoreOpen(true)}
+          onMouseLeave={() => setMoreOpen(false)}
+          onFocus={() => setMoreOpen(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setMoreOpen(false)
+            }
+          }}
+        >
+          <button
+            className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+            onClick={() => setMoreOpen((value) => !value)}
+            title="更多"
+            aria-label="更多"
+            aria-expanded={moreOpen}
+          >
+            <MoreHorizontal size={16} strokeWidth={1.75} />
+          </button>
+          {moreOpen && (
+            <div className="absolute bottom-full left-1/2 z-30 mb-3 w-[248px] -translate-x-1/2 rounded-xl border border-[var(--lb-rule)] bg-[var(--lb-chrome)] p-3 text-[12px] backdrop-blur-[18px]">
+              <div className="mb-2 flex flex-wrap gap-1">
+                <button className={MORE_BTN} onClick={() => setSlideshow((value) => !value)}>
+                  {slideshow ? '暂停' : '播放'}
+                </button>
+                <button
+                  className={MORE_BTN}
+                  onClick={() => setSlideDelay((value) => (value === 3000 ? 5000 : 3000))}
+                >
+                  {slideDelay / 1000} 秒
+                </button>
+                <button className={MORE_BTN} onClick={() => rotateBy(-90)}>
+                  左转
+                </button>
+                <button className={MORE_BTN} onClick={() => rotateBy(90)}>
+                  右转
+                </button>
+                <button className={MORE_BTN} onClick={() => void toggleFullscreen()}>
+                  {fullscreen ? '退出全屏' : '全屏'}
+                </button>
+                <button className={MORE_BTN} onClick={() => setInspectorOpen((value) => !value)}>
+                  {inspectorOpen ? '收起档案' : '档案'}
+                </button>
+              </div>
+              <div className="my-1 h-px bg-[var(--lb-rule)]" />
+              {[
+                ['滚轮', '缩放'],
+                ['双击', '100%'],
+                ['0', '适应窗口'],
+                ['R / Shift+R', '旋转'],
+                ['← →', '上一张 / 下一张'],
+                ['S', '幻灯片'],
+                ['F11', '全屏'],
+                ['`', '工具常显'],
+                ['N', '档案面板'],
+                ['F', '框选'],
+                ['Esc', '关闭']
+              ].map(([key, value]) => (
+                <div key={key} className="flex justify-between py-[3px]">
+                  <span className="text-[var(--lb-faint)]">{key}</span>
+                  <span className="text-[var(--lb-text)]">{value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {slideshow && (
+          <button
+            className="ml-2 rounded-full bg-[var(--lb-hover)] px-2 py-1 text-[11px] text-[var(--lb-text)]"
+            onClick={() => setSlideshow(false)}
+          >
+            ■ 停止播放
+          </button>
+        )}
+
+        <button
+          className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"
+          onClick={onClose}
+          title="关闭 (Esc)"
+          aria-label="关闭"
+        >
+          <X size={16} strokeWidth={1.75} />
         </button>
       </div>
     </div>

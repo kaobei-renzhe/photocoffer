@@ -11,10 +11,10 @@ let indexPath = ''
 /**
  * 结构化 schema 版本，存在 SQLite 的 `PRAGMA user_version` 里。
  * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次；4 = 人像检测缓存；
- * 5 = 人像人工纠错（override 三列）。
+ * 5 = 人像人工纠错（override 三列）；6 = AI 评分物化到 items.ai_score。
  * 以后每次加表 / 加列都必须 +1 并在 MIGRATION_STEPS 里补一步。
  */
-export const CURRENT_SCHEMA = 5
+export const CURRENT_SCHEMA = 6
 
 /** 迁移步骤必须幂等：老库可能从任意版本开始，补齐缺失的表与列即可收敛 */
 const SCHEMA = /* sql */ `
@@ -101,7 +101,8 @@ CREATE TRIGGER IF NOT EXISTS items_ad AFTER DELETE ON items BEGIN
   VALUES ('delete', old.id, old.name, old.note, coalesce(old.url, ''));
 END;
 
-CREATE TRIGGER IF NOT EXISTS items_au AFTER UPDATE ON items BEGIN
+-- 只有检索列变化才需要重写 FTS；改评分、旗标、ai_score 不该触发索引重建
+CREATE TRIGGER IF NOT EXISTS items_au AFTER UPDATE OF name, note, url ON items BEGIN
   INSERT INTO items_fts(items_fts, rowid, name, note, url)
   VALUES ('delete', old.id, old.name, old.note, coalesce(old.url, ''));
   INSERT INTO items_fts(rowid, name, note, url)
@@ -352,12 +353,59 @@ function migrationV5(db: Database.Database): void {
   })
 }
 
+/**
+ * v6：AI 评分物化到 items.ai_score。
+ * 列表按 ai 排序原来要 LEFT JOIN quality_scores 再对全表排序，3 万条约 60ms；
+ * 物化后直接走 (ai_score DESC, added_at DESC) 索引，评分写入时同步一份。
+ */
+function migrationV6(db: Database.Database): void {
+  subStep('收敛 FTS 触发器', () => {
+    // 先换成只监听检索列的触发器，下面的全表回填才不会逐行重写 FTS 索引
+    db.exec(`
+      DROP TRIGGER IF EXISTS items_au;
+      CREATE TRIGGER items_au AFTER UPDATE OF name, note, url ON items BEGIN
+        INSERT INTO items_fts(items_fts, rowid, name, note, url)
+        VALUES ('delete', old.id, old.name, old.note, coalesce(old.url, ''));
+        INSERT INTO items_fts(rowid, name, note, url)
+        VALUES (new.id, new.name, new.note, coalesce(new.url, ''));
+      END;
+    `)
+  })
+  subStep('补 AI 评分列与索引', () => {
+    // 老库若在 v2 之后被手工删过评分表，先补建，下面的回填才有来源
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS quality_scores (
+        item_id INTEGER PRIMARY KEY,
+        composition INTEGER NOT NULL DEFAULT 0,
+        exposure INTEGER NOT NULL DEFAULT 0,
+        color INTEGER NOT NULL DEFAULT 0,
+        sharpness INTEGER NOT NULL DEFAULT 0,
+        overall INTEGER NOT NULL DEFAULT 0,
+        comment TEXT NOT NULL DEFAULT '',
+        model TEXT NOT NULL DEFAULT '',
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_quality_overall ON quality_scores(overall DESC);
+    `)
+    // -1 = 尚未评分，保证没评过分的排在最后
+    ensureColumn(db, 'items', 'ai_score', 'ai_score INTEGER NOT NULL DEFAULT -1')
+    db.exec('CREATE INDEX IF NOT EXISTS idx_items_ai_score ON items(ai_score DESC, added_at DESC)')
+  })
+  subStep('回填 AI 评分', () => {
+    db.prepare(
+      `UPDATE items SET ai_score = COALESCE(
+         (SELECT overall FROM quality_scores WHERE item_id = items.id), -1)`
+    ).run()
+  })
+}
+
 const MIGRATION_STEPS: MigrationStep[] = [
   { version: 1, up: migrationV1 },
   { version: 2, up: migrationV2 },
   { version: 3, up: migrationV3 },
   { version: 4, up: migrationV4 },
-  { version: 5, up: migrationV5 }
+  { version: 5, up: migrationV5 },
+  { version: 6, up: migrationV6 }
 ]
 
 /** 按 user_version 逐级升级；每一步独立事务，版本号跟着步骤走 */

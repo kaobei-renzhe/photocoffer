@@ -74,7 +74,7 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
 
   return (
     <div
-      className="relative z-40 flex h-9 shrink-0 select-none items-center border-b border-[var(--border)] bg-[var(--chrome)]"
+      className="relative z-40 flex h-9 shrink-0 select-none items-center bg-[var(--chrome)]"
       style={drag}
       onKeyDown={(event) => {
         if (event.key === 'Escape') setOpen(null)

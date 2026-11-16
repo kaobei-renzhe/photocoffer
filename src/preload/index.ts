@@ -174,8 +174,13 @@ const api: Api = {
   saveClipAutoIndex: (enabled: boolean) => ipcRenderer.invoke('clip:autoIndex:save', enabled),
   clipIndex: () => ipcRenderer.invoke('clip:index'),
   clipCancel: () => ipcRenderer.invoke('clip:cancel'),
-  clipSearchText: (query: string, filter: FilterState, limit?: number, offset?: number) =>
-    ipcRenderer.invoke('clip:searchText', query, filter, limit, offset),
+  clipSearchText: (
+    query: string,
+    filter: FilterState,
+    limit?: number,
+    offset?: number,
+    cap?: number
+  ) => ipcRenderer.invoke('clip:searchText', query, filter, limit, offset, cap),
   clipSimilar: (itemId: number, limit?: number, offset?: number) =>
     ipcRenderer.invoke('clip:similar', itemId, limit, offset),
   clipDownloadModel: (id) => ipcRenderer.invoke('clip:download', id),

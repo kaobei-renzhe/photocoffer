@@ -10,7 +10,7 @@ vi.mock('./logger', () => ({
 }))
 
 const { closeLibrary, getDb, openLibrary } = await import('./db')
-const { invalidateItemTotals, listItems } = await import('./repo')
+const { invalidateItemTotals, listItems, saveQualityScores } = await import('./repo')
 
 let root = ''
 
@@ -51,23 +51,40 @@ describe('listItems', () => {
     expect(third.total).toBe(301)
   })
 
-  it('ai 排序用 quality_scores 的分数', () => {
+  it('ai 排序用 quality_scores 的分数，并同步写入 items.ai_score', () => {
     const db = getDb()
-    db.prepare('INSERT INTO quality_scores(item_id, overall, updated_at) VALUES(?, ?, ?)').run(
-      1,
-      99,
-      1
+    saveQualityScores(
+      [
+        { itemId: 1, composition: 90, exposure: 90, color: 90, sharpness: 90, overall: 99, comment: '' },
+        { itemId: 2, composition: 80, exposure: 80, color: 80, sharpness: 80, overall: 90, comment: '' }
+      ],
+      'test-model'
     )
-    db.prepare('INSERT INTO quality_scores(item_id, overall, updated_at) VALUES(?, ?, ?)').run(
-      2,
-      90,
-      1
-    )
+    const synced = db.prepare('SELECT id, ai_score FROM items WHERE id IN (1, 2) ORDER BY id').all()
+    expect(synced).toEqual([
+      { id: 1, ai_score: 99 },
+      { id: 2, ai_score: 90 }
+    ])
+
     invalidateItemTotals()
     const { items } = listItems({ sort: 'ai' }, 0, 5)
     expect(items[0].id).toBe(1)
     expect(items[1].id).toBe(2)
     expect(items[0].quality?.overall).toBe(99)
+    // 未评分的排在最后
+    expect(items[items.length - 1].quality).toBeNull()
+  })
+
+  it('ai 分数过滤与未评分过滤走物化列', () => {
+    saveQualityScores(
+      [{ itemId: 3, composition: 70, exposure: 70, color: 70, sharpness: 70, overall: 70, comment: '' }],
+      'test-model'
+    )
+    invalidateItemTotals()
+    expect(listItems({ minAiScore: 60 }, 0, 10).items.map((item) => item.id)).toEqual([3])
+    const unscored = listItems({ unscored: true }, 0, 10)
+    expect(unscored.total).toBe(299)
+    expect(unscored.items.some((item) => item.id === 3)).toBe(false)
   })
 
   it('堆叠数量一次批量算对', () => {

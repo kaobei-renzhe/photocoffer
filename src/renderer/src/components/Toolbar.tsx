@@ -19,7 +19,7 @@ import {
   Trash2,
   X
 } from 'lucide-react'
-import type { ClipStatus, FilterState, Folder } from '@shared/types'
+import type { ClipStatus, FilterState, Folder, SemanticCapMode } from '@shared/types'
 import { FLAG_FILTER_NOT_PICKED, FLAG_FILTER_NOT_REJECTED } from '@shared/types'
 import { COLOR_OPTIONS } from '../lib/format'
 
@@ -49,6 +49,12 @@ interface ToolbarProps {
   aiVisionBlocked: boolean
   canSmartFilter: boolean
   semanticMode: boolean
+  /** 当前列表是否由语义搜图驱动：决定是否显示结果档位条 */
+  semanticSearch: boolean
+  semanticCap: SemanticCapMode
+  onSemanticCap: (mode: SemanticCapMode) => void
+  /** cap 之前的完整候选数 */
+  semanticMatched: number
   clipStatus: ClipStatus | null
   onToggleSemantic: () => void
   onAddToFolder: (folderId: number) => void
@@ -96,6 +102,10 @@ export default function Toolbar({
   aiVisionBlocked,
   canSmartFilter,
   semanticMode,
+  semanticSearch,
+  semanticCap,
+  onSemanticCap,
+  semanticMatched,
   clipStatus,
   onToggleSemantic,
   onAddToFolder,
@@ -215,7 +225,7 @@ export default function Toolbar({
     : '用自然语言描述画面来找图（本地模型，不上传）'
 
   return (
-    <div className="relative z-20 shrink-0 border-b border-[var(--border)] bg-[var(--chrome)] px-3 py-2.5">
+    <div className="relative z-20 shrink-0 bg-[var(--panel)] px-3 py-2.5">
       <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-[420px]">
           <Search
@@ -331,11 +341,43 @@ export default function Toolbar({
         <span className="ml-auto text-[12px] text-[var(--muted)] tabular-nums">
           {loading ? (
             <span className="inline-block h-3 w-10 animate-pulse rounded bg-[var(--panel-2)]" />
+          ) : semanticSearch && semanticCap !== 'all' && semanticMatched > total ? (
+            `最相关的 ${total} 张`
           ) : (
             `${total} 张`
           )}
         </span>
       </div>
+
+      {semanticSearch && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5 text-[12px] text-[var(--muted)]">
+          <span className="text-[var(--faint)]">结果范围</span>
+          {[
+            { id: 'precise' as const, label: '精确', hint: '最像的 50 张' },
+            { id: 'normal' as const, label: '标准', hint: '最相关的 200 张' },
+            { id: 'all' as const, label: '全部', hint: '不限条数' }
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              className={`rounded-lg px-2 py-0.5 transition-colors ${
+                semanticCap === opt.id
+                  ? 'bg-[var(--accent-soft)] text-[var(--accent-text)]'
+                  : 'hover:bg-[var(--panel)]'
+              }`}
+              onClick={() => onSemanticCap(opt.id)}
+              title={opt.hint}
+              aria-pressed={semanticCap === opt.id}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <span className="ml-auto tabular-nums text-[var(--faint)]">
+            {semanticCap !== 'all' && semanticMatched > total
+              ? `展示最相关的 ${total} 张 · 候选 ${semanticMatched} 张`
+              : `候选 ${semanticMatched} 张`}
+          </span>
+        </div>
+      )}
 
       {trashView && (
         <div className="mt-2 flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5 text-[12px] text-[var(--muted)]">

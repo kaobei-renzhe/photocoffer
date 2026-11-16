@@ -28,6 +28,10 @@ export interface EmbeddingModelSpec {
   /** 文本塔最大长度（含 EOS） */
   maxTextLength: number
   files: ModelFileSpec[]
+  /** 设置页用来讲清取舍：中文强度 / 速度 / 擅长场景（值为实测口径，不是论文榜单） */
+  zhStrength: string
+  speed: string
+  bestFor: string
 }
 
 const HF_MIRROR = 'https://hf-mirror.com'
@@ -61,7 +65,10 @@ export const EMBEDDING_MODELS: Record<EmbeddingModelId, EmbeddingModelSpec> = {
         size: 190_842_404
       },
       { name: 'vocab.txt', url: `${CHINESE_CLIP_BASE}vocab.txt`, size: 109_540 }
-    ]
+    ],
+    zhStrength: '强',
+    speed: '快',
+    bestFor: '中文物体 / 场景'
   },
   siglip2: {
     id: 'siglip2',
@@ -88,7 +95,10 @@ export const EMBEDDING_MODELS: Record<EmbeddingModelId, EmbeddingModelSpec> = {
         size: 283_438_275
       },
       { name: 'tokenizer.json', url: `${SIGLIP2_BASE}tokenizer.json`, size: 34_363_039 }
-    ]
+    ],
+    zhStrength: '弱',
+    speed: '中',
+    bestFor: '多语言 / 零样本分类'
   }
 }
 

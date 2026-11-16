@@ -894,8 +894,8 @@ export default function SettingsDialog({
       const status = await window.api.selectEmbeddingModel(id)
       setModelMsg(
         status.total > status.indexed
-          ? `已切换到 ${label}，还有 ${status.total - status.indexed} 张照片需要重建索引`
-          : `已切换到 ${label}`
+          ? `已切换到 ${label}：旧模型索引保留，随时能切回；新模型还有 ${status.total - status.indexed} 张需要重建索引，点侧栏「语义索引」或开启「闲时自动建立」慢慢跑。`
+          : `已切换到 ${label}：旧模型索引保留，新模型的索引已就绪。`
       )
       await refreshModels()
       return true
@@ -916,7 +916,7 @@ export default function SettingsDialog({
       const ok = await switchModel(model.id, model.label)
       if (ok) {
         setModelMsg(
-          `已下载并切换到 ${model.label}；点侧栏「语义索引」或等闲时自动建立索引后就能用`
+          `已下载并切换到 ${model.label}；旧模型索引保留。点侧栏「语义索引」或等「闲时自动建立」跑完新索引后就能用`
         )
       }
     } catch (error) {
@@ -1467,6 +1467,20 @@ export default function SettingsDialog({
                         </div>
                         <div className="text-[11px] text-[var(--faint)] mt-0.5 leading-4">
                           {model.note}
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1 text-[10.5px] text-[var(--faint)]">
+                          {[
+                            ['中文', model.zhStrength],
+                            ['速度', model.speed],
+                            ['适合', model.bestFor]
+                          ].map(([key, value]) => (
+                            <span
+                              key={key}
+                              className="rounded-lg border border-[var(--border)] bg-[var(--panel)] px-1.5 py-[1px]"
+                            >
+                              {key} {value}
+                            </span>
+                          ))}
                         </div>
                         <div className="flex items-center gap-2 mt-1.5">
                           <span className="text-[11px] text-[var(--faint)] tabular-nums">

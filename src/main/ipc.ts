@@ -1438,8 +1438,14 @@ export function registerIpc(): void {
 
   ipcMain.handle(
     'clip:searchText',
-    (_e, query: string, filter: FilterState, limit?: number, offset?: number) =>
-      searchByText(query, filter ?? {}, limit ?? 200, offset ?? 0)
+    (
+      _e,
+      query: string,
+      filter: FilterState,
+      limit?: number,
+      offset?: number,
+      cap?: number
+    ) => searchByText(query, filter ?? {}, limit ?? 200, offset ?? 0, cap)
   )
 
   ipcMain.handle('clip:similar', (_e, itemId: number, limit?: number, offset?: number) =>

@@ -30,6 +30,7 @@ import type {
   PickApplyResult,
   PickExportResult,
   PickSessionSummary,
+  SemanticCapMode,
   SmartFolder,
   Stats,
   Tag,
@@ -88,6 +89,8 @@ const EMPTY_STATS: Stats = {
   trashed: 0
 }
 const PAGE = 200
+/** 语义搜图三档：固定条数收敛，0 = 不限（全部） */
+const SEMANTIC_CAPS: Record<SemanticCapMode, number> = { precise: 50, normal: 200, all: 0 }
 
 interface Toast {
   text: string
@@ -170,6 +173,10 @@ export default function App() {
   const [aiRule, setAiRule] = useState<string | null>(null)
   const [lastRelocateDir, setLastRelocateDir] = useState<string | null>(null)
   const [semanticMode, setSemanticMode] = useState(false)
+  /** 语义搜图结果档位：精确 50 / 标准 200 / 全部；切换后立即重搜 */
+  const [capMode, setCapMode] = useState<SemanticCapMode>('normal')
+  /** cap 之前的完整候选数，用来显示「候选 N 张」 */
+  const [matched, setMatched] = useState(0)
   const [clipStatus, setClipStatus] = useState<ClipStatus | null>(null)
   const [clipProgress, setClipProgress] = useState<ClipProgress | null>(null)
   const [clipCardMinimized, setClipCardMinimized] = useState(false)
@@ -381,10 +388,17 @@ export default function App() {
       try {
         const query = (current.query ?? '').trim()
         if (semanticMode && query) {
-          const result = await window.api.clipSearchText(query, { ...current, query: '' }, 200, 0)
+          const result = await window.api.clipSearchText(
+            query,
+            { ...current, query: '' },
+            200,
+            0,
+            SEMANTIC_CAPS[capMode]
+          )
           if (cancelled) return
           applyItems(result.items)
           setTotal(result.total)
+          setMatched(result.matched)
           return
         }
         const result = await window.api.listItems({ ...current, expandedGroups }, 0, keep)
@@ -399,7 +413,7 @@ export default function App() {
       cancelled = true
       clearTimeout(timer)
     }
-  }, [library, filterKey, expandedGroups, tick, applyItems, semanticMode, similar])
+  }, [library, filterKey, expandedGroups, tick, applyItems, semanticMode, capMode, similar])
 
   // 本库零结果时，顺手探一下其他库有没有可能命中的内容
   useEffect(() => {
@@ -510,7 +524,13 @@ export default function App() {
       const query = (activeFilter.query ?? '').trim()
       const result =
         semanticMode && query
-          ? await window.api.clipSearchText(query, { ...activeFilter, query: '' }, PAGE, current.length)
+          ? await window.api.clipSearchText(
+              query,
+              { ...activeFilter, query: '' },
+              PAGE,
+              current.length,
+              SEMANTIC_CAPS[capMode]
+            )
           : similar
             ? await window.api.clipSimilar(similar.id, PAGE, current.length)
             : await window.api.listItems(activeFilter, current.length, PAGE)
@@ -518,11 +538,15 @@ export default function App() {
       const merged = [...current, ...result.items.filter((i) => !seen.has(i.id))]
       applyItems(merged)
       setTotal(result.total)
+      // listItems 没有 matched；语义搜图与找相似才有
+      setMatched(
+        'matched' in result && typeof result.matched === 'number' ? result.matched : 0
+      )
     } finally {
       loadingMoreRef.current = false
       setLoadingMore(false)
     }
-  }, [applyItems, semanticMode, similar])
+  }, [applyItems, semanticMode, capMode, similar])
 
   useEffect(() => {
     const onDragEnter = (e: DragEvent): void => {
@@ -1583,9 +1607,12 @@ export default function App() {
     filter.flag ?? 0,
     filter.missing ? 'missing' : '',
     (filter.onlyIds ?? []).join(','),
-    semanticMode ? 'sem' : '',
+    semanticMode ? `sem${capMode}` : '',
     similar ? `sim${similar.id}` : ''
   ].join('|')
+
+  /** 当前列表是否由「语义搜图」驱动：决定结果档位条与计数文案 */
+  const semanticSearch = semanticMode && !similar && Boolean((filter.query ?? '').trim())
 
   /** 热切换图库：主进程已经换好库，这里只重置视图状态 */
   const switchLibrary = (dir: string): void => {
@@ -1621,7 +1648,7 @@ export default function App() {
     return (
       <div className="h-full flex flex-col">
         {titleBar}
-        <div className="flex-1 grid place-items-center text-[var(--faint)] text-[13.5px]">正在打开图库…</div>
+        <div className="flex-1 grid place-items-center border-t border-[var(--border)] text-[var(--faint)] text-[13.5px]">正在打开图库…</div>
       </div>
     )
   }
@@ -1630,7 +1657,7 @@ export default function App() {
     return (
       <div className="h-full flex flex-col">
         {titleBar}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 border-t border-[var(--border)]">
           <Welcome
             notice={indexMissing}
             onReady={(dir) => {
@@ -1653,7 +1680,7 @@ export default function App() {
     return (
       <div className="h-full flex flex-col">
         {titleBar}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 border-t border-[var(--border)]">
           <PortraitWorkspace
             onBack={() => setPortraitOpen(false)}
             aiReady={aiReady}
@@ -1669,7 +1696,7 @@ export default function App() {
   return (
     <div ref={shellRef} className="h-full flex flex-col relative">
       {titleBar}
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 border-t border-[var(--border)]">
         <Sidebar
           library={library}
           libraryName={libraryName || folderName(library)}
@@ -1764,7 +1791,7 @@ export default function App() {
 
         <div className="flex-1 flex flex-col min-w-0">
           {volume && (volume.libraryOffline || volume.offlineSources.length > 0) && (
-            <div className="shrink-0 flex items-center gap-2 border-b border-[var(--warn-border)] bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--text)]">
+            <div className="shrink-0 flex items-center gap-2 bg-[var(--warn-soft)] px-4 py-2 text-[12px] text-[var(--text)]">
               <TriangleAlert size={14} className="text-[var(--warn)] shrink-0" />
               <span>
                 {volume.libraryOffline
@@ -1801,6 +1828,10 @@ export default function App() {
             canScore={aiCaps['photo.quality'] !== false}
             canSmartFilter={aiCaps['photo.smartFilter'] !== false}
             semanticMode={semanticMode}
+            semanticSearch={semanticSearch}
+            semanticCap={capMode}
+            onSemanticCap={setCapMode}
+            semanticMatched={matched}
             clipStatus={clipStatus}
             onToggleSemantic={() => void toggleSemantic()}
             onAddToFolder={addSelectedToFolder}
@@ -1825,7 +1856,7 @@ export default function App() {
             }}
           />
           {similar && (
-            <div className="shrink-0 px-4 py-2 border-b border-[var(--border)] bg-[var(--panel-2)] flex items-center gap-3 text-[12px]">
+            <div className="shrink-0 px-4 py-2 bg-[var(--panel-2)] flex items-center gap-3 text-[12px]">
               <span className="text-[var(--text)]">
                 与「{similar.name}」相似 · {total} 张
               </span>

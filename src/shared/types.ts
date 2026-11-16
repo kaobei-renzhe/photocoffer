@@ -972,13 +972,15 @@ export interface Api {
     query: string,
     filter: FilterState,
     limit?: number,
-    offset?: number
-  ) => Promise<{ items: Item[]; scores: number[]; total: number }>
+    offset?: number,
+    /** 结果上限：精确 50 / 标准 200 / 全部 0（不限），默认 200 */
+    cap?: number
+  ) => Promise<{ items: Item[]; scores: number[]; total: number; matched: number }>
   clipSimilar: (
     itemId: number,
     limit?: number,
     offset?: number
-  ) => Promise<{ items: Item[]; scores: number[]; total: number }>
+  ) => Promise<{ items: Item[]; scores: number[]; total: number; matched: number }>
   clipDownloadModel: (id?: EmbeddingModelId) => Promise<string>
   onClipIndex: (cb: (progress: ClipProgress) => void) => () => void
   /** 语义索引结束（完成 / 取消 / 出错都会发），用来收起进度卡片 */
@@ -1120,7 +1122,14 @@ export interface EmbeddingModelInfo {
   active: boolean
   indexed: number
   total: number
+  /** 设置页讲取舍用：中文强度 / 速度 / 擅长场景 */
+  zhStrength: string
+  speed: string
+  bestFor: string
 }
+
+/** 语义搜图的结果档位：固定条数收敛，不向用户暴露相似度阈值 */
+export type SemanticCapMode = 'precise' | 'normal' | 'all'
 
 export interface ClipStatus {
   modelReady: boolean

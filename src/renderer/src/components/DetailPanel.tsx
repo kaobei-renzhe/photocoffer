@@ -56,7 +56,7 @@ export default function DetailPanel({
 
   return (
     <aside
-      className="flex min-h-0 shrink-0 flex-col overflow-x-hidden border-l border-[var(--border)] bg-[var(--chrome)]"
+      className="flex min-h-0 shrink-0 flex-col overflow-x-hidden bg-[var(--chrome)]"
       style={{ width: 'var(--detail-w, 320px)' }}
     >
       <div className="flex h-[42px] shrink-0 items-center gap-2 border-b border-[var(--border)] px-3">

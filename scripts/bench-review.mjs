@@ -2,7 +2,7 @@
  * 3 万条规模下的查询基准：对比修复前的写法与修复后的写法。
  * 只跑 SQL 层，不依赖 Electron；用来验证：
  *  - 深分页不再每页重算 COUNT
- *  - ai 排序从相关子查询改成 LEFT JOIN
+ *  - ai 排序从相关子查询 / LEFT JOIN 改成物化列 + 索引
  *  - 堆叠计数从 N 次查询改成一次 GROUP BY
  */
 import Database from 'better-sqlite3'
@@ -38,9 +38,11 @@ db.exec(`
     burst_key TEXT,
     burst_cover INTEGER NOT NULL DEFAULT 0,
     stack_id INTEGER,
-    stack_cover INTEGER NOT NULL DEFAULT 0
+    stack_cover INTEGER NOT NULL DEFAULT 0,
+    ai_score INTEGER NOT NULL DEFAULT -1
   );
   CREATE INDEX idx_items_added ON items(added_at DESC);
+  CREATE INDEX idx_items_ai_score ON items(ai_score DESC, added_at DESC);
   CREATE INDEX idx_items_pair ON items(pair_key);
   CREATE INDEX idx_items_burst ON items(burst_key);
   CREATE INDEX idx_items_stack ON items(stack_id);
@@ -66,8 +68,8 @@ db.exec(`
 `)
 
 const insert = db.prepare(
-  `INSERT INTO items(path, name, ext, size, added_at, mtime, rating, note, stack_id, stack_cover)
-   VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  `INSERT INTO items(path, name, ext, size, added_at, mtime, rating, note, stack_id, stack_cover, ai_score)
+   VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 )
 const score = db.prepare('INSERT INTO quality_scores(item_id, overall, updated_at) VALUES(?, ?, ?)')
 const link = db.prepare('INSERT INTO item_tags(item_id, tag_id) VALUES(?, ?)')
@@ -86,7 +88,8 @@ db.transaction(() => {
       i % 6,
       `第 ${i} 张`,
       stack,
-      stack && i % 100 === 1 ? 1 : 0
+      stack && i % 100 === 1 ? 1 : 0,
+      i % 101
     )
     score.run(i, i % 101, 1)
     link.run(i, (i % 20) + 1)
@@ -123,11 +126,15 @@ const aiOld = db.prepare(
             i.added_at DESC
    LIMIT 200`
 )
-const aiNew = db.prepare(
+const aiJoin = db.prepare(
   `SELECT i.* FROM items i LEFT JOIN quality_scores qs ON qs.item_id = i.id
    WHERE ${WHERE}
    ORDER BY coalesce(qs.overall, -1) DESC, i.added_at DESC
    LIMIT 200`
+)
+const aiNew = db.prepare(
+  `SELECT i.* FROM items i WHERE ${WHERE}
+   ORDER BY i.ai_score DESC, i.added_at DESC LIMIT 200`
 )
 const stackOld = db.prepare(
   'SELECT COUNT(*) AS c FROM items WHERE trashed = 0 AND missing = 0 AND stack_id = ?'
@@ -155,6 +162,7 @@ const deepNew = measure(() => {
   pageQuery.all(29_800)
 })
 const aiOldResult = measure(() => aiOld.all())
+const aiJoinResult = measure(() => aiJoin.all())
 const aiNewResult = measure(() => aiNew.all())
 const stackIds = Array.from({ length: STACKS }, (_, i) => i + 1)
 const stackOldResult = measure(() => {
@@ -171,7 +179,8 @@ const rows = [
   ['深页 offset 29800（旧：每页 COUNT）', fmt(deepOld)],
   ['深页 offset 29800（新：复用总数）', fmt(deepNew)],
   ['ai 排序（旧：相关子查询）', fmt(aiOldResult)],
-  ['ai 排序（新：LEFT JOIN）', fmt(aiNewResult)],
+  ['ai 排序（LEFT JOIN）', fmt(aiJoinResult)],
+  ['ai 排序（新：物化列 + 索引）', fmt(aiNewResult)],
   [`堆叠计数 ${STACKS} 组（旧：逐组查询）`, fmt(stackOldResult)],
   [`堆叠计数 ${STACKS} 组（新：一次 GROUP BY）`, fmt(stackNewResult)]
 ]

@@ -338,6 +338,34 @@
   --btn-primary-active: #E9B24D;
 }
 
+/* 灯箱固定深色舞台：不随主界面主题变，看片时排除界面色的视觉干扰。
+   只作用在灯箱根节点，不动 :root 与四个皮肤块，主界面完全不受影响。 */
+.lightbox-fixed-dark {
+  --lightbox: #0B0B0B;
+  --lb-chrome: rgba(22,22,22,.86);
+  --lb-rule: rgba(255,255,255,.10);
+  --lb-text: #F2F2F2;
+  --lb-faint: #A6A6A6;
+  --lb-hover: rgba(255,255,255,.10);
+  /* 10% 白勾边是功能性必需：夜景 / 低调人像的暗部会和纯黑背景融成一片 */
+  --lb-matte: rgba(255,255,255,.10);
+}
+
+/* 减少动效：工具条淡入淡出改瞬时 */
+@media (prefers-reduced-motion: reduce) {
+  .lightbox-fixed-dark [data-lb-chrome] {
+    transition: none !important;
+  }
+}
+
+/* 高对比：工具条常显，不靠淡出隐藏 */
+@media (prefers-contrast: more) {
+  .lightbox-fixed-dark [data-lb-chrome] {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}
+
 /* B 深度改版：皮肤只保留配色差异，圆角统一到两档 */
 :root[data-skin] .btn,
 :root[data-skin] .input,

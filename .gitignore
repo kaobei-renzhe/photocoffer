@@ -33,3 +33,12 @@ scripts/rename-product.py
 # 设计稿 html 不进版本库：会把 GitHub 语言统计带偏成 HTML
 design/**/*.html
 design/*.html
+
+# 设计稿位图不进版本库：README 已不引用，仓库可瘦 26MB
+# 本地文件保留在 design/ 下，需要时可 git add -f 加回
+design/*.png
+design/**/*.png
+design/*.jpg
+design/**/*.jpg
+design/*.webp
+design/**/*.webp

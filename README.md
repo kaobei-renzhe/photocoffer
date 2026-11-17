@@ -21,17 +21,6 @@
   Windows 10 / 11 · macOS 12+ · 免费开源（MIT）· 默认完全离线
 </p>
 
-![存照主界面：瀑布流浏览与左侧分类](docs/images/gallery-light.jpg)
-
-<p align="center">
-  <img src="docs/images/lightbox.jpg" width="49%" alt="灯箱：黑底沉浸看片，可框选画面提问" />
-  <img src="docs/images/portrait.jpg" width="49%" alt="人像工作台：按景别、光线、氛围研读" />
-</p>
-
-<p align="center">
-  <sub>灯箱黑底沉浸看片，可框选画面提问 &nbsp;|&nbsp; 人像工作台，按景别 / 光线 / 氛围拆解</sub>
-</p>
-
 ---
 
 ## 为什么用它

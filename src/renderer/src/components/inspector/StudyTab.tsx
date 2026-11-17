@@ -312,7 +312,7 @@ export default function StudyTab({
   return (
     <div className={compact ? 'space-y-2.5 p-2.5' : 'space-y-3 p-3'}>
       <div className="flex items-center gap-1">
-        <span className="text-[11px] text-[var(--faint)]">模式</span>
+        <span className="text-[12px] font-medium text-[var(--text)]">模式</span>
         <div className="ml-auto flex rounded-lg border border-[var(--border)] p-0.5">
           {(['study', 'review'] as NoteMode[]).map((entry) => (
             <button
@@ -323,7 +323,9 @@ export default function StudyTab({
                   : 'text-[var(--faint)] hover:text-[var(--text)]'
               }`}
               onClick={() => setMode(entry)}
-              title={entry === 'study' ? '学别人怎么拍' : '复盘自己的片子'}
+              title={
+                entry === 'study' ? '研读：拆解这张为什么好' : '复盘：对照当时的意图看差在哪'
+              }
             >
               {modeLabel(entry)}
             </button>
@@ -358,7 +360,7 @@ export default function StudyTab({
       {threads === null ? (
         <div className="py-6 text-center text-[12px] text-[var(--faint)]">读取笔记…</div>
       ) : ordered.length === 0 ? (
-        <div className="grid place-items-center rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-7 text-center">
+        <div className="grid place-items-center rounded-2xl border border-dashed border-[var(--border)] bg-transparent px-3 py-7 text-center">
           <div>
             <BookOpen size={24} className="mx-auto mb-1.5 text-[var(--faint)] opacity-60" />
             <div className="text-[12px] text-[var(--muted)]">还没有研读笔记</div>
@@ -597,7 +599,7 @@ export default function StudyTab({
 
       <div className="text-[11px] leading-4 text-[var(--faint)]">
         {aiAvailable
-          ? 'AI 会先反问，最多两轮；也可以直接要答案。手工笔记和 AI 回复都存在同一个线程里。'
+          ? '手工记的和 AI 回的，都记在这条笔记下面。'
           : '现在写的是纯文字笔记，不依赖大模型。'}
       </div>
     </div>

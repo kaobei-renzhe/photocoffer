@@ -73,8 +73,8 @@ interface SettingsDialogProps {
 
 const TABS: Array<{ id: SettingsTab; label: string; hint: string; Icon: typeof Monitor }> = [
   { id: 'appearance', label: '外观', hint: '主题与界面风格', Icon: Palette },
-  { id: 'llm', label: '大模型', hint: '服务商、密钥、能力开关', Icon: Sparkles },
-  { id: 'semantic', label: '语义索引', hint: '识图模型与自动识图', Icon: Cpu },
+  { id: 'llm', label: '大模型', hint: '服务商与密钥', Icon: Sparkles },
+  { id: 'semantic', label: '语义索引', hint: '识图与自动识图', Icon: Cpu },
   { id: 'storage', label: '存储位置', hint: '索引与缓存放在哪', Icon: HardDrive },
   { id: 'about', label: '关于', hint: '版本与数据位置', Icon: Info }
 ]
@@ -979,7 +979,7 @@ export default function SettingsDialog({
               return (
                 <button
                   key={id}
-                  className={`w-full text-left rounded-2xl px-2.5 py-2 transition-colors ${
+                  className={`h-[56px] w-full overflow-hidden text-left rounded-2xl px-2.5 py-2 transition-colors ${
                     active
                       ? 'settings-nav-active'
                       : 'hover:bg-[var(--panel-2)]'
@@ -995,7 +995,12 @@ export default function SettingsDialog({
                       {label}
                     </span>
                   </div>
-                  <div className="mt-0.5 pl-[22px] text-[11px] leading-4 text-[var(--faint)]">{hint}</div>
+                  <div
+                    className="mt-0.5 truncate pl-[22px] text-[11px] leading-4 text-[var(--faint)]"
+                    title={hint}
+                  >
+                    {hint}
+                  </div>
                 </button>
               )
             })}

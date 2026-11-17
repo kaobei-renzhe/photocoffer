@@ -48,6 +48,12 @@ export function useGlobalKeys(options: Options): void {
         current.onSettings()
         return
       }
+      if (event.key === 'F11') {
+        // 视图菜单删掉后，主窗口的全屏只能靠这个键；灯箱打开时本 hook 已禁用
+        event.preventDefault()
+        void window.api.setFullScreen()
+        return
+      }
       if (event.key === 'F5') {
         event.preventDefault()
         current.onReload()

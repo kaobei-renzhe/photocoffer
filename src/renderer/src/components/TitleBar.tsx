@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon } from 'lucide-react'
 import { EDIT_COMMANDS, MENU_SECTIONS, type MenuSectionId } from '@shared/menu'
 
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
 const drag = { WebkitAppRegion: 'drag' } as React.CSSProperties
 const noDrag = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 
-/** 36px 自定义标题栏：Windows 五菜单 + 齿轮；mac 红绿灯死区 + 图库名 + 视图下拉 */
+/** 36px 自定义标题栏：Windows 文件/设置两菜单 + 齿轮；mac 红绿灯死区 + 图库名 + 齿轮 */
 export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettings }: Props) {
   const isMac = window.env?.platform === 'darwin'
   const [open, setOpen] = useState<MenuSectionId | null>(null)
@@ -121,18 +121,6 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
       )}
 
       <div className="flex-1" />
-
-      {isMac && (
-        <div className="relative mr-2" style={noDrag}>
-          <button
-            className="inline-flex h-7 items-center gap-1 rounded-lg px-2 text-[12px] text-[var(--muted)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
-            onClick={() => setOpen((value) => (value === 'view' ? null : 'view'))}
-          >
-            视图 <ChevronDown size={14} strokeWidth={1.75} />
-          </button>
-          {dropdown('view')}
-        </div>
-      )}
 
       <button
         className="grid h-7 w-7 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]"

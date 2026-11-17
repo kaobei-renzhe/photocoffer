@@ -19,20 +19,32 @@ function sendMenuAction(id: string): void {
 }
 
 const ROLE_BY_ID: Record<string, MenuItemConstructorOptions['role']> = {
-  'edit.undo': 'undo',
-  'edit.redo': 'redo',
-  'edit.cut': 'cut',
-  'edit.copy': 'copy',
-  'edit.paste': 'paste',
-  'edit.selectAll': 'selectAll',
-  'view.fullscreen': 'togglefullscreen',
   'app.quit': 'quit'
+}
+
+/**
+ * macOS 的 ⌘C / ⌘V / ⌘A / ⌘Z 只能由菜单 role 提供加速键：
+ * 菜单可以不可见，但不能不存在，否则复制粘贴会真的失效。
+ */
+const MAC_EDIT_MENU: MenuItemConstructorOptions = {
+  label: '编辑',
+  visible: false,
+  submenu: [
+    { role: 'undo', label: '撤销' },
+    { role: 'redo', label: '重做' },
+    { type: 'separator' },
+    { role: 'cut', label: '剪切' },
+    { role: 'copy', label: '复制' },
+    { role: 'paste', label: '粘贴' },
+    { role: 'selectAll', label: '全选' }
+  ]
 }
 
 /**
  * 菜单唯一来源：Windows 与 macOS 都安装同一份模板。
  * Windows 保留 autoHideMenuBar: true，原生菜单不可见但加速键仍生效；
  * 绝不能 setApplicationMenu(null)，否则 Ctrl+Z/C/V 会失去加速键来源。
+ * 顶级只有「文件 / 设置」；mac 额外挂 app 菜单与一个不可见的「编辑」撑住 role。
  */
 export function installAppMenu(): void {
   const sections = MENU_SECTIONS.map((section) => ({
@@ -43,11 +55,6 @@ export function installAppMenu(): void {
       if (role) {
         return { role, label: entry.label, accelerator: entry.accelerator }
       }
-      // Windows 不注册 edit 加速键：Ctrl+Z/A/C 由渲染层 useShortcuts 处理，
-      // 原生菜单只保留可点击项，避免菜单 role 抢走图库的撤销/全选/复制。
-      if (!isMac && section.id === 'edit') {
-        return { label: entry.label, click: () => sendMenuAction(entry.id) }
-      }
       return {
         label: entry.label,
         accelerator: entry.accelerator,
@@ -56,7 +63,7 @@ export function installAppMenu(): void {
     })
   }))
   const template = [
-    ...(isMac ? [{ role: 'appMenu' as const }] : []),
+    ...(isMac ? [{ role: 'appMenu' as const }, MAC_EDIT_MENU] : []),
     ...sections
   ] as MenuItemConstructorOptions[]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))

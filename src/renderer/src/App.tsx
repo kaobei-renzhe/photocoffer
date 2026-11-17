@@ -1493,8 +1493,17 @@ export default function App() {
         case 'library.switch':
           setSwitcherOpen(true)
           return
-        case 'app.settings':
+        case 'settings.open.appearance':
           openSettings('appearance')
+          return
+        case 'settings.open.llm':
+          openSettings('llm')
+          return
+        case 'settings.open.semantic':
+          openSettings('semantic')
+          return
+        case 'settings.open.storage':
+          openSettings('storage')
           return
         case 'app.about':
           openSettings('about')

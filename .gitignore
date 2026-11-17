@@ -10,7 +10,10 @@ dist/
 .tmp-*
 .cache/
 .history/
-.trae/
+# .trae 下只让 rules 进仓库：mcp.json 含本地 token，smoke-shots 是几十 MB 截图
+.trae/*
+!.trae/rules/
+!.trae/rules/**
 .smoke/
 Thumbs.db
 .DS_Store

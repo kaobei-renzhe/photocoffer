@@ -24,7 +24,7 @@ const CSP = [
 
 function cspPlugin() {
   return {
-    name: 'lunaris-csp',
+    name: 'photocoffer-csp',
     apply: 'build' as const,
     transformIndexHtml(html: string) {
       return html.replace(

@@ -114,8 +114,8 @@ export function modelTotalBytes(id: EmbeddingModelId): number {
   return modelSpec(id).files.reduce((sum, file) => sum + file.size, 0)
 }
 
-/** 改名前的 userData 目录名，见 index.ts 的 LEGACY_APP_DIRS */
-const LEGACY_APP_DIRS = ['image-nest', 'moonnest', '月巢']
+/** 改名前的 userData 目录名，见 index.ts 的 LEGACY_APP_DIRS；lunaris 是改成 photocoffer 之前的目录 */
+const LEGACY_APP_DIRS = ['lunaris', 'image-nest', 'moonnest', '月巢']
 
 /** 模型文件放哪；IMAGENEST_* 环境变量方便开发时指向临时目录 */
 export function modelDirFor(id: EmbeddingModelId): string {

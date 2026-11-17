@@ -1347,7 +1347,7 @@ export function registerIpc(): void {
   ipcMain.handle('settings:export', async () => {
     const picked = await dialog.showSaveDialog({
       title: '导出配置',
-      defaultPath: join(app.getPath('documents'), 'lunaris-settings.json'),
+      defaultPath: join(app.getPath('documents'), 'photocoffer-settings.json'),
       filters: [{ name: 'JSON', extensions: ['json'] }]
     })
     if (picked.canceled || !picked.filePath) return null

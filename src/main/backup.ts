@@ -32,7 +32,7 @@ export async function createBackup(
       Buffer.from(
         JSON.stringify(
           {
-            app: 'lunaris',
+            app: 'photocoffer',
             format: 1,
             // 恢复时用它拒绝「更新版本的备份装进旧版」
             userVersion: CURRENT_SCHEMA,
@@ -82,7 +82,8 @@ export function restoreBackup(zipPath: string, targetDir: string): { files: numb
         userVersion?: unknown
       }
       const app = String(meta.app ?? '')
-      if (app && app !== 'lunaris' && app !== 'image-nest') {
+      // 旧备份（lunaris / image-nest）必须继续能恢复，否则历史备份全被判成"别人的"
+      if (app && app !== 'photocoffer' && app !== 'lunaris' && app !== 'image-nest') {
         throw new Error('这不是存照的备份')
       }
       const version = Number(meta.userVersion ?? 0)

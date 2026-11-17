@@ -43,7 +43,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lunaris-windows
+          name: photocoffer-windows
           path: |
             release/*.exe
             release/latest.yml

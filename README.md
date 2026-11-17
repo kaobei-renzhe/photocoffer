@@ -12,6 +12,10 @@
   Windows 10 / 11 · macOS 12+ · 免费开源（MIT）· 默认完全离线
 </p>
 
+<p align="center">
+  <a href="https://github.com/kaobei-renzhe/photocoffer">github.com/kaobei-renzhe/photocoffer</a>
+</p>
+
 ---
 
 ## 为什么用它
@@ -154,7 +158,7 @@ macOS 上把 `Ctrl` 换成 `Cmd`；删除也可以直接按 `Backspace`。
 | --- | --- |
 | 原图 | 始终在你原来的位置，不改名、不移动、不删除 |
 | 索引与缩略图 | 默认在图库目录（`library.db`、`thumbnails/`、`previews/`、`vectors/`），可整体搬到别的盘 |
-| 配置与日志 | Windows 在 `%APPDATA%\lunaris`，macOS 在 `~/Library/Application Support/lunaris`，日志只在本地 |
+| 配置与日志 | Windows 在 `%APPDATA%\photocoffer`，macOS 在 `~/Library/Application Support/photocoffer`，日志只在本地 |
 | 备份 | 一个可以拷走的 zip |
 
 删除照片只是把它从图库里移出（标记为已删除），**硬盘上的原图不会被删**；误删可以 `Ctrl / Cmd + Z` 撤销。
@@ -261,7 +265,7 @@ Windows 包已去掉 onnxruntime 的 DirectML 运行库（`DirectML.dll` / `dxil
 更新源用 generic 静态文件服务，地址只从环境变量读取：
 
 ```bash
-LUNARIS_UPDATE_URL=https://你的更新地址/lunaris
+PHOTOCOFFER_UPDATE_URL=https://你的更新地址/photocoffer
 ```
 
 - 留空：完全不联网检查，界面也不出现任何更新提示。
@@ -275,7 +279,7 @@ LUNARIS_UPDATE_URL=https://你的更新地址/lunaris
 2. `latest.yml`
 3. `存照 Setup <版本>.exe.blockmap`
 
-记得先把 `latest.yml` 里的版本号改成新版本。打包配置里的 `publish.url` 只是让 electron-builder 生成 `latest.yml` 的占位地址，运行时以 `LUNARIS_UPDATE_URL` 为准。
+记得先把 `latest.yml` 里的版本号改成新版本。打包配置里的 `publish.url` 只是让 electron-builder 生成 `latest.yml` 的占位地址，运行时以 `PHOTOCOFFER_UPDATE_URL` 为准（旧名 `LUNARIS_UPDATE_URL` 仍兼容）。
 
 回滚：把 `latest.yml` 换回上一版（版本号与文件都指回旧版），客户端下次检查会重新下载旧版并覆盖。`npm run dist` 会保留最近两个版本的安装包，上一版随时可以拿来回滚。
 
@@ -287,7 +291,7 @@ LUNARIS_UPDATE_URL=https://你的更新地址/lunaris
 - [ ] 覆盖安装一次，确认「关于」页版本号正确
 - [ ] 语义搜图、AI 配置、图库切换各点一次
 - [ ] 三个文件上传到更新源，并把 `latest.yml` 版本号改成新版
-- [ ] 留空 `LUNARIS_UPDATE_URL` 启动一次，确认没有任何更新请求
+- [ ] 留空 `PHOTOCOFFER_UPDATE_URL` 启动一次，确认没有任何更新请求
 
 ## 已知限制
 

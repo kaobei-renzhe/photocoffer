@@ -43,7 +43,7 @@ for (const name of installers) {
 }
 
 for (const name of entries) {
-  if (!/^lunaris-\d+\.\d+\.\d+-x64\.nsis\.7z$/.test(name)) continue
+  if (!/^(?:lunaris|photocoffer)-\d+\.\d+\.\d+-x64\.nsis\.7z$/.test(name)) continue
   if (keepVersions.has(versionOf(name).join('.'))) continue
   rmSync(join(dir, name), { force: true })
 }

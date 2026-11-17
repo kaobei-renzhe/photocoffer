@@ -164,7 +164,7 @@ if (debugPort) app.commandLine.appendSwitch('remote-debugging-port', debugPort)
 const customUserData = process.env.IMAGENEST_USER_DATA ?? process.env.LUNARIS_USER_DATA
 
 /**
- * 改名（月巢 / image-nest → 月相 / lunaris → 片匣 → 砚白 → 存照）后 Electron 的 userData 目录跟着变了，
+ * 改名（月巢 / image-nest → 月相 / lunaris → 片匣 → 砚白 → 存照 / photocoffer）后 Electron 的 userData 目录跟着变了，
  * 首次启动时把旧目录里的配置、装备库与日志搬过来，老图库不用重新配置一遍。
  * 只在目标目录还没有 config.json（即没配过）时执行，搬完就不管了。
  */
@@ -181,7 +181,8 @@ function migrateLegacyUserData(): void {
     try {
       mkdirSync(target, { recursive: true })
       // 只搬业务数据；Cache / GPU 缓存这些重建即可，没必要带
-      for (const item of ['config.json', 'gear.json', 'logs']) {
+      // llm-keys / llm-key.bin 也要搬，否则改名后用户已保存的密钥要重填
+      for (const item of ['config.json', 'gear.json', 'logs', 'llm-keys', 'llm-key.bin']) {
         const from = join(legacy, item)
         if (existsSync(from)) cpSync(from, join(target, item), { recursive: true, force: false })
       }

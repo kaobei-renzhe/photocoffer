@@ -65,6 +65,28 @@ describe('updater', () => {
     expect(state.checkForUpdates).not.toHaveBeenCalled()
   })
 
+  it('新变量名 PHOTOCOFFER_UPDATE_URL 生效', async () => {
+    vi.stubEnv('PHOTOCOFFER_UPDATE_URL', 'https://updates.example.com/photocoffer')
+    const updater = await loadUpdater()
+    const status = await updater.checkForUpdates()
+    expect(state.setFeedURL).toHaveBeenCalledWith({
+      provider: 'generic',
+      url: 'https://updates.example.com/photocoffer'
+    })
+    expect(status.state).toBe('checking')
+  })
+
+  it('旧变量名 LUNARIS_UPDATE_URL 仍兼容（已装用户设过）', async () => {
+    vi.stubEnv('LUNARIS_UPDATE_URL', 'https://updates.example.com/lunaris')
+    const updater = await loadUpdater()
+    const status = await updater.checkForUpdates()
+    expect(state.setFeedURL).toHaveBeenCalledWith({
+      provider: 'generic',
+      url: 'https://updates.example.com/lunaris'
+    })
+    expect(status.state).toBe('checking')
+  })
+
   it('https 地址会发起检查', async () => {
     vi.stubEnv('LUNARIS_UPDATE_URL', 'https://updates.example.com/lunaris')
     const updater = await loadUpdater()

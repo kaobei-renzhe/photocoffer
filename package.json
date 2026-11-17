@@ -1,6 +1,6 @@
 {
-  "name": "lunaris",
-  "version": "0.4.4",
+  "name": "photocoffer",
+  "version": "0.5.0",
   "description": "本地优先的图片素材库：照片、相机与文字都归在这里",
   "main": "./out/main/index.js",
   "author": "silvermoon",
@@ -31,7 +31,7 @@
     "publish": [
       {
         "provider": "generic",
-        "url": "https://updates.invalid/lunaris"
+        "url": "https://updates.invalid/photocoffer"
       }
     ],
     "npmRebuild": false,

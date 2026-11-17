@@ -6,12 +6,13 @@ import type { UpdateStatus } from '../shared/types'
 /**
  * 自动更新：地址只从环境变量读，留空就完全不联网。
  * 打包配置里的 publish.url 只是占位，用来让 electron-builder 生成 latest.yml；
- * 真正的更新源在运行时由 LUNARIS_UPDATE_URL 覆盖。
+ * 真正的更新源在运行时由 PHOTOCOFFER_UPDATE_URL 覆盖（旧名 LUNARIS_UPDATE_URL 仍兼容）。
  */
-const FEED_ENV = 'LUNARIS_UPDATE_URL'
+const FEED_ENV = 'PHOTOCOFFER_UPDATE_URL'
+const LEGACY_FEED_ENV = 'LUNARIS_UPDATE_URL'
 
 function feedUrl(): string {
-  return String(process.env[FEED_ENV] ?? '').trim()
+  return String(process.env[FEED_ENV] ?? process.env[LEGACY_FEED_ENV] ?? '').trim()
 }
 
 /** 只信任 https；本机 mock 允许 http，方便发布前自测 */

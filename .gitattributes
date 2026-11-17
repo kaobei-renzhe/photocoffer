@@ -1,0 +1,29 @@
+# ── 语言统计：设计稿不算进项目语言 ──
+# design/ 有 30MB 的 html 设计稿，按字节数会把 TypeScript 完全盖掉，
+# 导致 GitHub 把本项目误判成 "HTML"，搜 TypeScript/Electron 的人永远找不到。
+design/** linguist-documentation
+*.html    linguist-detectable=false
+
+# ── 行尾符统一：避免 Windows / macOS 双端 diff 噪音 ──
+* text=auto
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.mjs   text eol=lf
+*.css   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+
+# ── 二进制：不做文本转换 ──
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.ico   binary
+*.icns  binary
+*.onnx  binary
+*.exe   binary
+*.dmg   binary
+*.zip   binary

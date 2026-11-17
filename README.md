@@ -1,19 +1,35 @@
-# 存照
+# 存照 · photocoffer
 
 <p align="center">
-  <img src="build/icon.png" width="120" alt="存照 logo" />
+  <img src="build/icon.png" width="96" alt="存照 logo" />
 </p>
 
 <p align="center">
-  给摄影师的本地图片库：照片留在你的硬盘上，找图、挑片、交付都在一个窗口里完成。
+  <b>给摄影师的本地图片库</b><br />
+  照片留在你的硬盘上，找图、挑片、交付都在一个窗口里完成。
+</p>
+
+<p align="center">
+  <a href="https://github.com/kaobei-renzhe/photocoffer/releases"><b>⬇ 下载最新版</b></a>
+  &nbsp;·&nbsp;
+  <a href="#第一次打开约-3-分钟">快速上手</a>
+  &nbsp;·&nbsp;
+  <a href="#日常怎么用">功能一览</a>
 </p>
 
 <p align="center">
   Windows 10 / 11 · macOS 12+ · 免费开源（MIT）· 默认完全离线
 </p>
 
+![存照主界面：瀑布流浏览与左侧分类](docs/images/gallery-light.jpg)
+
 <p align="center">
-  <a href="https://github.com/kaobei-renzhe/photocoffer">github.com/kaobei-renzhe/photocoffer</a>
+  <img src="docs/images/lightbox.jpg" width="49%" alt="灯箱：黑底沉浸看片，可框选画面提问" />
+  <img src="docs/images/portrait.jpg" width="49%" alt="人像工作台：按景别、光线、氛围研读" />
+</p>
+
+<p align="center">
+  <sub>灯箱黑底沉浸看片，可框选画面提问 &nbsp;|&nbsp; 人像工作台，按景别 / 光线 / 氛围拆解</sub>
 </p>
 
 ---
@@ -29,30 +45,26 @@
 
 ## 安装
 
-**懒得自己动手？让 AI 代劳**
-
-把安装包所在路径发给你常用的 AI 助手，附一句：
-
-> 帮我装好存照：Windows 直接运行 `release` 里的 `存照 Setup 安装包.exe`，按默认设置装完；macOS 打开 `release` 里的 dmg，把「存照」拖进「应用程序」。装完打开一次，确认能启动。
+**[⬇ 从 Releases 下载最新版](https://github.com/kaobei-renzhe/photocoffer/releases)**
 
 **Windows**
 
-1. 打开仓库里的 `release` 目录，双击最新的 `存照 Setup <版本号>.exe`。
+1. 下载 `存照 Setup <版本号>.exe`，双击运行。
 2. 安装包没有买代码签名，Windows 会提示「已保护你的电脑」→ 点「更多信息」→「仍要运行」。
 3. 装完从开始菜单打开「存照」。
 
 **macOS**
 
-macOS 版需要自己构建（原生模块必须在 macOS 上安装，没法在 Windows 上交叉打包）：
+1. 下载对应架构的 dmg（Apple 芯片选 `arm64`，Intel 选 `x64`），把「存照」拖进「应用程序」。
+2. 首次打开被 Gatekeeper 拦住时：右键点「存照」→「打开」，或执行 `xattr -cr /Applications/存照.app`。原因是安装包没有 Apple 开发者签名。
 
-```bash
-npm ci
-npm run dist:mac
-```
+> 想自己从源码构建 macOS 版：原生模块必须在 macOS 上安装，没法在 Windows 上交叉打包。先 `npm ci`，再 `npm run dist:mac`，产物在 `release/` 下。
 
-产物在 `release/` 下：macOS 会同时产出 `arm64` 与 `x64` 两个 dmg（需在 macOS 上打包）。也可以在 GitHub Actions 里跑「build-mac」，跑完在 Artifacts 里下载。
+**懒得自己动手？让 AI 代劳**
 
-第一次打开被 Gatekeeper 拦住时：右键点「存照」→「打开」，或执行 `xattr -cr /Applications/存照.app`。原因是安装包没有 Apple 开发者签名。
+把下载好的安装包路径发给你常用的 AI 助手，附一句：
+
+> 帮我装好存照：Windows 直接运行这个 exe，按默认设置装完；macOS 打开 dmg，把「存照」拖进「应用程序」。装完打开一次，确认能启动。
 
 卸载：Windows 在 设置 → 应用 里卸载；macOS 把「存照」拖进废纸篓。**卸载不会删你的照片和图库。**
 

@@ -29,3 +29,7 @@ scripts/_*
 scripts/gen-icons*.mjs
 scripts/gen-sheet.mjs
 scripts/rename-product.py
+
+# 设计稿 html 不进版本库：会把 GitHub 语言统计带偏成 HTML
+design/**/*.html
+design/*.html

@@ -123,14 +123,8 @@ export default function Lightbox({
   const [moreOpen, setMoreOpen] = useState(false)
   /** 全屏状态：Esc 先退全屏再关灯箱 */
   const [fullscreen, setFullscreen] = useState(false)
-  /** 幻灯片是否在放；间隔只有 3 秒 / 5 秒两档 */
-  const [slideshow, setSlideshow] = useState(false)
-  const [slideDelay, setSlideDelay] = useState<3000 | 5000>(3000)
-  /** 任何键鼠操作都让计时重新开始 */
-  const [slideTick, setSlideTick] = useState(0)
   /** 沉浸（工具按需浮出）默认开启；按 ` 关掉 = 锁定工具常显 */
   const [immersive, setImmersive] = useState(true)
-  const [slideIdle, setSlideIdle] = useState(false)
   const [peekY, setPeekY] = useState<number | null>(null)
   const lastUserInputRef = useRef(Date.now())
   const shellRef = useRef<HTMLDivElement>(null)
@@ -143,11 +137,10 @@ export default function Lightbox({
   const chromeVisible = isChromeVisible({
     immersive,
     peekBand,
-    slideIdle,
     focusWithin,
     drawing,
     inspectorOpen,
-    interacting: moreOpen || slideshow
+    interacting: moreOpen
   })
   /** 关掉沉浸 = 锁定工具常显 */
   // 灯箱一打开就把 Windows 原生三键融进黑色舞台；关闭时恢复主题色
@@ -229,50 +222,6 @@ export default function Lightbox({
       void window.api.setFullScreen(false)
     }
   }, [])
-
-  // 幻灯片：到末张就停住，别在最后一张上反复空转
-  useEffect(() => {
-    if (!slideshow) return
-    if (index >= items.length - 1) {
-      setSlideshow(false)
-      setHint('已经是最后一张')
-      return
-    }
-    const timer = setTimeout(() => onNavigate(index + 1), slideDelay)
-    return () => clearTimeout(timer)
-  }, [slideshow, slideDelay, slideTick, index, items.length, onNavigate])
-
-  // 任何键鼠操作都把计时器拨回起点（键盘在 onKey 里处理，这里管指针与滚轮）
-  useEffect(() => {
-    if (!slideshow) {
-      setSlideIdle(false)
-      return
-    }
-    const bump = (): void => {
-      lastUserInputRef.current = Date.now()
-      setSlideIdle(false)
-      setSlideTick((value) => value + 1)
-    }
-    window.addEventListener('pointerdown', bump, true)
-    window.addEventListener('wheel', bump, true)
-    return () => {
-      window.removeEventListener('pointerdown', bump, true)
-      window.removeEventListener('wheel', bump, true)
-    }
-  }, [slideshow])
-
-  // 幻灯片静止：唯一允许的 idle 判定；自动翻页不更新 lastUserInputRef
-  useEffect(() => {
-    if (!slideshow) {
-      setSlideIdle(false)
-      return
-    }
-    const timer = window.setInterval(() => {
-      const quiet = Date.now() - lastUserInputRef.current > 3000
-      setSlideIdle(quiet && !drawing && !moreOpen && !immersive)
-    }, 500)
-    return () => window.clearInterval(timer)
-  }, [slideshow, drawing, moreOpen, immersive])
 
   /**
    * 沉浸态：指针进入上下 68px 唤回带才浮出工具，离开后留 3 秒再退回去。
@@ -490,10 +439,8 @@ export default function Lightbox({
     const onKey = (e: KeyboardEvent): void => {
       // 内层（输入框、弹窗）已经处理掉的键不要再抢
       if (e.defaultPrevented) return
-      // 任何按键都算一次操作，把幻灯片的计时拨回起点
+      // 任何按键都算一次操作，沉浸态的隐藏计时从这里重新开始
       lastUserInputRef.current = Date.now()
-      setSlideIdle(false)
-      if (slideshow) setSlideTick((value) => value + 1)
       const target = e.target as HTMLElement | null
       const typing =
         !!target &&
@@ -552,11 +499,6 @@ export default function Lightbox({
         void toggleFullscreen()
         return
       }
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault()
-        setSlideshow((value) => !value)
-        return
-      }
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault()
         if (inspectorOpen) setInspectorOpen(false)
@@ -613,7 +555,6 @@ export default function Lightbox({
     openInspector,
     resetFit,
     rotateBy,
-    slideshow,
     toggleFullscreen,
     zoomStep
   ])
@@ -1030,15 +971,6 @@ export default function Lightbox({
           {moreOpen && (
             <div className="absolute bottom-full left-1/2 z-30 mb-3 w-[248px] -translate-x-1/2 rounded-xl border border-[var(--lb-rule)] bg-[var(--lb-chrome)] p-3 text-[12px] backdrop-blur-[18px]">
               <div className="mb-2 flex flex-wrap gap-1">
-                <button className={MORE_BTN} onClick={() => setSlideshow((value) => !value)}>
-                  {slideshow ? '暂停' : '播放'}
-                </button>
-                <button
-                  className={MORE_BTN}
-                  onClick={() => setSlideDelay((value) => (value === 3000 ? 5000 : 3000))}
-                >
-                  {slideDelay / 1000} 秒
-                </button>
                 <button className={MORE_BTN} onClick={() => void toggleFullscreen()}>
                   {fullscreen ? '退出全屏' : '全屏'}
                 </button>
@@ -1050,7 +982,6 @@ export default function Lightbox({
                 ['0', '适应窗口'],
                 ['R / Shift+R', '旋转'],
                 ['← →', '上一张 / 下一张'],
-                ['S', '幻灯片'],
                 ['F11', '全屏'],
                 ['`', '工具常显'],
                 ['N', '档案面板'],
@@ -1065,15 +996,6 @@ export default function Lightbox({
             </div>
           )}
         </div>
-
-        {slideshow && (
-          <button
-            className="ml-2 rounded-full bg-[var(--lb-hover)] px-2 py-1 text-[11px] text-[var(--lb-text)]"
-            onClick={() => setSlideshow(false)}
-          >
-            ■ 停止播放
-          </button>
-        )}
 
         <button
           className="grid h-7 w-7 place-items-center rounded-full text-[var(--lb-faint)] hover:bg-[var(--lb-hover)] hover:text-[var(--lb-text)]"

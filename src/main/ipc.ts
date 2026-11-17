@@ -62,6 +62,7 @@ import {
   updateConfig
 } from './settings'
 import { TITLEBAR_OVERLAY_HEIGHT, titleBarColors } from './titlebar'
+import { isMac, isWindows } from './platform'
 import { startAutoBackup } from './scheduler'
 import { checkForUpdates, onUpdateStatus, quitAndInstall, updateStatus, updatesEnabled } from './updater'
 import {
@@ -319,7 +320,7 @@ function applySkinNative(id: SkinId): void {
       : def.base
   for (const win of BrowserWindow.getAllWindows()) {
     win.setBackgroundColor(background)
-    if (process.platform === 'win32') {
+    if (isWindows) {
       win.setTitleBarOverlay({ ...titleBarColors(), height: TITLEBAR_OVERLAY_HEIGHT })
     }
   }
@@ -1221,7 +1222,7 @@ export function registerIpc(): void {
   // Windows 的 overlay 在网页层之上，网页挡不住它；把按钮颜色设成和舞台同色即可「看不见」
   // macOS 直接隐藏红绿灯，比染色更干净
   ipcMain.handle('window:setOverlayImmersive', (_e, immersive: boolean) => {
-    if (process.platform === 'win32') {
+    if (isWindows) {
       for (const win of BrowserWindow.getAllWindows()) {
         win.setTitleBarOverlay(
           immersive
@@ -1235,7 +1236,7 @@ export function registerIpc(): void {
       }
       return true
     }
-    if (process.platform === 'darwin') {
+    if (isMac) {
       for (const win of BrowserWindow.getAllWindows()) {
         win.setWindowButtonVisibility(!immersive)
       }

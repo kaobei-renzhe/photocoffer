@@ -42,3 +42,6 @@ design/*.jpg
 design/**/*.jpg
 design/*.webp
 design/**/*.webp
+
+# 内部战略与复盘文档，不随公开仓库发布
+docs/发展方向审阅.md

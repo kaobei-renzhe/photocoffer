@@ -6,7 +6,7 @@
 
 | 平台 | 文件 | 说明 |
 | --- | --- | --- |
-| Windows 10 / 11 | `存照 Setup 0.7.0.exe` | 未签名，首次运行点「更多信息 → 仍要运行」 |
+| Windows 10 / 11 | `photocoffer-0.7.0-win-x64-setup.exe` | 未签名，首次运行点「更多信息 → 仍要运行」 |
 | macOS | 暂未提供预编译包 | 原生模块必须在 macOS 上安装，需从源码构建：`npm ci && npm run dist:mac` |
 
 装完打开一次即可，不需要联网。

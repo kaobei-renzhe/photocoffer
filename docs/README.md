@@ -21,4 +21,5 @@
 
 ## 发布
 
+- [0.6.0 发布说明](release/release-notes-0.6.0.md)
 - [0.5.0 发布说明](release/release-notes-0.5.0.md)

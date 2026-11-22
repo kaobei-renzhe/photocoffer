@@ -255,8 +255,7 @@ src/preload     contextBridge 暴露的 window.api
 src/renderer    React 界面
 src/shared      两端共用的类型与常量
 build/          图标与打包资源
-design/         界面稿
-docs/           方案与实测文档
+docs/           技术方案与实测文档
 ```
 
 ## 发布与更新

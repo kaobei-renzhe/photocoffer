@@ -1,8 +1,8 @@
 node_modules/
-out/
-release/
-models/
-dist/
+/out/
+/release/
+/models/
+/dist/
 *.log
 *.tsbuildinfo
 .env
@@ -15,34 +15,81 @@ dist/
 !.trae/rules/
 !.trae/rules/**
 .smoke/
+.screenshots/
+screenshots/
+captures/
 Thumbs.db
 .DS_Store
 .vscode/
 
-# 设计过程稿与临时产物：只保留最终稿，不随仓库发布
+# 设计与临时产物：design 整体、产品方案与对照页不进公开仓库
 .trae-html-share-packages/
-design/_audit/
-design/icon-drafts/
-design/theme-v2*
-design/mockups/overview/
+/design/
+/docs/product/
+/docs/assets/
 scripts/_*
 scripts/gen-icons*.mjs
 scripts/gen-sheet.mjs
 scripts/rename-product.py
 
-# 设计稿 html 不进版本库：会把 GitHub 语言统计带偏成 HTML
-design/**/*.html
-design/*.html
-
-# 设计稿位图不进版本库：README 已不引用，仓库可瘦 26MB
-# 本地文件保留在 design/ 下，需要时可 git add -f 加回
-design/*.png
-design/**/*.png
-design/*.jpg
-design/**/*.jpg
-design/*.webp
-design/**/*.webp
-
 # 内部战略、决策与复盘文档，整目录不随公开仓库发布
 # 约定：判断依据、竞品分析、内部短板、未定型的方案，一律放这里
 docs/_internal/
+
+# 本地截图、录屏与崩溃转储
+*.dmp
+*.stackdump
+*.log.*
+
+# 编辑器 / AI 工具本地状态
+.idea/
+*.iml
+*.swp
+*.swo
+.claude/
+.cursor/
+.windsurf/
+.aider*
+.continue/
+
+# 测试与构建中间产物
+coverage/
+.nyc_output/
+.vite/
+.vite-temp/
+test-results/
+playwright-report/
+logs/
+
+# 本地数据库与临时文件
+*.db
+*.sqlite
+*.sqlite3
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*.local
+
+# 证书与压缩包，避免误提交
+*.pem
+*.key
+*.p12
+*.pfx
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+
+# 设计源文件与视频素材
+*.psd
+*.psb
+*.ai
+*.sketch
+*.fig
+*.xd
+*.afdesign
+*.afphoto

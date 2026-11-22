@@ -5,6 +5,7 @@ import type { LlmErrorCode, SmartFilterResult } from '@shared/llm'
 import { thumbUrl } from '../lib/format'
 import { inAiScope, loadAiScope, type AiScope } from '../lib/aiScope'
 import { estimateBatchTokens } from '../lib/aiCost'
+import { quotaHintFor } from '../lib/aiQuota'
 import { llmHint } from '../lib/llmHint'
 import { modLabel } from '../lib/platform'
 
@@ -66,11 +67,20 @@ export default function SmartFilterDialog({
   const run = async (): Promise<void> => {
     const text = rule.trim()
     if (!text || phase === 'loading' || candidates.length === 0) return
+    // 配额先查：今日额度用完就别让用户白点一次确认
+    const hint = await quotaHintFor(candidates.length, '筛选')
+    if (hint.level === 'hard') {
+      setError({ code: 'quota_exceeded', message: hint.line })
+      setPhase('error')
+      return
+    }
     // 张数多时先提醒量级：一次筛选最多 30 张，按批送模型，token 会明显上去
-    if (cost.heavy) {
+    if (cost.heavy || hint.level === 'soft') {
       const ok = await window.api.confirm(
         '这次 AI 筛选会多花一点时间',
-        `这次要处理 ${candidates.length} 张照片。确认继续吗？`
+        `这次要处理 ${candidates.length} 张照片。` +
+          (hint.line ? `\n\n${hint.line}` : '') +
+          '确认继续吗？'
       )
       if (!ok) return
     }

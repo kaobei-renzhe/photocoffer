@@ -69,6 +69,7 @@ import { formatBytes, folderName, samePath } from './lib/format'
 import { pickHttpUrl } from './lib/urlImport'
 import { inAiScope, loadAiScope, type AiScope } from './lib/aiScope'
 import { estimateBatchTokens } from './lib/aiCost'
+import { quotaHintFor } from './lib/aiQuota'
 import { useLayoutSizes } from './hooks/useLayoutSizes'
 import { useAppearance } from './hooks/useAppearance'
 import { useLightbox } from './hooks/useLightbox'
@@ -865,12 +866,19 @@ export default function App() {
       }
       const picked = candidates.slice(0, 12)
       // 批量处理前先把数量和预估 token 交给用户确认；单张点选不再多弹一次
+      const quotaHint = await quotaHintFor(picked.length, '评分')
+      if (quotaHint.level === 'hard') {
+        notify(quotaHint.line)
+        return
+      }
       if (picked.length > 1) {
         const cost = estimateBatchTokens('quality', picked.length)
+        const hint = quotaHint
         const detail =
           `本次会给 ${picked.length} 张照片评分，会多花一点时间。` +
           (skipped > 0 ? `另有 ${skipped} 张不在 AI 作用范围，会跳过。` : '') +
-          (cost.heavy ? '这次调用量较大，确认后才会开始。' : '')
+          (cost.heavy ? '这次调用量较大，确认后才会开始。' : '') +
+          (hint.line ? `\n\n${hint.line}` : '')
         const ok = await window.api.confirm(
           cost.heavy ? '这次评分花的时间会久一些' : 'AI 评分',
           detail

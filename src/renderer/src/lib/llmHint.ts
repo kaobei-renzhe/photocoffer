@@ -9,7 +9,8 @@ const HINTS: Partial<Record<LlmErrorCode, string>> = {
   network: '网络不通，检查代理或接口地址',
   bad_request: '请求被服务商拒绝了，可能是这个模型不支持看图',
   bad_response: '模型返回的内容格式不对，再试一次通常就好',
-  cancelled: '这次调用被取消了'
+  cancelled: '这次调用被取消了',
+  quota_exceeded: '今日 AI 额度已用完，明天自动恢复；也可在「设置 → 大模型 → 用量与限额」调高上限'
 }
 
 export function llmHint(code: LlmErrorCode, message: string): string {

@@ -1,3 +1,4 @@
+import type { LlmQuotaSettings, QuotaVerdict } from '@shared/quota'
 import { useEffect, useState } from 'react'
 import {
   Camera,
@@ -228,6 +229,12 @@ export default function SettingsDialog({
   const [scopeFolders, setScopeFolders] = useState<number[] | null>(null)
   const [scoreBusy, setScoreBusy] = useState(false)
   const [llm, setLlm] = useState<LlmStatus | null>(null)
+  /** AI 用量配额快照：今日已用 / 阈值 / 判定 */
+  const [quota, setQuota] = useState<{
+    settings: LlmQuotaSettings
+    state: { usedPhotos: number; usedTokens: number; pausedUntil: number }
+    verdict: QuotaVerdict
+  } | null>(null)
   /** 正在编辑的模型 id；'new' 表示添加表单 */
   const [llmEditing, setLlmEditing] = useState<string | 'new' | null>(null)
   const [llmForm, setLlmForm] = useState<LlmModelDraft>(() => emptyLlmDraft())
@@ -288,6 +295,10 @@ export default function SettingsDialog({
       .llmStatus()
       .then(setLlm)
       .catch(() => setLlm(null))
+    void window.api
+      .llmQuota()
+      .then(setQuota)
+      .catch(() => setQuota(null))
     void window.api
       .getLibraryStorage()
       .then(setStorage)
@@ -956,6 +967,28 @@ export default function SettingsDialog({
     }
   }
 
+  /** 保存配额阈值后重新拉一次快照，保证界面与主进程一致 */
+  const saveQuotaPatch = async (patch: Partial<LlmQuotaSettings>): Promise<void> => {
+    try {
+      await window.api.llmSaveQuota(patch)
+      setQuota(await window.api.llmQuota())
+    } catch {
+      // 保存失败保留旧快照，不打断用户操作
+    }
+  }
+
+  const resetQuotaUsage = async (): Promise<void> => {
+    try {
+      await window.api.llmResetQuota()
+      setQuota(await window.api.llmQuota())
+    } catch {
+      // 同上
+    }
+  }
+
+  /** 今日用量占比，用于进度条颜色分档 */
+  const quotaRatio = quota ? quota.state.usedPhotos / Math.max(1, quota.settings.hardDaily) : 0
+
   const activeSkin = findSkin(skin)
 
   return (
@@ -1441,8 +1474,109 @@ export default function SettingsDialog({
                   </>
                 )}
 
-                <div className="text-[12px] leading-4 text-[var(--faint)]">
-                  支持 OpenAI 兼容接口与 Anthropic。请求在主进程发出，界面拿不到密钥和原图。
+                {/* 用量与限额：只统计外部服务调用，本地模型不计入 */}
+                <div className="mt-4 flex items-baseline justify-between">
+                  <span className="text-[13.5px]">用量与限额</span>
+                  {quota && quota.verdict.level === 'circuit' && (
+                    <span className="text-[11px] text-[var(--danger-text)]">已熔断，稍后自动恢复</span>
+                  )}
+                </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3">
+                  {quota ? (
+                    <>
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-[12.5px] text-[var(--muted)]">今日已用</span>
+                        <span className="text-[13px] tabular-nums text-[var(--text)]">
+                          {quota.state.usedPhotos} / {quota.settings.hardDaily} 张
+                          {quota.state.usedTokens > 0 && (
+                            <span className="ml-2 text-[11px] text-[var(--faint)]">
+                              {(quota.state.usedTokens / 1000).toFixed(1)}k token
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--border)]">
+                        <div
+                          className="h-full rounded-full transition-[width]"
+                          style={{
+                            width: `${Math.min(100, quotaRatio * 100)}%`,
+                            background:
+                              quotaRatio > 0.85
+                                ? 'var(--danger)'
+                                : quotaRatio > 0.6
+                                  ? 'var(--accent-strong)'
+                                  : 'var(--accent)'
+                          }}
+                        />
+                      </div>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <label className="block text-[11px] leading-4 text-[var(--faint)]">
+                          单次提醒（张）
+                          <input
+                            type="number"
+                            min={5}
+                            max={50}
+                            className="input mt-1 h-7 w-full text-[12px] tabular-nums"
+                            defaultValue={quota.settings.softPerBatch}
+                            onBlur={(event) =>
+                              void saveQuotaPatch({ softPerBatch: Number(event.target.value) })
+                            }
+                          />
+                        </label>
+                        <label className="block text-[11px] leading-4 text-[var(--faint)]">
+                          今日提醒（张）
+                          <input
+                            type="number"
+                            min={20}
+                            max={200}
+                            className="input mt-1 h-7 w-full text-[12px] tabular-nums"
+                            defaultValue={quota.settings.softDaily}
+                            onBlur={(event) =>
+                              void saveQuotaPatch({ softDaily: Number(event.target.value) })
+                            }
+                          />
+                        </label>
+                        <label className="block text-[11px] leading-4 text-[var(--faint)]">
+                          今日上限（张）
+                          <input
+                            type="number"
+                            min={50}
+                            max={500}
+                            className="input mt-1 h-7 w-full text-[12px] tabular-nums"
+                            defaultValue={quota.settings.hardDaily}
+                            onBlur={(event) =>
+                              void saveQuotaPatch({ hardDaily: Number(event.target.value) })
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="mt-3 flex items-start justify-between gap-3">
+                        <span className="text-[11px] leading-4 text-[var(--faint)]">
+                          只统计外部服务调用；本地语义检索、分类与人像识别不计入。每日 0 点自动归零。
+                        </span>
+                        <button
+                          className="shrink-0 text-[11px] text-[var(--accent-text)] hover:underline"
+                          onClick={() => void resetQuotaUsage()}
+                        >
+                          重置今日用量
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-[12px] text-[var(--faint)]">正在读取用量…</div>
+                  )}
+                </div>
+
+                <div className="space-y-1 text-[12px] leading-4 text-[var(--faint)]">
+                  <div>
+                    支持 OpenAI 兼容接口与 Anthropic。请求在主进程发出，界面拿不到密钥和原图。
+                  </div>
+                  <div>
+                    <span className="text-[var(--danger-text)]">☁️ 会外发</span>
+                    ：上面这四项能力会把你配置的服务商调用起来，图片会发给该服务商。
+                    <span className="ml-1 text-[var(--accent-text)]">🖥 只在本机</span>
+                    ：语义检索、自动分类与人像识别用的是本地模型，照片不会离开这台电脑。
+                  </div>
                 </div>
               </>
             )}

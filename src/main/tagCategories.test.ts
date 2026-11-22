@@ -46,6 +46,13 @@ describe('分类类目', () => {
       (row) => row.name
     )
     expect(tagNames).toEqual(expect.arrayContaining(categories.map((item) => item.name)))
+    expect(
+      getDb()
+        .prepare(
+          "SELECT COUNT(*) AS c FROM sqlite_master WHERE type = 'index' AND name = 'idx_auto_tags_category'"
+        )
+        .get()
+    ).toEqual({ c: 1 })
   })
 
   it('新增去空格、拒绝重名与非法字符，最多 30 个', () => {

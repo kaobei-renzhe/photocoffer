@@ -307,12 +307,9 @@ const api: Api = {
     return () => ipcRenderer.removeListener('clip:download-end', handler)
   },
   portraitStatus: () => ipcRenderer.invoke('portrait:status'),
-  portraitDownloadModel: () => ipcRenderer.invoke('portrait:download'),
-  onPortraitDownload: (cb: (progress: ClipDownloadProgress) => void) => {
-    const handler = (_e: unknown, payload: ClipDownloadProgress): void => cb(payload)
-    ipcRenderer.on('portrait:download-progress', handler)
-    return () => ipcRenderer.removeListener('portrait:download-progress', handler)
-  },
+  portraitFlags: (ids: number[]) => ipcRenderer.invoke('portrait:flags', ids),
+  portraitImportModel: () => ipcRenderer.invoke('portrait:importModel'),
+  portraitRemoveModel: () => ipcRenderer.invoke('portrait:removeModel'),
   portraitScan: (ids: number[]) => ipcRenderer.invoke('portrait:scan', ids),
   portraitOverride: (ids: number[], value: 0 | 1 | null) =>
     ipcRenderer.invoke('portrait:override', ids, value),

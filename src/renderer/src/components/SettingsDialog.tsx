@@ -28,6 +28,7 @@ import type {
   EmbeddingModelInfo,
   Folder,
   LibraryStorage,
+  PortraitStatus,
   ThemeMode,
   UpdateStatus,
   XmpProgress,
@@ -281,6 +282,11 @@ export default function SettingsDialog({
   const [categoryBusy, setCategoryBusy] = useState(false)
   const [categoryMsg, setCategoryMsg] = useState('')
   const [categoryError, setCategoryError] = useState(false)
+  /** 人像检测模型：只支持本地导入，不再提供下载 */
+  const [portraitStatus, setPortraitStatus] = useState<PortraitStatus | null>(null)
+  const [portraitBusy, setPortraitBusy] = useState(false)
+  const [portraitMsg, setPortraitMsg] = useState('')
+  const [portraitError, setPortraitError] = useState(false)
 
   useEffect(() => {
     void window.api
@@ -311,6 +317,10 @@ export default function SettingsDialog({
       .llmQuota()
       .then(setQuota)
       .catch(() => setQuota(null))
+    void window.api
+      .portraitStatus()
+      .then(setPortraitStatus)
+      .catch(() => setPortraitStatus(null))
     void window.api
       .getLibraryStorage()
       .then(setStorage)
@@ -420,6 +430,46 @@ export default function SettingsDialog({
       setCategoryMsg(errorText(error))
     } finally {
       setCategoryBusy(false)
+    }
+  }
+
+  const importPortraitModel = async (): Promise<void> => {
+    if (portraitBusy) return
+    setPortraitBusy(true)
+    setPortraitMsg('')
+    setPortraitError(false)
+    try {
+      const next = await window.api.portraitImportModel()
+      if (next) {
+        setPortraitStatus(next)
+        setPortraitMsg('已导入，人像检测立即生效')
+      }
+    } catch (error) {
+      setPortraitError(true)
+      setPortraitMsg(errorText(error))
+    } finally {
+      setPortraitBusy(false)
+    }
+  }
+
+  const removePortraitModel = async (): Promise<void> => {
+    if (portraitBusy) return
+    const ok = await window.api.confirm(
+      '移除人像检测模型？',
+      '移除后会回到自动分类的降级筛选，已有人工判定与自动分类标签不受影响。'
+    )
+    if (!ok) return
+    setPortraitBusy(true)
+    setPortraitMsg('')
+    setPortraitError(false)
+    try {
+      setPortraitStatus(await window.api.portraitRemoveModel())
+      setPortraitMsg('已移除，人像工作台回到自动分类筛选')
+    } catch (error) {
+      setPortraitError(true)
+      setPortraitMsg(errorText(error))
+    } finally {
+      setPortraitBusy(false)
     }
   }
 
@@ -1797,6 +1847,58 @@ export default function SettingsDialog({
                 )}
                 <div className="text-[11px] leading-4 text-[var(--faint)]">
                   换模型不会删旧索引，但要重建后才能搜图和分类。SigLIP 2 的中文分类实测更弱，建议先小范围对比。
+                </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-[13.5px]">人像检测模型</span>
+                  <span
+                    className={`rounded-lg border px-1.5 py-[1px] text-[11px] ${
+                      portraitStatus?.modelReady
+                        ? 'border-[var(--success)]/40 text-[var(--success)]'
+                        : 'border-[var(--border)] text-[var(--faint)]'
+                    }`}
+                  >
+                    {portraitStatus?.modelReady ? '已就绪' : '未导入'}
+                  </span>
+                  <span className="ml-auto text-[11px] text-[var(--faint)]">可选 · 约 43 MB</span>
+                </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">
+                  <div className="text-[11px] leading-4 text-[var(--muted)]">
+                    不导入也能用人像工作台：跑过一次「自动分类」后，会按「人像」类目做粗筛。
+                    导入专用检测模型后判断更精确。
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      className="btn h-7 px-2 text-[12px]"
+                      disabled={portraitBusy}
+                      onClick={() => void importPortraitModel()}
+                    >
+                      <Upload size={14} /> {portraitBusy ? '处理中…' : '选择文件'}
+                    </button>
+                    {portraitStatus?.modelReady && (
+                      <button
+                        className="btn btn-ghost h-7 px-2 text-[12px]"
+                        disabled={portraitBusy}
+                        onClick={() => void removePortraitModel()}
+                      >
+                        移除
+                      </button>
+                    )}
+                    <span className="ml-auto text-[11px] text-[var(--faint)]">.onnx · 43,102,531 字节</span>
+                  </div>
+                  <div className="text-[11px] leading-4 text-[var(--faint)]">
+                    需要的话可以从 Xenova/detr-resnet-50 的 onnx/model_quantized.onnx
+                    获取，放到本机任意位置后在这里选择即可。
+                  </div>
+                  {portraitMsg && (
+                    <div
+                      className={`text-[11px] leading-4 ${
+                        portraitError ? 'text-[var(--danger-text)]' : 'text-[var(--accent-text)]'
+                      }`}
+                    >
+                      {portraitMsg}
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-2 text-[13.5px]">语义索引</div>

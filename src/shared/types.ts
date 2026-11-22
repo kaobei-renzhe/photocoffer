@@ -988,10 +988,13 @@ export interface Api {
   onClipDownload: (cb: (progress: ClipDownloadProgress) => void) => () => void
   /** 模型下载结束（成功或失败）——设置页也会发起下载，全局进度卡片统一在这里收起 */
   onClipDownloadEnd: (cb: () => void) => () => void
-  /** 人像检测：模型状态、下载与扫描 */
+  /** 人像检测：模型状态、三级降级查询与扫描 */
   portraitStatus: () => Promise<PortraitStatus>
-  portraitDownloadModel: () => Promise<string>
-  onPortraitDownload: (cb: (progress: ClipDownloadProgress) => void) => () => void
+  /** 人工 override > 模型 has_person > 自动分类「人像」类目 */
+  portraitFlags: (ids: number[]) => Promise<PortraitFlag[]>
+  /** 选择本地 .onnx 导入；取消时返回 null */
+  portraitImportModel: () => Promise<PortraitStatus | null>
+  portraitRemoveModel: () => Promise<PortraitStatus>
   portraitScan: (ids: number[]) => Promise<PortraitFlag[]>
   /** 写入人工判定：1=确认人像，0=不是人像，null=清除人工结论 */
   portraitOverride: (ids: number[], value: 0 | 1 | null) => Promise<number>
@@ -1217,6 +1220,8 @@ export interface PortraitFlag {
   hasPerson: boolean
   /** 人工结论，最高优先级：1=确认人像，0=不是人像，null=无人工结论 */
   override?: 0 | 1 | null
+  /** 这条结论来自哪里：人工 / 检测模型 / 自动分类的「人像」类目 */
+  source?: 'human' | 'model' | 'autoTag'
   /** 仅 unresolved 有意义 */
   reason?: 'error' | 'no-source'
 }

@@ -1753,6 +1753,9 @@ export default function App() {
             canAsk={aiCaps['photo.socratic'] !== false}
             aiScope={aiScope}
             onAddToPick={addPortraitToPick}
+            onAutoTag={() => setAutoTagOpen(true)}
+            onHelp={() => setHelpOpen(true)}
+            refreshTick={tick}
           />
         </div>
       </div>

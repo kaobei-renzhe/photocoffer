@@ -95,8 +95,10 @@ import { deleteGear, deleteKit, gearCatalog, gearScenarios, gearSuggestions, gea
 import { startWatching, stopWatching } from './watcher'
 import { startVolumeWatch, volumeStatus } from './volumes'
 import {
-  downloadPersonModel,
+  importPersonModel,
+  portraitFlags,
   portraitStatus,
+  removePersonModel,
   scanPortrait,
   setPortraitOverride
 } from './portrait'
@@ -1518,15 +1520,24 @@ export function registerIpc(): void {
 
   ipcMain.handle('portrait:status', () => portraitStatus())
 
-  ipcMain.handle('portrait:download', async () => {
-    const win = activeWindow()
-    try {
-      return await downloadPersonModel((progress) => {
-        if (win && !win.isDestroyed()) win.webContents.send('portrait:download-progress', progress)
-      })
-    } finally {
-      if (win && !win.isDestroyed()) win.webContents.send('portrait:download-end')
-    }
+  ipcMain.handle('portrait:flags', (_e, ids: number[]) =>
+    portraitFlags(Array.isArray(ids) ? ids : [])
+  )
+
+  ipcMain.handle('portrait:importModel', async () => {
+    const result = await dialog.showOpenDialog({
+      title: '选择人像检测模型',
+      properties: ['openFile'],
+      filters: [{ name: 'ONNX 模型', extensions: ['onnx'] }]
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    importPersonModel(result.filePaths[0])
+    return portraitStatus()
+  })
+
+  ipcMain.handle('portrait:removeModel', () => {
+    removePersonModel()
+    return portraitStatus()
   })
 
   ipcMain.handle('portrait:scan', (_e, ids: number[]) =>

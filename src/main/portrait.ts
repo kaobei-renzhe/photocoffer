@@ -1,4 +1,4 @@
-import { existsSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
 import * as ort from 'onnxruntime-node'
@@ -6,16 +6,14 @@ import sharp from 'sharp'
 import type { PortraitFlag, PortraitStatus, PortraitVerdict } from '../shared/types'
 import { getDb } from './db'
 import { getItemFile, thumbPathFor } from './repo'
+import { readCategories } from './tagCategories'
 import { log } from './logger'
-import { downloadFiles, type DownloadProgress } from './clip/download'
-import type { ModelFileSpec } from './clip/models'
 
 /**
  * 人像检测：DETR-ResNet-50（COCO，Apache-2.0），只判断画面里有没有人。
  * 与语义索引用的 CLIP 完全独立，避免「风景分数更高就漏掉人像」的问题。
  */
 const MODEL_FILE = 'detr-resnet-50-int8.onnx'
-const MODEL_URL = 'https://hf-mirror.com/Xenova/detr-resnet-50/resolve/main/onnx/model_quantized.onnx'
 const MODEL_SIZE = 43_102_531
 const MODEL_TAG = 'detr-resnet-50-int8-640'
 const INPUT_SIZE = 640
@@ -25,8 +23,6 @@ const PERSON_THRESHOLD = 0.5
 export const PERSON_CONFIRM = 0.8
 /** COCO 里 person = 1；index 91 是 no-object */
 const PERSON_CLASS = 1
-
-const MODEL_FILES: ModelFileSpec[] = [{ name: MODEL_FILE, url: MODEL_URL, size: MODEL_SIZE }]
 
 function modelDir(): string {
   return join(app.getPath('userData'), 'models', 'person-detr')
@@ -50,7 +46,7 @@ let sessionPromise: Promise<ort.InferenceSession> | null = null
 function session(): Promise<ort.InferenceSession> {
   if (sessionPromise) return sessionPromise
   const file = resolvePersonModel()
-  if (!file) return Promise.reject(new Error('人像识别模型还没下载'))
+  if (!file) return Promise.reject(new Error('人像检测模型还没导入'))
   sessionPromise = ort.InferenceSession.create(file, {
     intraOpNumThreads: 2,
     interOpNumThreads: 1,
@@ -245,10 +241,120 @@ export function portraitStatus(): PortraitStatus {
   }
 }
 
-export function downloadPersonModel(
-  onProgress: (progress: DownloadProgress) => void
-): Promise<string> {
-  return downloadFiles(modelDir(), MODEL_FILES, onProgress).finally(() => resetPersonModel())
+/** 只接受 43,102,531 字节的 int8 DETR；大小不符直接拒绝，避免加载错模型 */
+export function importPersonModel(sourcePath: string): string {
+  const source = String(sourcePath ?? '')
+  if (!source.toLowerCase().endsWith('.onnx')) throw new Error('请选择 .onnx 模型文件')
+  let size = 0
+  try {
+    size = statSync(source).size
+  } catch {
+    throw new Error('读取模型文件失败')
+  }
+  if (size !== MODEL_SIZE) {
+    throw new Error(
+      `文件不匹配（${size} 字节），请确认是 detr-resnet-50 int8 版本（${MODEL_SIZE} 字节）`
+    )
+  }
+  const dir = modelDir()
+  mkdirSync(dir, { recursive: true })
+  copyFileSync(source, join(dir, MODEL_FILE))
+  resetPersonModel()
+  return join(dir, MODEL_FILE)
+}
+
+export function removePersonModel(): void {
+  try {
+    rmSync(join(modelDir(), MODEL_FILE), { force: true })
+  } catch {
+    /* 文件不存在或删不掉都不影响下一次导入 */
+  }
+  resetPersonModel()
+}
+
+/** 自动分类里的「人像」类目可能被改名或删除；先找精确名，再退化为包含「人像」的第一个 */
+export function portraitCategoryName(): string | null {
+  const categories = readCategories()
+  return (
+    categories.find((item) => item.name === '人像')?.name ??
+    categories.find((item) => item.name.includes('人像'))?.name ??
+    null
+  )
+}
+
+/**
+ * 人像降级查询：人工 override > 模型 has_person > 自动分类的「人像」类目。
+ * 只返回有证据的照片；没有证据的不返回，交给空状态引导。
+ */
+export function portraitFlags(ids: number[]): PortraitFlag[] {
+  const list = [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))]
+  if (list.length === 0) return []
+  const db = getDb()
+  const category = portraitCategoryName()
+  const placeholders = list.map(() => '?').join(',')
+  const rows = db
+    .prepare(
+      `SELECT i.id,
+              pf.override AS override,
+              pf.has_person AS hasPerson,
+              pf.score AS score,
+              pf.model AS model,
+              EXISTS(
+                SELECT 1 FROM auto_tags a
+                 WHERE a.item_id = i.id AND a.category = ?
+              ) AS tagged
+         FROM items i
+         LEFT JOIN person_flags pf ON pf.item_id = i.id
+        WHERE i.id IN (${placeholders})`
+    )
+    .all(category ?? '', ...list) as Array<{
+    id: number
+    override: 0 | 1 | null
+    hasPerson: number
+    score: number
+    model: string
+    tagged: number
+  }>
+
+  const flags: PortraitFlag[] = []
+  for (const row of rows) {
+    const score = Number(row.score) || 0
+    const override = row.override === 0 || row.override === 1 ? row.override : null
+    if (override !== null) {
+      flags.push({
+        id: row.id,
+        verdict: override === 1 ? 'person' : 'no-person',
+        score,
+        hasPerson: override === 1,
+        override,
+        source: 'human'
+      })
+      continue
+    }
+    if (row.model) {
+      const verdict = verdictFromScore(score)
+      flags.push({
+        id: row.id,
+        verdict,
+        score,
+        hasPerson: verdict === 'person' || verdict === 'likely',
+        override: null,
+        source: 'model'
+      })
+      continue
+    }
+    if (Number(row.tagged) === 1) {
+      flags.push({
+        id: row.id,
+        verdict: 'likely',
+        score: 0,
+        hasPerson: true,
+        override: null,
+        source: 'autoTag'
+      })
+    }
+  }
+  return flags
 }
 
 /**
@@ -300,7 +406,7 @@ export function setPortraitOverride(ids: number[], value: 0 | 1 | null): number 
 }
 
 export async function scanPortrait(ids: number[]): Promise<PortraitFlag[]> {
-  if (!resolvePersonModel()) throw new Error('人像识别模型还没下载')
+  if (!resolvePersonModel()) throw new Error('人像检测模型还没导入，去设置里选择 .onnx 文件')
   const db = getDb()
   const unique = [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))]
   const cached = db.prepare(
@@ -321,7 +427,8 @@ export async function scanPortrait(ids: number[]): Promise<PortraitFlag[]> {
         verdict,
         score: row.score,
         hasPerson: authoritativeHasPerson({ verdict, override }),
-        override
+        override,
+        source: override !== null ? 'human' : 'model'
       })
       continue
     }
@@ -349,7 +456,8 @@ export async function scanPortrait(ids: number[]): Promise<PortraitFlag[]> {
       score: outcome.score,
       hasPerson: authoritativeHasPerson({ verdict: outcome.verdict, override }),
       override,
-      reason: outcome.reason
+      reason: outcome.reason,
+      source: override !== null ? 'human' : 'model'
     })
   }
   return flags

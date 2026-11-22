@@ -13,10 +13,10 @@ let indexPath = ''
  * 结构化 schema 版本，存在 SQLite 的 `PRAGMA user_version` 里。
  * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次；4 = 人像检测缓存；
  * 5 = 人像人工纠错（override 三列）；6 = AI 评分物化到 items.ai_score；
- * 7 = 按图库隔离的分类类目表。
+ * 7 = 按图库隔离的分类类目表；8 = auto_tags(category) 索引，服务人像降级查询。
  * 以后每次加表 / 加列都必须 +1 并在 MIGRATION_STEPS 里补一步。
  */
-export const CURRENT_SCHEMA = 7
+export const CURRENT_SCHEMA = 8
 
 /** 迁移步骤必须幂等：老库可能从任意版本开始，补齐缺失的表与列即可收敛 */
 const SCHEMA = /* sql */ `
@@ -434,6 +434,22 @@ function migrationV7(db: Database.Database): void {
   })
 }
 
+/** v8：人像降级查询会按 category 查 auto_tags，3 万张库必须有索引 */
+function migrationV8(db: Database.Database): void {
+  subStep('补 auto_tags 类目索引', () => {
+    // 极老的库可能还没建 auto_tags；先幂等补齐，再建索引
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS auto_tags (
+        item_id INTEGER PRIMARY KEY,
+        category TEXT NOT NULL,
+        score REAL NOT NULL,
+        model TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_auto_tags_category ON auto_tags(category);
+    `)
+  })
+}
+
 const MIGRATION_STEPS: MigrationStep[] = [
   { version: 1, up: migrationV1 },
   { version: 2, up: migrationV2 },
@@ -441,7 +457,8 @@ const MIGRATION_STEPS: MigrationStep[] = [
   { version: 4, up: migrationV4 },
   { version: 5, up: migrationV5 },
   { version: 6, up: migrationV6 },
-  { version: 7, up: migrationV7 }
+  { version: 7, up: migrationV7 },
+  { version: 8, up: migrationV8 }
 ]
 
 /** 按 user_version 逐级升级；每一步独立事务，版本号跟着步骤走 */

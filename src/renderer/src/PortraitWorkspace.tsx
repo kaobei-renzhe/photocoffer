@@ -28,6 +28,12 @@ interface PortraitWorkspaceProps {
   /** AI 处理范围：超出范围的单张不显示 AI 操作 */
   aiScope: AiScope | null
   onAddToPick: (ids: number[]) => Promise<void>
+  /** 空状态没有可用判定时，直接去跑一次自动分类 */
+  onAutoTag: () => void
+  /** 了解可选的人像检测模型 */
+  onHelp: () => void
+  /** 自动分类等外部操作完成后递增，用来重新读照片与降级结论 */
+  refreshTick: number
 }
 
 const PAGE_LIMIT = 500
@@ -48,7 +54,10 @@ export default function PortraitWorkspace({
   aiReady,
   canAsk,
   aiScope,
-  onAddToPick
+  onAddToPick,
+  onAutoTag,
+  onHelp,
+  refreshTick
 }: PortraitWorkspaceProps) {
   const [facets, setFacets] = useState<Facet[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
@@ -88,7 +97,6 @@ export default function PortraitWorkspace({
   const [portraitScanning, setPortraitScanning] = useState(false)
   const [portraitProgress, setPortraitProgress] = useState<PortraitScanProgress | null>(null)
   const [portraitMsg, setPortraitMsg] = useState('')
-  const [modelDownload, setModelDownload] = useState<{ received: number; total: number } | null>(null)
   const scanToken = useRef(0)
   const portraitFlagsRef = useRef(portraitFlags)
   portraitFlagsRef.current = portraitFlags
@@ -135,6 +143,13 @@ export default function PortraitWorkspace({
     void loadItems()
   }, [loadItems])
 
+  // 自动分类 / 设置关闭后，App 会递增 refreshTick；重读照片与降级结论
+  useEffect(() => {
+    if (refreshTick === 0) return
+    void loadItems()
+    void loadPortraitStatus()
+  }, [refreshTick])
+
   useEffect(() => {
     void window.api
       .getPortraitColumns()
@@ -160,11 +175,42 @@ export default function PortraitWorkspace({
     void loadPortraitStatus()
   }, [loadPortraitStatus])
 
+  // 先读降级结论：人工 > 模型缓存 > 自动分类「人像」；没有检测模型也能筛
+  useEffect(() => {
+    if (items.length === 0) return
+    let alive = true
+    void window.api
+      .portraitFlags(items.map((item) => item.id))
+      .then((flags) => {
+        if (!alive) return
+        setPortraitFlags((prev) => {
+          const next = { ...prev }
+          for (const flag of flags) {
+            const existing = next[flag.id]
+            // autoTag 是最弱一级，不能覆盖人工或模型结论
+            if (!existing || existing.source === 'autoTag' || flag.source !== 'autoTag') {
+              next[flag.id] = flag
+            }
+          }
+          return next
+        })
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [items, refreshTick])
+
   // 分块扫描：每 20 张更新一次界面，未识别完之前不阻塞其它操作；扫描中不重排
   useEffect(() => {
     if (!portraitStatus?.modelReady || items.length === 0) return
     const known = portraitFlagsRef.current
-    const missing = items.filter((item) => known[item.id] === undefined).map((item) => item.id)
+    const missing = items
+      .filter((item) => {
+        const flag = known[item.id]
+        return !flag || flag.source !== 'model'
+      })
+      .map((item) => item.id)
     if (missing.length === 0) return
 
     const token = ++scanToken.current
@@ -204,7 +250,6 @@ export default function PortraitWorkspace({
   }, [items, portraitStatus?.modelReady])
 
   const shownItems = useMemo(() => {
-    if (!portraitStatus?.modelReady) return []
     return items.filter((item) => {
       const flag = portraitFlags[item.id]
       if (!flag) return false
@@ -216,7 +261,7 @@ export default function PortraitWorkspace({
       if (statusFilter === 'likely') return flag.override == null && flag.verdict === 'likely'
       return flag.override === 1 || flag.verdict === 'person' || flag.verdict === 'likely'
     })
-  }, [items, portraitStatus?.modelReady, portraitFlags, statusFilter])
+  }, [items, portraitFlags, statusFilter])
 
   // 切换筛选后，右侧详情不能继续显示已经被隐藏的照片
   useEffect(() => {
@@ -225,23 +270,6 @@ export default function PortraitWorkspace({
       setSelection([])
     }
   }, [shownItems, activeId])
-
-  const downloadPortraitModel = async (): Promise<void> => {
-    setPortraitMsg('')
-    setModelDownload({ received: 0, total: 0 })
-    const off = window.api.onPortraitDownload((progress) =>
-      setModelDownload({ received: progress.received, total: progress.total })
-    )
-    try {
-      await window.api.portraitDownloadModel()
-      setPortraitStatus(await window.api.portraitStatus())
-    } catch (error) {
-      setPortraitMsg(`模型下载失败：${errorText(error)}`)
-    } finally {
-      off()
-      setModelDownload(null)
-    }
-  }
 
   // 当前照片被筛掉时清空详情，避免右侧显示一张已经不在列表里的图
   useEffect(() => {
@@ -418,7 +446,8 @@ export default function PortraitWorkspace({
             verdict: old?.verdict ?? 'unresolved',
             score: old?.score ?? 0,
             hasPerson: value === 1,
-            override: value
+            override: value,
+            source: 'human'
           }
         }
       })
@@ -431,18 +460,13 @@ export default function PortraitWorkspace({
   const clearPortraitVerdict = async (id: number): Promise<void> => {
     try {
       await window.api.portraitOverride([id], null)
+      // 清掉人工结论后重新按降级链取一次，可能是模型结论，也可能回到未分类
+      const next = await window.api.portraitFlags([id])
       setPortraitFlags((prev) => {
-        const old = prev[id]
-        return {
-          ...prev,
-          [id]: {
-            id,
-            verdict: old?.verdict ?? 'unresolved',
-            score: old?.score ?? 0,
-            hasPerson: old?.verdict === 'person' || old?.verdict === 'likely',
-            override: null
-          }
-        }
+        const copy = { ...prev }
+        if (next[0]) copy[id] = next[0]
+        else delete copy[id]
+        return copy
       })
       await loadPortraitStatus()
     } catch (error) {
@@ -576,14 +600,25 @@ export default function PortraitWorkspace({
             <aside className="w-[264px] shrink-0 border-r border-[var(--border)] overflow-y-auto px-2 py-2">
               <div className="sticky top-0 z-10 -mx-2 px-2 pb-2 bg-[var(--chrome)]">
                 {portraitStatus ? (
-                  <PortraitStatusCard
-                    status={portraitStatus}
-                    onShowConfirmed={() => setStatusFilter('confirmed')}
-                    onShowLikely={() => setStatusFilter('likely')}
-                    onShowReview={() => {
-                      if (portraitStatus?.modelReady) setReviewOpen(true)
-                    }}
-                  />
+                  portraitStatus.modelReady ? (
+                    <PortraitStatusCard
+                      status={portraitStatus}
+                      onShowConfirmed={() => setStatusFilter('confirmed')}
+                      onShowLikely={() => setStatusFilter('likely')}
+                      onShowReview={() => {
+                        if (portraitStatus?.modelReady) setReviewOpen(true)
+                      }}
+                    />
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3">
+                      <div className="text-[12px] font-medium text-[var(--text)]">
+                        当前按自动分类筛选
+                      </div>
+                      <div className="mt-1 text-[11px] leading-4 text-[var(--faint)]">
+                        零样本「人像」只适合粗筛；导入本地检测模型会更准。
+                      </div>
+                    </div>
+                  )
                 ) : (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-[12px] text-[var(--faint)]">
                     正在读取人像状态…
@@ -725,50 +760,6 @@ export default function PortraitWorkspace({
                     <div key={n} className="h-[220px] rounded-2xl bg-[var(--panel-2)]" />
                   ))}
                 </div>
-              ) : !portraitStatus?.modelReady ? (
-                <div className="h-full grid place-items-center">
-                  <div className="max-w-[360px] text-center">
-                    <div className="text-[15px] font-bold text-[var(--text)]">人像识别需要一个本地模型</div>
-                    <div className="mt-1.5 text-[12px] leading-5 text-[var(--muted)]">
-                      人像检测有专用模型，和「语义索引」用的那个是两套，互不替代。
-                      下载后只在这台电脑上运行，照片不外传。约 41 MB，只需下载一次。
-                    </div>
-                    {modelDownload ? (
-                      <div className="mt-3">
-                        <div className="h-1 overflow-hidden rounded-lg bg-[var(--border)]">
-                          <div
-                            className="h-full rounded-lg bg-[var(--accent)] transition-[width]"
-                            style={{
-                              width: `${
-                                modelDownload.total
-                                  ? Math.round((modelDownload.received / modelDownload.total) * 100)
-                                  : 0
-                              }%`
-                            }}
-                          />
-                        </div>
-                        <div className="mt-1 text-[11px] tabular-nums text-[var(--faint)]">
-                          {modelDownload.total
-                            ? `${Math.round((modelDownload.received / modelDownload.total) * 100)}%`
-                            : '正在准备下载…'}
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        className="btn btn-primary mt-3 h-10 px-4"
-                        onClick={() => void downloadPortraitModel()}
-                      >
-                        下载模型（41 MB）
-                      </button>
-                    )}
-                    {portraitMsg && (
-                      <div className="mt-2 text-[12px] leading-4 text-[var(--danger-text)]">{portraitMsg}</div>
-                    )}
-                    <button className="btn btn-ghost mt-3 h-8 px-2 text-[12px]" onClick={onBack}>
-                      回图库
-                    </button>
-                  </div>
-                </div>
               ) : items.length === 0 ? (
                 <div className="h-full grid place-items-center">
                   <div className="max-w-[320px] text-center text-[12px] leading-5 text-[var(--faint)]">
@@ -787,6 +778,35 @@ export default function PortraitWorkspace({
                       '这个范围里没有被判无人的照片。'
                     ) : portraitScanning && portraitProgress ? (
                       `正在辨认人像 ${portraitProgress.done} / ${portraitProgress.total}`
+                    ) : !portraitStatus ? (
+                      '正在读取人像状态…'
+                    ) : !portraitStatus.modelReady ? (
+                      <>
+                        <div className="text-[14px] font-bold text-[var(--text)]">
+                          还没有可用来筛选的人像判定
+                        </div>
+                        <div className="mt-1.5 text-[12px] leading-5 text-[var(--muted)]">
+                          先跑一次「自动分类」（本地运行，不需要联网，几分钟），
+                          跑完「人像」这一类就会被识别出来。
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+                          <button
+                            className="btn btn-primary h-8 px-3 text-[12px]"
+                            onClick={onAutoTag}
+                          >
+                            去跑自动分类
+                          </button>
+                          <button
+                            className="btn btn-ghost h-8 px-2 text-[12px]"
+                            onClick={onHelp}
+                          >
+                            了解人像检测
+                          </button>
+                        </div>
+                        <div className="mt-2 text-[11px] leading-4 text-[var(--faint)]">
+                          零样本「人像」只适合粗筛；导入本地检测模型会更准。
+                        </div>
+                      </>
                     ) : (
                       <>
                         这个范围里还没有人像。
@@ -890,9 +910,14 @@ export default function PortraitWorkspace({
                   <>
                     <div className="text-[13.5px] font-bold text-[var(--text)]">本场人像</div>
                     <div className="mt-1 text-[11px] leading-4 text-[var(--muted)]">
-                      已确认{' '}
-                      {(portraitStatus?.confirmedByModel ?? 0) + (portraitStatus?.confirmedByHuman ?? 0)} ·
-                      可能 {portraitStatus?.likely ?? 0} · 待确认 {portraitStatus?.unresolved ?? 0}
+                      {portraitStatus?.modelReady
+                        ? `已确认 ${
+                            (portraitStatus.confirmedByModel ?? 0) +
+                            (portraitStatus.confirmedByHuman ?? 0)
+                          } · 可能 ${portraitStatus.likely ?? 0} · 待确认 ${
+                            portraitStatus.unresolved ?? 0
+                          }`
+                        : '当前按自动分类的「人像」类目筛选；导入检测模型会更准。'}
                     </div>
                     {reviewCount > 0 && portraitStatus?.modelReady && (
                       <button className="btn btn-primary mt-2 h-9 w-full" onClick={() => setReviewOpen(true)}>
@@ -988,7 +1013,8 @@ export default function PortraitWorkspace({
                       aiReady,
                       canAsk: canAsk && !currentScopeBlocked,
                       scopeBlocked: currentScopeBlocked,
-                      scopeHint: currentScopeHint
+                      scopeHint: currentScopeHint,
+                      onReferenceChange: () => void loadItems()
                     }}
                   />
                 ) : (

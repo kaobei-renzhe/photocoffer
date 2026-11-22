@@ -1,4 +1,4 @@
-export type MenuSectionId = 'file' | 'settings'
+export type MenuSectionId = 'file' | 'settings' | 'help'
 
 export interface MenuAction {
   id: string
@@ -16,7 +16,7 @@ export interface MenuSection {
 
 /**
  * 菜单唯一来源：原生菜单与 Windows 窗内下拉都从这里渲染。
- * 只保留两项：导入与图库归「文件」，设置各分段归「设置」。
+ * 导入与图库归「文件」，设置各分段归「设置」，离线帮助归「帮助」。
  * 星级、旗标、全屏、撤销这些都有各自快捷键（useShortcuts / useGlobalKeys），不需要菜单。
  */
 export const MENU_SECTIONS: MenuSection[] = [
@@ -43,6 +43,11 @@ export const MENU_SECTIONS: MenuSection[] = [
       '---',
       { id: 'app.about', label: '关于存照' }
     ]
+  },
+  {
+    id: 'help',
+    label: '帮助',
+    items: [{ id: 'app.help', label: '使用说明' }]
   }
 ]
 

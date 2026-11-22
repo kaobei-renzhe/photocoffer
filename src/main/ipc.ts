@@ -77,10 +77,18 @@ import {
   searchSimilar
 } from './embeddings'
 import { autoTagStatus, clearAutoTags, getAutoTagSettings, listAutoTagCategories, runAutoTag, saveAutoTagSettings } from './autoTag'
+import {
+  addTagCategory,
+  countTagCategoryUsage,
+  removeTagCategory,
+  renameTagCategory,
+  reorderTagCategories
+} from './tagCategories'
 import { downloadModel } from './clip/download'
 import { resetModel } from './clip/embedder'
 import { exportSettings, importSettings } from './configTransfer'
 import { isEmbeddingModelId } from './clip/models'
+import { isSafeExternalUrl } from './externalUrl'
 import { startAutoClipIndex, stopAutoClipIndex } from './clip/autoIndex'
 import { applyRelocate, buildRelocatePlan, getLastRelocateDir, rememberRelocateDir } from './relocate'
 import { deleteGear, deleteKit, gearCatalog, gearScenarios, gearSuggestions, gearUsage, listGear, listKits, recommendGear, saveGear, saveKit } from './gear'
@@ -1209,6 +1217,18 @@ export function registerIpc(): void {
     shell.showItemInFolder(path)
   })
 
+  // 打开外部链接：只放行 https，避免 file:// / javascript: 之类被滥用
+  ipcMain.handle('shell:openExternal', async (_e, url: string) => {
+    const target = String(url ?? '').trim()
+    if (!isSafeExternalUrl(target)) return false
+    try {
+      await shell.openExternal(target)
+      return true
+    } catch {
+      return false
+    }
+  })
+
   // 灯箱全屏：不传参数时按当前状态取反，返回切换后的结果
   ipcMain.handle('window:setFullScreen', (_e, value?: boolean) => {
     const win = activeWindow()
@@ -1521,6 +1541,16 @@ export function registerIpc(): void {
   )
 
   ipcMain.handle('clip:autoTagCategories', () => listAutoTagCategories())
+
+  ipcMain.handle('clip:tagCategory:add', (_e, name: string) => addTagCategory(name))
+  ipcMain.handle('clip:tagCategory:rename', (_e, from: string, to: string) =>
+    renameTagCategory(from, to)
+  )
+  ipcMain.handle('clip:tagCategory:remove', (_e, name: string) => removeTagCategory(name))
+  ipcMain.handle('clip:tagCategory:reorder', (_e, names: string[]) =>
+    reorderTagCategories(Array.isArray(names) ? names : [])
+  )
+  ipcMain.handle('clip:tagCategory:count', (_e, name: string) => countTagCategoryUsage(name))
 
   ipcMain.handle('clip:autoTagSettings:get', () => getAutoTagSettings())
 

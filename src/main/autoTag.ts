@@ -11,84 +11,12 @@ import type {
   AutoTagStatus,
   EmbeddingModelId
 } from '../shared/types'
+import { readCategories } from './tagCategories'
 
-interface CategorySpec extends AutoTagCategory {
-  prompts: string[]
+/** 只让用户填类目名；三条 prompt 由名字派生，兼顾名词直搜与整句描述 */
+function promptsOf(name: string): string[] {
+  return [name, `一张${name}照片`, `${name}的照片`]
 }
-
-/** 零样本类目表：prompt 越贴近真实拍摄内容，分类越准 */
-export const AUTO_TAG_CATEGORIES: CategorySpec[] = [
-  {
-    name: '风景',
-    color: '#6fcf97',
-    prompts: ['一张自然风景照片', '广阔的山川湖泊', '日落时分的海边']
-  },
-  {
-    name: '城市建筑',
-    color: '#7aa2f7',
-    prompts: ['城市里的高楼大厦', '街道和现代建筑', '一座城市的建筑群']
-  },
-  {
-    name: '人像',
-    color: '#e8b45a',
-    prompts: ['一张人物肖像照片', '一个人的半身照', '人物的脸部和表情']
-  },
-  {
-    name: '动物',
-    color: '#f2994a',
-    prompts: ['一只动物的照片', '猫狗等宠物的照片', '野生动物的照片']
-  },
-  {
-    name: '食物',
-    color: '#eb5757',
-    prompts: ['一份美味的食物', '餐桌上的菜肴', '甜点和饮料']
-  },
-  {
-    name: '静物',
-    color: '#bb86fc',
-    prompts: ['桌子上的静物', '产品特写照片', '摆放整齐的物品']
-  },
-  {
-    name: '街拍',
-    color: '#56ccf2',
-    prompts: ['街头行走的人们', '城市街拍照片', '马路上的路人']
-  },
-  {
-    name: '夜景',
-    color: '#5c7cfa',
-    prompts: ['夜晚的城市灯光', '夜空和月亮', '夜晚的街道']
-  },
-  {
-    name: '花草',
-    color: '#27ae60',
-    prompts: ['盛开的花朵', '绿色的树叶和植物', '花园里的花草']
-  },
-  {
-    name: '交通工具',
-    color: '#9aa7b8',
-    prompts: ['马路上行驶的汽车', '火车飞机或轮船', '一辆自行车的照片']
-  },
-  {
-    name: '室内',
-    color: '#d4a373',
-    prompts: ['房间的室内照片', '家具和家居环境', '室内的空间']
-  },
-  {
-    name: '截图文档',
-    color: '#a0aec0',
-    prompts: ['电脑屏幕截图', '文档或网页界面', '包含大量文字的图片']
-  },
-  {
-    name: '艺术绘画',
-    color: '#e07a5f',
-    prompts: ['一幅绘画作品', '插画或艺术创作', '雕塑等艺术品']
-  },
-  {
-    name: '运动',
-    color: '#4ecdc4',
-    prompts: ['正在进行体育运动', '跑步或球类比赛', '户外的运动场景']
-  }
-]
 
 interface ThresholdProfile {
   min: number
@@ -101,7 +29,7 @@ interface ThresholdProfile {
  * 两个模型的余弦分布完全不同：Chinese-CLIP 正常匹配在 0.2–0.5，
  * SigLIP 2 只有 0.05–0.1，共用一个阈值会让自动分类直接全空。
  *
- * Chinese-CLIP 的实测（3 万张图库）：14 个类目的分数全部挤在 0.35–0.49，
+ * Chinese-CLIP 的实测（3 万张图库）：默认 14 个类目的分数全部挤在 0.35–0.49，
  * 类目平均分只差 0.026，区分度很低。默认阈值定在 0.40，
  * 只给相对有把握的照片打标，避免 99.7% 的图都被强行归类。
  */
@@ -113,7 +41,7 @@ const THRESHOLD_PROFILES: Record<EmbeddingModelId, ThresholdProfile> = {
 let running = false
 
 export function listAutoTagCategories(): AutoTagCategory[] {
-  return AUTO_TAG_CATEGORIES.map(({ name, color }) => ({ name, color }))
+  return readCategories()
 }
 
 function profileFor(id: EmbeddingModelId): ThresholdProfile {
@@ -129,7 +57,7 @@ export function getAutoTagSettings(): AutoTagSettings {
   const model = activeModel()
   const profile = profileFor(model.id)
   const stored = readConfig().autoTag ?? {}
-  const all = AUTO_TAG_CATEGORIES.map((category) => category.name)
+  const all = readCategories().map((category) => category.name)
   const picked = Array.isArray(stored.categories)
     ? stored.categories.filter((name) => all.includes(name))
     : []
@@ -147,7 +75,7 @@ export function saveAutoTagSettings(patch: Partial<AutoTagSettings>): AutoTagSet
   const model = activeModel()
   const profile = profileFor(model.id)
   const current = getAutoTagSettings()
-  const all = AUTO_TAG_CATEGORIES.map((category) => category.name)
+  const all = readCategories().map((category) => category.name)
   const categories = (patch.categories ?? current.categories).filter((name) => all.includes(name))
   if (categories.length === 0) throw new Error('至少要保留一个类目')
   const threshold = clampThreshold(patch.threshold ?? current.threshold, profile)
@@ -222,34 +150,34 @@ function normalize(vector: Float32Array): Float32Array {
   return out
 }
 
-function ensureTag(name: string, cache: Map<string, number>): number {
+function ensureTag(name: string, color: string, cache: Map<string, number>): number {
   const cached = cache.get(name)
   if (cached !== undefined) return cached
-  const spec = AUTO_TAG_CATEGORIES.find((category) => category.name === name)
-  const tag = createTag(name, spec?.color ?? '#7aa2f7')
+  const tag = createTag(name, color)
   cache.set(name, tag.id)
   return tag.id
 }
 
-function pruneEmptyTags(): void {
+function pruneEmptyTags(categories: AutoTagCategory[] = readCategories()): void {
   const db = getDb()
-  const names = AUTO_TAG_CATEGORIES.map((category) => category.name)
   const statement = db.prepare(
     `DELETE FROM tags WHERE name = ?
        AND NOT EXISTS (SELECT 1 FROM item_tags WHERE tag_id = tags.id)`
   )
-  for (const name of names) statement.run(name)
+  for (const category of categories) statement.run(category.name)
 }
 
 function syncTags(
   assignments: Map<number, { category: string; score: number }>,
-  modelTag: string
+  modelTag: string,
+  categories: AutoTagCategory[]
 ): void {
   const db = getDb()
   const previous = db.prepare('SELECT item_id, category FROM auto_tags').all() as Array<{
     item_id: number
     category: string
   }>
+  const colorByName = new Map(categories.map((item) => [item.name, item.color]))
   const tagCache = new Map<string, number>()
   const removeLink = db.prepare('DELETE FROM item_tags WHERE item_id = ? AND tag_id = ?')
   const addLink = db.prepare('INSERT OR IGNORE INTO item_tags(item_id, tag_id) VALUES(?, ?)')
@@ -263,24 +191,22 @@ function syncTags(
   const tx = db.transaction(() => {
     for (const row of previous) {
       const next = assignments.get(row.item_id)
-      // 旧分类被改写或撤销时，先摘掉旧标签
+      // 旧分类被改写、撤销或类目被删除时，先摘掉旧标签
       if (!next || next.category !== row.category) {
-        const spec = AUTO_TAG_CATEGORIES.find((category) => category.name === row.category)
-        if (spec) {
-          const existing = db.prepare('SELECT id FROM tags WHERE name = ?').get(row.category) as
-            | { id: number }
-            | undefined
-          if (existing) removeLink.run(row.item_id, existing.id)
-        }
+        const existing = db.prepare('SELECT id FROM tags WHERE name = ?').get(row.category) as
+          | { id: number }
+          | undefined
+        if (existing) removeLink.run(row.item_id, existing.id)
       }
       if (!next) dropRow.run(row.item_id)
     }
 
     for (const [itemId, entry] of assignments) {
-      addLink.run(itemId, ensureTag(entry.category, tagCache))
+      const color = colorByName.get(entry.category) ?? '#7aa2f7'
+      addLink.run(itemId, ensureTag(entry.category, color, tagCache))
       upsert.run(itemId, entry.category, entry.score, modelTag)
     }
-    pruneEmptyTags()
+    pruneEmptyTags(categories)
   })
   tx()
 }
@@ -297,7 +223,9 @@ export async function runAutoTag(
   if (status.indexed === 0) throw new Error('还没有语义索引，先点「语义索引」建好再分类')
 
   const settings = getAutoTagSettings()
-  const active = AUTO_TAG_CATEGORIES.filter((category) => settings.categories.includes(category.name))
+  // 类目列表在函数开头读一次；内层逐张比对时不再查库
+  const categories = readCategories()
+  const active = categories.filter((category) => settings.categories.includes(category.name))
   const db = getDb()
 
   running = true
@@ -305,11 +233,11 @@ export async function runAutoTag(
   try {
     // 1. 把每个类目的多条提示词合成一个类向量
     const vectors = new Map<string, Float32Array>()
-    const promptTotal = active.reduce((sum, category) => sum + category.prompts.length, 0)
+    const promptTotal = active.reduce((sum, category) => sum + promptsOf(category.name).length, 0)
     let prepared = 0
     for (const category of active) {
       const sum = new Float32Array(model.dim)
-      for (const prompt of category.prompts) {
+      for (const prompt of promptsOf(category.name)) {
         const vector = await embedText(prompt, model.id)
         for (let i = 0; i < sum.length; i++) sum[i] += vector[i] ?? 0
         prepared++
@@ -353,7 +281,7 @@ export async function runAutoTag(
     }
 
     // 3. 同步成普通标签（自动打的标签也能直接筛选）
-    syncTags(assignments, model.tag)
+    syncTags(assignments, model.tag, categories)
 
     return { total: rows.length, assigned: assignments.size, counts }
   } finally {

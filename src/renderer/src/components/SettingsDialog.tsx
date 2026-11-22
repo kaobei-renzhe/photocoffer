@@ -23,6 +23,7 @@ import {
 import type {
   AppInfo,
   AppUseCase,
+  AutoTagCategory,
   EmbeddingModelId,
   EmbeddingModelInfo,
   Folder,
@@ -41,6 +42,7 @@ import type {
   LlmTestResult
 } from '@shared/llm'
 import { isLocalBaseUrl, LLM_CAPABILITY_IDS, LLM_MODEL_PRESETS } from '@shared/llm'
+import { TAG_CATEGORY_LIMIT, TAG_CATEGORY_NAME_LIMIT } from '@shared/tagCategories'
 import { findSkin, SKINS, type SkinId } from '@shared/skins'
 import {
   THUMB_CACHE_LIMIT_DEFAULT,
@@ -67,6 +69,8 @@ interface SettingsDialogProps {
   onThumbQuality: (pref: ThumbQualityPref) => void
   /** 全部文件夹，用来选 AI 处理的文件夹范围 */
   folders: Folder[]
+  /** 当前图库路径；切换图库后分类类目要重新读 */
+  library: string | null
   onClose: () => void
   /** 打开时默认停在哪个分类（AI 弹窗的「去设置」直接落到大模型） */
   initialTab?: SettingsTab
@@ -213,6 +217,7 @@ export default function SettingsDialog({
   thumbQuality,
   onThumbQuality,
   folders,
+  library,
   onClose,
   initialTab = 'appearance'
 }: SettingsDialogProps) {
@@ -269,6 +274,13 @@ export default function SettingsDialog({
   const [xmpBusy, setXmpBusy] = useState(false)
   const [xmpMsg, setXmpMsg] = useState<string | null>(null)
   const [xmpProgress, setXmpProgress] = useState<XmpProgress | null>(null)
+  /** 当前图库的分类类目；null = 还没读回来 */
+  const [tagCategories, setTagCategories] = useState<AutoTagCategory[] | null>(null)
+  const [categoryDraft, setCategoryDraft] = useState('')
+  const [categoryEditing, setCategoryEditing] = useState<{ from: string; to: string } | null>(null)
+  const [categoryBusy, setCategoryBusy] = useState(false)
+  const [categoryMsg, setCategoryMsg] = useState('')
+  const [categoryError, setCategoryError] = useState(false)
 
   useEffect(() => {
     void window.api
@@ -329,6 +341,23 @@ export default function SettingsDialog({
       .catch(() => setUpdateEnabled(false))
   }, [])
 
+  // 类目按图库隔离：切到语义索引或换图库时重新读一次
+  useEffect(() => {
+    if (tab !== 'semantic') return
+    let alive = true
+    void window.api
+      .autoTagCategories()
+      .then((list) => {
+        if (alive) setTagCategories(list)
+      })
+      .catch(() => {
+        if (alive) setTagCategories([])
+      })
+    return () => {
+      alive = false
+    }
+  }, [tab, library])
+
   // 下载进度由主进程推送，设置页打开时保持同步
   useEffect(() => window.api.onUpdateStatus(setUpdate), [])
 
@@ -358,6 +387,70 @@ export default function SettingsDialog({
 
   const errorText = (error: unknown): string =>
     String((error as Error).message).replace(/^Error invoking remote method '[^']+': /, '')
+
+  const addCategory = async (): Promise<void> => {
+    const name = categoryDraft.trim()
+    if (!name || categoryBusy) return
+    setCategoryBusy(true)
+    setCategoryMsg('')
+    setCategoryError(false)
+    try {
+      setTagCategories(await window.api.addTagCategory(name))
+      setCategoryDraft('')
+    } catch (error) {
+      setCategoryError(true)
+      setCategoryMsg(errorText(error))
+    } finally {
+      setCategoryBusy(false)
+    }
+  }
+
+  const commitCategoryRename = async (): Promise<void> => {
+    if (!categoryEditing || categoryBusy) return
+    const to = categoryEditing.to.trim()
+    if (!to) return
+    setCategoryBusy(true)
+    setCategoryMsg('')
+    setCategoryError(false)
+    try {
+      setTagCategories(await window.api.renameTagCategory(categoryEditing.from, to))
+      setCategoryEditing(null)
+    } catch (error) {
+      setCategoryError(true)
+      setCategoryMsg(errorText(error))
+    } finally {
+      setCategoryBusy(false)
+    }
+  }
+
+  const removeCategory = async (name: string): Promise<void> => {
+    if (categoryBusy) return
+    setCategoryBusy(true)
+    setCategoryMsg('')
+    setCategoryError(false)
+    try {
+      const count = await window.api.countTagCategory(name)
+      const ok = await window.api.confirm(
+        `删除类目「${name}」？`,
+        count > 0
+          ? `「${name}」下有 ${count} 张自动标注照片，删除后它们会变成未分类；手动打的同名标签会保留。自动标注数据仍保留在库里。`
+          : '删除后这个类目会从列表里消失；手动打的同名标签会保留。'
+      )
+      if (!ok) return
+      const result = await window.api.removeTagCategory(name)
+      setTagCategories(result.categories)
+      setCategoryMsg(
+        result.removed > 0
+          ? `已删除「${name}」，${result.removed} 张自动标注照片显示为未分类`
+          : `已删除「${name}」`
+      )
+    } catch (error) {
+      setCategoryError(true)
+      setCategoryMsg(errorText(error))
+    } finally {
+      setCategoryBusy(false)
+    }
+  }
 
   /** 导出偏好设置（不含 API Key 与图库路径） */
   const exportConfig = async (): Promise<void> => {
@@ -1733,6 +1826,130 @@ export default function SettingsDialog({
                 <div className="text-[12px] leading-4 text-[var(--faint)]">
                   手动点侧栏「语义索引」会一次跑完剩余的，随时可以停。
                 </div>
+
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-[13.5px]">分类类目</span>
+                  <span className="text-[11px] text-[var(--faint)] tabular-nums">
+                    {tagCategories ? `${tagCategories.length} / ${TAG_CATEGORY_LIMIT}` : '…'}
+                  </span>
+                  <span className="ml-auto text-[11px] text-[var(--faint)]">按当前图库保存</span>
+                </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] divide-y divide-[var(--border)]">
+                  {!tagCategories ? (
+                    <div className="px-3 py-2 text-[12px] text-[var(--faint)]">正在读取…</div>
+                  ) : (
+                    tagCategories.map((category) => (
+                      <div key={category.name} className="px-3 py-2">
+                        {categoryEditing?.from === category.name ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              className="input h-7 min-w-0 flex-1 text-[12px]"
+                              value={categoryEditing.to}
+                              autoFocus
+                              maxLength={TAG_CATEGORY_NAME_LIMIT}
+                              onChange={(event) =>
+                                setCategoryEditing((current) =>
+                                  current ? { ...current, to: event.target.value } : current
+                                )
+                              }
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter') void commitCategoryRename()
+                                if (event.key === 'Escape') setCategoryEditing(null)
+                              }}
+                            />
+                            <button
+                              className="btn h-7 px-2 text-[12px]"
+                              disabled={categoryBusy}
+                              onClick={() => void commitCategoryRename()}
+                            >
+                              保存
+                            </button>
+                            <button
+                              className="btn btn-ghost h-7 px-2 text-[12px]"
+                              onClick={() => setCategoryEditing(null)}
+                            >
+                              取消
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-full"
+                              style={{ background: category.color }}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-[12px] text-[var(--text)]">
+                              {category.name}
+                            </span>
+                            <button
+                              className="btn btn-ghost h-6 px-2 text-[11px]"
+                              disabled={categoryBusy}
+                              onClick={() =>
+                                setCategoryEditing({ from: category.name, to: category.name })
+                              }
+                            >
+                              改名
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-danger h-6 px-2 text-[11px]"
+                              disabled={categoryBusy || (tagCategories?.length ?? 0) <= 1}
+                              title={
+                                (tagCategories?.length ?? 0) <= 1
+                                  ? '至少要保留一个类目'
+                                  : '删除类目'
+                              }
+                              onClick={() => void removeCategory(category.name)}
+                            >
+                              删除
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    className="input h-7 min-w-0 flex-1 text-[12px]"
+                    placeholder={`新类目名（最多 ${TAG_CATEGORY_NAME_LIMIT} 字）`}
+                    value={categoryDraft}
+                    maxLength={TAG_CATEGORY_NAME_LIMIT}
+                    disabled={
+                      categoryBusy || (tagCategories?.length ?? 0) >= TAG_CATEGORY_LIMIT
+                    }
+                    onChange={(event) => setCategoryDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void addCategory()
+                    }}
+                  />
+                  <button
+                    className="btn h-7 px-2 text-[12px]"
+                    disabled={
+                      categoryBusy ||
+                      !categoryDraft.trim() ||
+                      (tagCategories?.length ?? 0) >= TAG_CATEGORY_LIMIT
+                    }
+                    title={
+                      (tagCategories?.length ?? 0) >= TAG_CATEGORY_LIMIT
+                        ? `最多 ${TAG_CATEGORY_LIMIT} 个类目`
+                        : '新增类目'
+                    }
+                    onClick={() => void addCategory()}
+                  >
+                    新增
+                  </button>
+                </div>
+                <div className="text-[11px] leading-4 text-[var(--faint)]">
+                  类目按图库隔离。改名会同步已有标注；删除只删配置与自动关联，手动打的同名标签保留。
+                </div>
+                {categoryMsg && (
+                  <div
+                    className={`text-[11px] leading-4 ${
+                      categoryError ? 'text-[var(--danger-text)]' : 'text-[var(--accent-text)]'
+                    }`}
+                  >
+                    {categoryMsg}
+                  </div>
+                )}
 
                 <div className="mt-2 text-[13.5px]">AI 作用的照片</div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-2.5 space-y-2">

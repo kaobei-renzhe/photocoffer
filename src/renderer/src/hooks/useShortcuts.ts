@@ -6,6 +6,8 @@ import type { Direction } from '../lib/spatialNav'
 export interface ShortcutOptions {
   portraitOpen: boolean
   pickDeliveryOpen: boolean
+  /** 帮助弹层打开时，主图库不再抢键盘 */
+  helpOpen: boolean
   library: string | null
   useCaseLoaded: boolean
   useCase: AppUseCase | null
@@ -38,8 +40,8 @@ export function useShortcuts(options: ShortcutOptions): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       const o = latest.current
-      // 人像工作台 / 选片交付 / 首启弹窗有自己的一套交互，主图库不要再抢键
-      if (o.portraitOpen || o.pickDeliveryOpen) return
+      // 人像工作台 / 选片交付 / 帮助弹层有自己的一套交互，主图库不要再抢键
+      if (o.portraitOpen || o.pickDeliveryOpen || o.helpOpen) return
       if (o.library && o.useCaseLoaded && o.useCase === null) return
       const el = document.activeElement as HTMLElement | null
       const typing =

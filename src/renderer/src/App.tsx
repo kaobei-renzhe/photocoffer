@@ -51,6 +51,7 @@ import RelocateDialog from './components/RelocateDialog'
 import EquipmentDialog from './components/EquipmentDialog'
 import SettingsDialog, { type SettingsTab } from './components/SettingsDialog'
 import AdviceDialog from './components/AdviceDialog'
+import HelpDialog from './components/HelpDialog'
 import SmartFilterDialog from './components/SmartFilterDialog'
 import PickExportDialog from './components/PickExportDialog'
 import FinalsExportDialog from './components/FinalsExportDialog'
@@ -140,6 +141,7 @@ export default function App() {
   const [equipmentOpen, setEquipmentOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('appearance')
+  const [helpOpen, setHelpOpen] = useState(false)
   /** 上次的索引目录里没有 library.db：在欢迎页上说清楚，别让用户以为图库没了 */
   const [indexMissing, setIndexMissing] = useState<string | null>(null)
   const [adviceOpen, setAdviceOpen] = useState(false)
@@ -1060,6 +1062,7 @@ export default function App() {
   useShortcuts({
     portraitOpen,
     pickDeliveryOpen,
+    helpOpen,
     library,
     useCaseLoaded,
     useCase,
@@ -1560,6 +1563,9 @@ export default function App() {
         case 'app.about':
           openSettings('about')
           return
+        case 'app.help':
+          setHelpOpen(true)
+          return
         case 'view.gallery':
           setPortraitOpen(false)
           setPickDeliveryOpen(false)
@@ -1638,7 +1644,7 @@ export default function App() {
   useEffect(() => window.api.onMenuAction(handleMenuAction), [handleMenuAction])
 
   useGlobalKeys({
-    enabled: !lightboxId && !settingsOpen && !importOpen,
+    enabled: !lightboxId && !settingsOpen && !helpOpen && !importOpen,
     onView: (view) => handleMenuAction(`view.${view}`),
     onSearch: () => document.querySelector<HTMLInputElement>('[data-search-input]')?.focus(),
     onSettings: () => openSettings('appearance'),
@@ -2270,6 +2276,7 @@ export default function App() {
           thumbQuality={thumbQuality}
           onThumbQuality={changeThumbQuality}
           folders={folders}
+          library={library}
           onClose={() => {
             setSettingsOpen(false)
             // XMP 导入可能改了星级/标签，关掉设置后刷新一次
@@ -2278,6 +2285,8 @@ export default function App() {
           initialTab={settingsTab}
         />
       )}
+
+      {helpOpen && <HelpDialog onClose={() => setHelpOpen(false)} />}
 
       {adviceOpen && activeItem && (
         <AdviceDialog

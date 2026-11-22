@@ -127,7 +127,7 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
           </div>
 
           <div className="text-[11px] leading-4 text-[var(--faint)]">
-            这是本机零样本分类，免费、离线。想更准，选中少量照片后用工具栏的「AI
+            类目可在「设置 → 语义索引」里增删；本机零样本分类免费、离线。想更准，选中少量照片后用工具栏的「AI
             自动分类（自定义模型，最多 12 张）」。
           </div>
 

@@ -44,7 +44,7 @@ const MAC_EDIT_MENU: MenuItemConstructorOptions = {
  * 菜单唯一来源：Windows 与 macOS 都安装同一份模板。
  * Windows 保留 autoHideMenuBar: true，原生菜单不可见但加速键仍生效；
  * 绝不能 setApplicationMenu(null)，否则 Ctrl+Z/C/V 会失去加速键来源。
- * 顶级只有「文件 / 设置」；mac 额外挂 app 菜单与一个不可见的「编辑」撑住 role。
+ * 顶级是「文件 / 设置 / 帮助」；mac 额外挂 app 菜单与一个不可见的「编辑」撑住 role。
  */
 export function installAppMenu(): void {
   const sections = MENU_SECTIONS.map((section) => ({

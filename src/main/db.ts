@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, unlin
 import Database from 'better-sqlite3'
 import { log } from './logger'
 import { getIndexDirFor } from './settings'
+import { DEFAULT_CATEGORIES } from './tagCategoryDefaults'
 
 let db: Database.Database | null = null
 let libraryPath = ''
@@ -11,10 +12,11 @@ let indexPath = ''
 /**
  * 结构化 schema 版本，存在 SQLite 的 `PRAGMA user_version` 里。
  * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次；4 = 人像检测缓存；
- * 5 = 人像人工纠错（override 三列）；6 = AI 评分物化到 items.ai_score。
+ * 5 = 人像人工纠错（override 三列）；6 = AI 评分物化到 items.ai_score；
+ * 7 = 按图库隔离的分类类目表。
  * 以后每次加表 / 加列都必须 +1 并在 MIGRATION_STEPS 里补一步。
  */
-export const CURRENT_SCHEMA = 6
+export const CURRENT_SCHEMA = 7
 
 /** 迁移步骤必须幂等：老库可能从任意版本开始，补齐缺失的表与列即可收敛 */
 const SCHEMA = /* sql */ `
@@ -399,13 +401,47 @@ function migrationV6(db: Database.Database): void {
   })
 }
 
+/** v7：分类类目跟图库走；新库与升级库都补一次默认 14 类 */
+function migrationV7(db: Database.Database): void {
+  subStep('建分类类目并种入默认值', () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tag_categories (
+        name       TEXT PRIMARY KEY,
+        color      TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL
+      );
+    `)
+    const count = db
+      .prepare('SELECT COUNT(*) AS c FROM tag_categories')
+      .get() as { c: number }
+    if (count.c > 0) return
+    const insert = db.prepare(
+      'INSERT INTO tag_categories (name, color, sort_order, created_at) VALUES (?, ?, ?, ?)'
+    )
+    const insertTag = db.prepare(
+      'INSERT OR IGNORE INTO tags (name, color, created_at) VALUES (?, ?, ?)'
+    )
+    const seed = db.transaction(() => {
+      DEFAULT_CATEGORIES.forEach((item, index) => {
+        const now = Date.now()
+        insert.run(item.name, item.color, index, now)
+        // 类目同时是标签：新库左侧栏立刻能看到 14 个默认类目
+        insertTag.run(item.name, item.color, now)
+      })
+    })
+    seed()
+  })
+}
+
 const MIGRATION_STEPS: MigrationStep[] = [
   { version: 1, up: migrationV1 },
   { version: 2, up: migrationV2 },
   { version: 3, up: migrationV3 },
   { version: 4, up: migrationV4 },
   { version: 5, up: migrationV5 },
-  { version: 6, up: migrationV6 }
+  { version: 6, up: migrationV6 },
+  { version: 7, up: migrationV7 }
 ]
 
 /** 按 user_version 逐级升级；每一步独立事务，版本号跟着步骤走 */

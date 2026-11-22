@@ -998,6 +998,15 @@ export interface Api {
   /** 自定义标题栏 / 原生菜单动作 */
   onMenuAction: (cb: (id: string) => void) => () => void
   autoTagCategories: () => Promise<AutoTagCategory[]>
+  /** 新增类目；返回当前图库的最新类目列表 */
+  addTagCategory: (name: string) => Promise<AutoTagCategory[]>
+  /** 改名；主进程会同步 auto_tags 与 tags 两张表 */
+  renameTagCategory: (from: string, to: string) => Promise<AutoTagCategory[]>
+  /** 删除类目配置；保留 auto_tags 历史标注 */
+  removeTagCategory: (name: string) => Promise<AutoTagCategoryRemoveResult>
+  reorderTagCategories: (names: string[]) => Promise<AutoTagCategory[]>
+  /** 删除前查询该类别下有多少张照片的自动标注 */
+  countTagCategory: (name: string) => Promise<number>
   getAutoTagSettings: () => Promise<AutoTagSettings>
   saveAutoTagSettings: (patch: Partial<AutoTagSettings>) => Promise<AutoTagSettings>
   autoTagStatus: () => Promise<AutoTagStatus>
@@ -1005,6 +1014,8 @@ export interface Api {
   clearAutoTags: () => Promise<{ removed: number }>
   onAutoTagProgress: (cb: (progress: AutoTagProgress) => void) => () => void
   showInFolder: (path: string) => Promise<void>
+  /** 用系统浏览器打开 https 链接；非 https 一律拒绝 */
+  openExternal: (url: string) => Promise<boolean>
   /** 切换窗口全屏；不传参数时取反，返回切换后的状态 */
   setFullScreen: (value?: boolean) => Promise<boolean>
   isFullScreen: () => Promise<boolean>
@@ -1218,6 +1229,12 @@ export interface PortraitScanProgress {
 export interface AutoTagCategory {
   name: string
   color: string
+}
+
+export interface AutoTagCategoryRemoveResult {
+  /** 该类目下保留在 auto_tags 里的历史标注数量 */
+  removed: number
+  categories: AutoTagCategory[]
 }
 
 export interface AutoTagSettings {

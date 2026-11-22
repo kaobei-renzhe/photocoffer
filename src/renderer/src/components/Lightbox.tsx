@@ -860,7 +860,8 @@ export default function Lightbox({
                 onRegionChange: setRegion,
                 onDrawingChange: changeDrawing,
                 focusThreadId,
-                onThreadFocused: () => setFocusThreadId(null)
+                onThreadFocused: () => setFocusThreadId(null),
+                onReferenceChange: onRefresh
               }}
             />
           </aside>

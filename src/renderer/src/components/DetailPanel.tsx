@@ -102,7 +102,13 @@ export default function DetailPanel({
               : undefined
           }
           facet={{ onChanged: onRefresh }}
-          study={{ aiReady, canAsk: canStudy && !scopeBlocked, scopeBlocked, scopeHint }}
+          study={{
+            aiReady,
+            canAsk: canStudy && !scopeBlocked,
+            scopeBlocked,
+            scopeHint,
+            onReferenceChange: onRefresh
+          }}
         />
       </div>
     </aside>

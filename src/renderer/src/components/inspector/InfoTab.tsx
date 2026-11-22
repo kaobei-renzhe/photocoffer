@@ -56,11 +56,6 @@ export default function InfoTab({
     }
   }, [item.id])
 
-  const toggleReference = async (): Promise<void> => {
-    await window.api.notes.setReference(item.id, item.reference !== 1)
-    onRefresh()
-  }
-
   const setRating = async (value: number): Promise<void> => {
     const next = item.rating === value ? 0 : value
     const previous = item.rating
@@ -174,18 +169,7 @@ export default function InfoTab({
         </div>
       )}
 
-      <label className="mt-2.5 flex cursor-pointer items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5">
-        <input
-          type="checkbox"
-          className="h-3.5 w-3.5 accent-[var(--accent)]"
-          checked={item.reference === 1}
-          onChange={() => void toggleReference()}
-        />
-        <span className="text-[12px] text-[var(--text)]">这是参考片</span>
-        <span className="ml-auto text-[11px] text-[var(--faint)]">研读别人怎么拍</span>
-      </label>
-
-      <div className="mt-2.5 flex items-center gap-1">
+      <div className="mt-3 flex items-center gap-1">
         <div className="stars">
           {[1, 2, 3, 4, 5].map((n) => (
             <Star

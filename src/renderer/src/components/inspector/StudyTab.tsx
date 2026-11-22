@@ -46,6 +46,8 @@ export interface StudyTabProps {
   /** 灯箱用：点了图上的框要定位到哪条线程（根笔记 id） */
   focusThreadId?: number | null
   onThreadFocused?: () => void
+  /** 参考片状态变化后通知外层刷新照片 */
+  onReferenceChange?: () => void
 }
 
 const KIND_LABEL: Record<PhotoNote['kind'], string> = {
@@ -91,7 +93,8 @@ export default function StudyTab({
   onRegionChange,
   onDrawingChange,
   focusThreadId = null,
-  onThreadFocused
+  onThreadFocused,
+  onReferenceChange
 }: StudyTabProps) {
   const [threads, setThreads] = useState<NoteThread[] | null>(null)
   /** 线程卡片，点圈选框时要把对应的滚进视野 */
@@ -100,6 +103,7 @@ export default function StudyTab({
   const currentItemId = useRef(item.id)
   const [flashId, setFlashId] = useState<number | null>(null)
   const [mode, setMode] = useState<NoteMode>(item.reference === 1 ? 'study' : 'review')
+  const [reference, setReference] = useState(item.reference === 1)
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -119,6 +123,7 @@ export default function StudyTab({
 
   // 参考片默认研读，自己的片子默认复盘；换照片/改标记时回到对应默认
   useEffect(() => {
+    setReference(item.reference === 1)
     setMode(item.reference === 1 ? 'study' : 'review')
     setDraft('')
     setFollowFor(null)
@@ -334,6 +339,19 @@ export default function StudyTab({
   const aiAvailable = aiReady && canAsk && !scopeBlocked
   const rootThinking = aiBusy && aiThreadId === null
 
+  const toggleReference = async (): Promise<void> => {
+    const next = !reference
+    setReference(next)
+    setMode(next ? 'study' : 'review')
+    try {
+      await window.api.notes.setReference(item.id, next)
+      onReferenceChange?.()
+    } catch (err) {
+      setReference(!next)
+      setError(`保存参考片状态失败：${errorText(err)}`)
+    }
+  }
+
   return (
     <div className={compact ? 'space-y-2.5 p-2.5' : 'space-y-3 p-3'}>
       <div className="flex items-center gap-1">
@@ -357,6 +375,17 @@ export default function StudyTab({
           ))}
         </div>
       </div>
+
+      <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-2.5 py-1.5">
+        <input
+          type="checkbox"
+          className="h-3.5 w-3.5 accent-[var(--accent)]"
+          checked={reference}
+          onChange={() => void toggleReference()}
+        />
+        <span className="text-[12px] text-[var(--text)]">参考片（学习用）</span>
+        <span className="ml-auto text-[11px] text-[var(--faint)]">按学别人拍法的方式提问</span>
+      </label>
 
       <div className="text-[11px] leading-4 text-[var(--faint)]">
         {!aiReady

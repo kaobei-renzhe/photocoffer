@@ -690,8 +690,10 @@ export default function Sidebar({
     return (
       <div key={facet.id}>
         <div
-          className={`side-item ${picked.length > 0 ? 'active' : ''}`}
-          style={{ paddingLeft: 6 }}
+          className={`side-item rounded-[6px] hover:bg-[var(--panel-2)] ${
+            picked.length > 0 ? 'active' : ''
+          }`}
+          style={{ paddingLeft: 12 }}
           onClick={() => toggleFacetOpen(facet.id)}
           title={
             picked.length > 0
@@ -700,7 +702,7 @@ export default function Sidebar({
           }
         >
           <button
-            className="w-3 h-3 grid place-items-center text-[var(--faint)] shrink-0"
+            className="w-3 h-3 grid place-items-center text-[var(--faint)] shrink-0 opacity-100"
             onClick={(event) => {
               event.stopPropagation()
               toggleFacetOpen(facet.id)
@@ -1035,11 +1037,14 @@ export default function Sidebar({
         {openSections.tags && shownTags.map((tag) => renderTagTree(tag, 0))}
         {openSections.tags && topTags.length > 10 && (
           <button
-            className="mt-1 w-full px-2 py-0.5 text-left text-[12px] text-[var(--faint)] hover:text-[var(--accent-2)]"
+            className="mt-2 flex w-full items-center gap-1 border-t border-[var(--border)] px-2 pb-0.5 pt-1.5 text-left text-[12px] text-[var(--muted)] hover:text-[var(--accent-2)]"
             onClick={() => setTagsExpanded((open) => !open)}
             title={tagsExpanded ? '收起标签' : '展开全部标签'}
           >
-            {tagsExpanded ? '收起标签' : `全部 ${topTags.length} 个标签 →`}
+            <span className="truncate">
+              {tagsExpanded ? '收起标签' : `全部 ${topTags.length} 个标签`}
+            </span>
+            <ChevronRight size={12} strokeWidth={1.75} className="shrink-0" />
           </button>
         )}
         {openSections.tags && showFacets && facets.map((facet) => renderFacetNode(facet))}

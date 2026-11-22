@@ -63,6 +63,8 @@ import {
 } from './settings'
 import { TITLEBAR_OVERLAY_HEIGHT, titleBarColors } from './titlebar'
 import { isMac, isWindows } from './platform'
+import { quotaSnapshot, resetQuota, saveQuotaSettings } from './llm/quota'
+import type { LlmQuotaSettings } from '../shared/quota'
 import { startAutoBackup } from './scheduler'
 import { checkForUpdates, onUpdateStatus, quitAndInstall, updateStatus, updatesEnabled } from './updater'
 import {
@@ -1552,6 +1554,12 @@ export function registerIpc(): void {
 
   // 大模型：渲染层只碰状态与能力调用，密钥始终留在主进程
   ipcMain.handle('llm:status', () => getLlmStatus())
+  // AI 用量配额：只对外部服务商调用计量，本地模型不经过这里
+  ipcMain.handle('llm:quota', () => quotaSnapshot())
+  ipcMain.handle('llm:quota:save', (_e, patch: Partial<LlmQuotaSettings>) =>
+    saveQuotaSettings(patch ?? {})
+  )
+  ipcMain.handle('llm:quota:reset', () => resetQuota())
   ipcMain.handle('llm:settings:save', (_e, patch: Partial<LlmSettings>) =>
     updateLlmConfig(patch ?? {})
   )

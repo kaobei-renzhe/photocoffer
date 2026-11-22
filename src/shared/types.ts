@@ -1036,6 +1036,16 @@ export interface Api {
   getSkin: () => Promise<SkinId>
   saveSkin: (id: SkinId) => Promise<SkinId>
   llmStatus: () => Promise<LlmStatus>
+  /** AI 用量配额快照：今日已用、阈值、当前判定 */
+  llmQuota: () => Promise<{
+    settings: import('./quota').LlmQuotaSettings
+    state: import('./quota').LlmQuotaState
+    verdict: import('./quota').QuotaVerdict
+  }>
+  llmSaveQuota: (
+    patch: Partial<import('./quota').LlmQuotaSettings>
+  ) => Promise<import('./quota').LlmQuotaSettings>
+  llmResetQuota: () => Promise<import('./quota').LlmQuotaState>
   llmSaveSettings: (patch: Partial<LlmSettings>) => Promise<LlmStatus>
   llmSaveKey: (modelId: string, key: string) => Promise<LlmStatus>
   llmClearKey: (modelId: string) => Promise<LlmStatus>

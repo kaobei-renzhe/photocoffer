@@ -21,6 +21,7 @@ import { columnsFromThumbSize, normalizeLayout, normalizePortraitColumns, normal
 import type { ThumbQualityPref } from '../shared/thumbs'
 import { THUMB_CACHE_LIMIT_DEFAULT, THUMB_QUALITY_DEFAULT, isThumbQualityPref } from '../shared/thumbs'
 import type { LlmStoredSettings } from '../shared/llm'
+import type { LlmQuotaSettings, LlmQuotaState } from '../shared/quota'
 import { DEFAULT_SKIN, isSkinId, type SkinId } from '../shared/skins'
 
 export interface AppConfig {
@@ -60,6 +61,10 @@ export interface AppConfig {
   /** AI 处理范围：只处理这些文件夹里的照片；空数组 = 不限 */
   aiFolderIds?: number[]
   llm?: LlmStoredSettings
+  /** AI 用量配额：软提醒 / 硬暂停阈值（只对外部服务商调用计量） */
+  llmQuota?: LlmQuotaSettings
+  /** AI 用量运行时状态：今日已用张数、熔断时间 */
+  llmQuotaState?: LlmQuotaState
   /** 客户选片：记住上次的输出目录、客户名与水印模板 */
   pick?: {
     lastDir?: string

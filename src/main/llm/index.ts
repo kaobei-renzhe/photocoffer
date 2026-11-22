@@ -21,6 +21,8 @@ import {
   saveKey
 } from './keyring'
 import { lastCall, recentCalls, recordCall } from './metrics'
+import { checkQuota, consumeQuota, noteLlmFailure, noteLlmSuccess } from './quota'
+import { countPhotosInInput } from '../../shared/quota'
 import { getCapability, listCapabilities, registerCapability, type CapabilityContext } from './registry'
 import { prepareImage, prepareRegionImage } from './image'
 import { saveQualityScores } from '../repo'
@@ -264,10 +266,19 @@ export async function runCapability(capabilityId: string, input: unknown): Promi
   const capability = getCapability(capabilityId)
   if (!capability) throw new LlmError('bad_request', `未知能力：${capabilityId}`)
 
+  // 用量闸门：只拦硬暂停与熔断；软提醒交给渲染层弹确认（后端不知道用户是否已确认）
+  const photoCount = countPhotosInInput(input)
+  const verdict = checkQuota(photoCount)
+  if (verdict.level === 'hard' || verdict.level === 'circuit') {
+    throw new LlmError('quota_exceeded', verdict.message)
+  }
+
   const { model, key } = await readyState(capability.id as LlmCapabilityId)
   const client = createClient({ config: requestConfig(model), key })
   const startedAt = Date.now()
   let attempts = 0
+  /** 累计本次调用的 token，成功后一并记账 */
+  let totalTokens = 0
 
   const context: CapabilityContext = {
     chat: async (messages, options) => {
@@ -277,6 +288,7 @@ export async function runCapability(capabilityId: string, input: unknown): Promi
         json: Boolean(options?.json && model.jsonMode)
       })
       attempts += outcome.attempts
+      totalTokens += outcome.reply.usage?.totalTokens ?? 0
       recordCall({
         at: Date.now(),
         capabilityId,
@@ -292,8 +304,13 @@ export async function runCapability(capabilityId: string, input: unknown): Promi
   }
 
   try {
-    return await capability.run(context as never, input as never)
+    const result = await capability.run(context as never, input as never)
+    // 只有成功才记账：服务商报错时不该扣用户额度
+    consumeQuota(photoCount, totalTokens)
+    noteLlmSuccess()
+    return result
   } catch (error) {
+    noteLlmFailure()
     const normalized = toLlmError(error)
     recordCall({
       at: Date.now(),

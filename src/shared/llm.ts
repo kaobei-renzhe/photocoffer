@@ -173,6 +173,8 @@ export type LlmErrorCode =
   | 'bad_request'
   | 'bad_response'
   | 'cancelled'
+  /** 今日 AI 额度用完或服务商连续失败熔断 */
+  | 'quota_exceeded'
   | 'unknown'
 
 export interface LlmCallSummary {

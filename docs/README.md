@@ -15,6 +15,7 @@
 ## 技术方案
 
 - [大模型接入模块设计](architecture/大模型接入模块设计.md)
+- [模型能力边界与可替换关系](architecture/模型能力边界与可替换关系.md)
 - [数据安全与迁移方案](architecture/数据安全与迁移方案.md)
 - [多图库管理方案](architecture/多图库管理方案.md)
 - [macOS 适配与平台隔离方案](architecture/macOS适配与平台隔离方案.md)

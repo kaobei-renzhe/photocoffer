@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   BookOpen,
@@ -94,6 +94,8 @@ export default function StudyTab({
   const [threads, setThreads] = useState<NoteThread[] | null>(null)
   /** 线程卡片，点圈选框时要把对应的滚进视野 */
   const cardRefs = useRef(new Map<number, HTMLDivElement>())
+  /** 最新选中的照片 id；异步结果回来时用它判断是不是已经翻到别的照片 */
+  const currentItemId = useRef(item.id)
   const [flashId, setFlashId] = useState<number | null>(null)
   const [mode, setMode] = useState<NoteMode>(item.reference === 1 ? 'study' : 'review')
   const [draft, setDraft] = useState('')
@@ -106,6 +108,11 @@ export default function StudyTab({
   const [followDraft, setFollowDraft] = useState('')
   const [followBusy, setFollowBusy] = useState(false)
 
+  // 提交前更新当前照片 id，旧请求返回时才知道自己已经过期
+  useLayoutEffect(() => {
+    currentItemId.current = item.id
+  }, [item.id])
+
   // 参考片默认研读，自己的片子默认复盘；换照片/改标记时回到对应默认
   useEffect(() => {
     setMode(item.reference === 1 ? 'study' : 'review')
@@ -116,12 +123,16 @@ export default function StudyTab({
   }, [item.id, item.reference])
 
   const load = useCallback(async (): Promise<void> => {
+    const targetId = item.id
     try {
-      const list = await window.api.notes.list(item.id)
+      const list = await window.api.notes.list(targetId)
+      // 翻片很快时，上一张的请求可能后到；晚到的结果不能覆盖当前照片
+      if (currentItemId.current !== targetId) return
       setThreads(list)
       onNotesChange?.(list)
       setError('')
     } catch (err) {
+      if (currentItemId.current !== targetId) return
       setThreads([])
       onNotesChange?.([])
       setError(`读取笔记失败：${errorText(err)}`)
@@ -181,6 +192,7 @@ export default function StudyTab({
     }
   }
 
+  /** 返回这轮提问是否已经落库；AI 失败时问题仍会保存，只是没有回答 */
   const askAi = async (args: {
     question: string
     parentId: number | null
@@ -188,9 +200,10 @@ export default function StudyTab({
     mode: NoteMode
     region: NoteRegion | null
     skip: boolean
-  }): Promise<void> => {
+  }): Promise<boolean> => {
     const question = args.question.trim()
-    if (!question || aiBusy) return
+    if (!question || aiBusy) return false
+    let savedQuestion = false
     setAiBusy(true)
     setAiThreadId(args.thread?.root.id ?? null)
     setAiError('')
@@ -209,6 +222,7 @@ export default function StudyTab({
         // 区域只挂在根笔记上：一个线程一个框，追问沿用这个框
         region: isRoot ? args.region : null
       })
+      savedQuestion = true
       if (isRoot && args.region) onRegionChange?.(null)
 
       const outcome = await window.api.llmRun('photo.socratic', {
@@ -222,7 +236,7 @@ export default function StudyTab({
       if (!outcome.ok) {
         setAiError(llmHint(outcome.code, outcome.message))
         await load()
-        return
+        return savedQuestion
       }
 
       const reply = outcome.data as SocraticReply
@@ -242,13 +256,16 @@ export default function StudyTab({
       setAiBusy(false)
       setAiThreadId(null)
     }
+    return savedQuestion
   }
 
   const submitWithAi = async (skip: boolean): Promise<void> => {
     const body = draft.trim()
     if (!body || aiBusy) return
     setDraft('')
-    await askAi({ question: body, parentId: null, thread: null, mode, region, skip })
+    const saved = await askAi({ question: body, parentId: null, thread: null, mode, region, skip })
+    // 提问没落库就把原文还回去；落库成功则保持清空，避免重复提交
+    if (!saved) setDraft((current) => current || body)
   }
 
   const submitFollow = async (thread: NoteThread): Promise<void> => {
@@ -281,7 +298,7 @@ export default function StudyTab({
     if (!body || aiBusy) return
     setFollowDraft('')
     setFollowFor(null)
-    await askAi({
+    const saved = await askAi({
       question: body,
       parentId: thread.root.id,
       thread,
@@ -290,6 +307,10 @@ export default function StudyTab({
       region: thread.root.region ?? region ?? null,
       skip
     })
+    if (!saved) {
+      setFollowDraft((current) => current || body)
+      setFollowFor((current) => current ?? thread.root.id)
+    }
   }
 
   const remove = async (thread: NoteThread): Promise<void> => {

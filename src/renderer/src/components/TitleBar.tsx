@@ -1,19 +1,17 @@
 import { useState } from 'react'
-import { Settings as SettingsIcon } from 'lucide-react'
 import { EDIT_COMMANDS, MENU_SECTIONS, type MenuSectionId } from '@shared/menu'
 
 interface Props {
   libraryName: string
   onMenuAction: (id: string) => void
   onSwitch: () => void
-  onSettings: () => void
 }
 
 const drag = { WebkitAppRegion: 'drag' } as React.CSSProperties
 const noDrag = { WebkitAppRegion: 'no-drag' } as React.CSSProperties
 
 /** 36px 自定义标题栏：Windows 文件/设置两菜单 + 齿轮；mac 红绿灯死区 + 图库名 + 齿轮 */
-export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettings }: Props) {
+export default function TitleBar({ libraryName, onMenuAction, onSwitch }: Props) {
   const isMac = window.env?.platform === 'darwin'
   const [open, setOpen] = useState<MenuSectionId | null>(null)
 
@@ -121,16 +119,6 @@ export default function TitleBar({ libraryName, onMenuAction, onSwitch, onSettin
       )}
 
       <div className="flex-1" />
-
-      <button
-        className="grid h-7 w-7 place-items-center rounded-lg text-[var(--faint)] hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
-        style={noDrag}
-        onClick={onSettings}
-        title="设置"
-        aria-label="设置"
-      >
-        <SettingsIcon size={16} strokeWidth={1.75} />
-      </button>
 
       {/* Windows 原生三键 overlay 的 148px 禁区；mac 不渲染 */}
       {!isMac && <div className="w-[148px] shrink-0" />}

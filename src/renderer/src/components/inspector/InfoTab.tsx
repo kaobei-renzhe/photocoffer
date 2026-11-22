@@ -282,7 +282,8 @@ export default function InfoTab({
         </div>
       </Section>
 
-      <Section title="文件夹" compact={compact}>
+      {(item.folderIds.length > 0 || folders.length > 0) && (
+        <Section title="文件夹" compact={compact}>
         <div className="flex flex-wrap gap-1.5">
           {item.folderIds.map((id) => {
             const folder = folders.find((entry) => entry.id === id)
@@ -331,6 +332,7 @@ export default function InfoTab({
           )}
         </div>
       </Section>
+      )}
 
       <Section title="文件信息" compact={compact}>
         <Row label="格式" value={item.ext.replace('.', '').toUpperCase()} />
@@ -391,10 +393,10 @@ export default function InfoTab({
         </Section>
       )}
 
-      <Section title="备注 · 用途" compact={compact}>
+      <Section title="备注" compact={compact}>
         <textarea
           className="input h-[64px] w-full resize-none py-1.5 leading-5"
-          placeholder="对方要求、这张给谁用、拍摄备忘…"
+          placeholder="写点什么…"
           value={note}
           onChange={(event) => setNote(event.target.value)}
           onBlur={() => void saveNote()}

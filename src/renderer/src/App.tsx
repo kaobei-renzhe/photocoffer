@@ -1650,7 +1650,6 @@ export default function App() {
       libraryName={libraryName || (library ? folderName(library) : '存照')}
       onMenuAction={handleMenuAction}
       onSwitch={() => setSwitcherOpen(true)}
-      onSettings={() => openSettings('appearance')}
     />
   )
 

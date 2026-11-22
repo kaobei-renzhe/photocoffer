@@ -36,10 +36,10 @@ export const MENU_SECTIONS: MenuSection[] = [
     id: 'settings',
     label: '设置',
     items: [
-      { id: 'settings.open.appearance', label: '外观…', accelerator: 'CmdOrCtrl+,' },
-      { id: 'settings.open.llm', label: '大模型…' },
-      { id: 'settings.open.semantic', label: '语义索引…' },
-      { id: 'settings.open.storage', label: '存储位置…' },
+      { id: 'settings.open.appearance', label: '外观', accelerator: 'CmdOrCtrl+,' },
+      { id: 'settings.open.llm', label: '大模型' },
+      { id: 'settings.open.semantic', label: '语义索引' },
+      { id: 'settings.open.storage', label: '存储位置' },
       '---',
       { id: 'app.about', label: '关于存照' }
     ]

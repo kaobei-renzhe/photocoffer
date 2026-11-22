@@ -66,7 +66,8 @@ export function buildRequest(
       url: joinUrl(config.baseUrl || DEFAULT_BASE_URL.anthropic, '/messages'),
       headers: {
         'content-type': 'application/json',
-        'x-api-key': key,
+        // 本机端点通常不需要 Key；空 Key 时不要发空鉴权头
+        ...(key ? { 'x-api-key': key } : {}),
         'anthropic-version': '2023-06-01'
       },
       body: {
@@ -83,7 +84,7 @@ export function buildRequest(
     url: joinUrl(config.baseUrl || DEFAULT_BASE_URL['openai-compatible'], '/chat/completions'),
     headers: {
       'content-type': 'application/json',
-      authorization: `Bearer ${key}`
+      ...(key ? { authorization: `Bearer ${key}` } : {})
     },
     body: {
       model: config.model,

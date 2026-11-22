@@ -40,7 +40,7 @@ import type {
   LlmStatus,
   LlmTestResult
 } from '@shared/llm'
-import { LLM_CAPABILITY_IDS, LLM_MODEL_PRESETS } from '@shared/llm'
+import { isLocalBaseUrl, LLM_CAPABILITY_IDS, LLM_MODEL_PRESETS } from '@shared/llm'
 import { findSkin, SKINS, type SkinId } from '@shared/skins'
 import {
   THUMB_CACHE_LIMIT_DEFAULT,
@@ -645,6 +645,7 @@ export default function SettingsDialog({
       provider: llmForm.provider,
       baseUrl: llmForm.baseUrl.trim(),
       model,
+      locality: isLocalBaseUrl(llmForm.baseUrl.trim()) ? 'local' : 'external',
       vision: llmForm.vision,
       jsonMode: llmForm.jsonMode,
       temperature: llmForm.temperature.trim() === '' ? null : Number(llmForm.temperature),
@@ -1227,10 +1228,10 @@ export default function SettingsDialog({
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3">
                       <div className="flex items-start gap-3">
                         <div className="min-w-0">
-                          <div className="text-[13.5px]">启用大模型能力</div>
+                          <div className="text-[13.5px]">启用 AI 能力（本机或自定义模型）</div>
                           <div className="text-[11px] leading-4 text-[var(--faint)] mt-0.5">
                             默认关闭。关闭后相册里不会出现 AI
-                            按钮，也不会联网；开启后只有你点 AI 按钮才会调用。
+                            按钮，也不会联网；开启后只有你点 AI 按钮才会调用。本机模型不联网，外部模型才会发送图片。
                           </div>
                         </div>
                         <button
@@ -1289,13 +1290,22 @@ export default function SettingsDialog({
                               >
                                 {model.vision ? '视觉 ✓' : '视觉不可用'}
                               </span>
+                              <span
+                                className={`rounded-lg border px-1.5 py-[1px] text-[11px] ${
+                                  model.locality === 'local'
+                                    ? 'border-[var(--success)]/40 text-[var(--success)]'
+                                    : 'border-[var(--border)] text-[var(--faint)]'
+                                }`}
+                              >
+                                {model.locality === 'local' ? '本机 · 不计额度' : '外部 · 计入额度'}
+                              </span>
                               <span className="rounded-lg border border-[var(--border)] px-1.5 py-[1px] text-[11px] text-[var(--faint)]">
-                                {hint ? '已存 Key' : '未存 Key'}
+                                {model.locality === 'local' ? '无需 Key' : hint ? '已存 Key' : '未存 Key'}
                               </span>
                               <div className="ml-auto flex items-center gap-1">
                                 <button
                                   className="btn btn-ghost h-6 px-2 text-[12px]"
-                                  disabled={testingId !== null || !hint}
+                                  disabled={testingId !== null || (model.locality === 'external' && !hint)}
                                   onClick={() => void testModel(model.id)}
                                   title="先测文本，再发一张 32×32 照片确认能不能看图"
                                 >
@@ -1332,6 +1342,11 @@ export default function SettingsDialog({
                             <div className="break-all text-[11px] leading-4 text-[var(--faint)]">
                               {model.baseUrl}
                             </div>
+                            {model.locality === 'external' && model.baseUrl.startsWith('http://') && (
+                              <div className="text-[11px] leading-4 text-[var(--warn)]">
+                                外部模型必须使用 https；http 只允许本机回环地址。
+                              </div>
+                            )}
 
                             {test && (
                               <div
@@ -1344,43 +1359,49 @@ export default function SettingsDialog({
                               </div>
                             )}
 
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="password"
-                                className="input h-7 flex-1 text-[12px]"
-                                placeholder={hint ? `已保存 ${hint}` : '粘贴 API Key'}
-                                value={keyDrafts[model.id] ?? ''}
-                                onChange={(event) =>
-                                  setKeyDrafts((prev) => ({
-                                    ...prev,
-                                    [model.id]: event.target.value
-                                  }))
-                                }
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter') void saveModelKey(model.id)
-                                }}
-                              />
-                              <button
-                                className="btn h-7 px-2 text-[12px]"
-                                disabled={
-                                  !(keyDrafts[model.id] ?? '').trim() ||
-                                  keyBusyId !== null ||
-                                  llm.encryption === 'unavailable'
-                                }
-                                onClick={() => void saveModelKey(model.id)}
-                              >
-                                保存
-                              </button>
-                              {hint && (
+                            {model.locality === 'external' ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="password"
+                                  className="input h-7 flex-1 text-[12px]"
+                                  placeholder={hint ? `已保存 ${hint}` : '粘贴 API Key'}
+                                  value={keyDrafts[model.id] ?? ''}
+                                  onChange={(event) =>
+                                    setKeyDrafts((prev) => ({
+                                      ...prev,
+                                      [model.id]: event.target.value
+                                    }))
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') void saveModelKey(model.id)
+                                  }}
+                                />
                                 <button
-                                  className="btn btn-ghost h-7 px-2 text-[12px]"
-                                  disabled={keyBusyId !== null}
-                                  onClick={() => void clearModelKey(model.id)}
+                                  className="btn h-7 px-2 text-[12px]"
+                                  disabled={
+                                    !(keyDrafts[model.id] ?? '').trim() ||
+                                    keyBusyId !== null ||
+                                    llm.encryption === 'unavailable'
+                                  }
+                                  onClick={() => void saveModelKey(model.id)}
                                 >
-                                  清除
+                                  保存
                                 </button>
-                              )}
-                            </div>
+                                {hint && (
+                                  <button
+                                    className="btn btn-ghost h-7 px-2 text-[12px]"
+                                    disabled={keyBusyId !== null}
+                                    onClick={() => void clearModelKey(model.id)}
+                                  >
+                                    清除
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-[11px] leading-4 text-[var(--faint)]">
+                                本机模型不需要 API Key；照片不会离开本机。
+                              </div>
+                            )}
 
                             {llmEditing === model.id && renderModelForm()}
                           </div>
@@ -1410,7 +1431,7 @@ export default function SettingsDialog({
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-2">
                       <div className="text-[12px]">功能分配</div>
                       <div className="text-[11px] leading-4 text-[var(--faint)]">
-                        默认全部跟随默认模型；需要时给单个功能换模型。看不了图的模型会被标出来。
+                        默认全部跟随默认模型；可以给单个功能换成本机或外部模型。看不了图的模型会被标出来。
                       </div>
                       {llm.capabilities.map((capability) => (
                         <div key={capability.id} className="flex items-start gap-2">
@@ -1427,6 +1448,20 @@ export default function SettingsDialog({
                             <div className="text-[11px] leading-4 text-[var(--faint)]">
                               {capability.description}
                             </div>
+                            {capability.modelName && (
+                              <div className="text-[11px] leading-4 text-[var(--faint)]">
+                                当前：{capability.modelName} ·{' '}
+                                {capability.modelLocality === 'local'
+                                  ? '本机，不计额度'
+                                  : '外部，计入额度'}
+                                {!capability.keyReady ? ' · 未存 Key' : ''}
+                              </div>
+                            )}
+                            {capability.id === 'photo.autoTag' && (
+                              <div className="text-[11px] leading-4 text-[var(--faint)]">
+                                这里的路由只影响自定义模型分类；默认分类仍走本机零样本。
+                              </div>
+                            )}
                             {!capability.vision && capability.modelName && (
                               <div className="text-[11px] leading-4 text-[var(--warn)]">
                                 「{capability.modelName}」看不了图，这个功能会不可用
@@ -1441,8 +1476,8 @@ export default function SettingsDialog({
                             <option value="">跟随默认</option>
                             {llm.settings.models.map((model) => (
                               <option key={model.id} value={model.id}>
-                                {model.name}
-                                {model.vision ? '' : '（无视觉）'}
+                                {model.name}（{model.locality === 'local' ? '本机' : '外部'}）
+                                {model.vision ? '' : ' · 无视觉'}
                               </option>
                             ))}
                           </select>
@@ -1464,6 +1499,19 @@ export default function SettingsDialog({
                           </button>
                         </div>
                       ))}
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] p-3 space-y-1">
+                      <div className="text-[12px]">能力与数据去向</div>
+                      <div className="text-[11px] leading-4 text-[var(--faint)]">
+                        语义检索 / 找相似、人像识别：本机运行，不上传。
+                      </div>
+                      <div className="text-[11px] leading-4 text-[var(--faint)]">
+                        自动分类：默认本机零样本；自定义模型会上传图片，最多 12 张。
+                      </div>
+                      <div className="text-[11px] leading-4 text-[var(--faint)]">
+                        评分 / 建议 / 筛选 / 研读：跟随上面的模型分配；本机不上传，外部会计入额度。
+                      </div>
                     </div>
 
                     {llm.lastCall && (
@@ -1552,7 +1600,7 @@ export default function SettingsDialog({
                       </div>
                       <div className="mt-3 flex items-start justify-between gap-3">
                         <span className="text-[11px] leading-4 text-[var(--faint)]">
-                          只统计外部服务调用；本地语义检索、分类与人像识别不计入。每日 0 点自动归零。
+                          只统计外部服务调用；本地语义检索、分类、人像识别与本机部署的模型不计入。达到今日上限后，需等到明天 0 点或点「重置今日用量」。
                         </span>
                         <button
                           className="shrink-0 text-[11px] text-[var(--accent-text)] hover:underline"

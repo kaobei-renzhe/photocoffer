@@ -2,6 +2,19 @@
 
 export type LlmProviderId = 'openai-compatible' | 'anthropic'
 
+/** 模型部署位置：本机回环地址不计量、不上传；其余一律按外部处理 */
+export type LlmModelLocality = 'local' | 'external'
+
+/** 只认回环地址；局域网、内网域名、Docker 网桥都算外部 */
+export function isLocalBaseUrl(baseUrl: string): boolean {
+  try {
+    const host = new URL(baseUrl).hostname.toLowerCase()
+    return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1'
+  } catch {
+    return false
+  }
+}
+
 export interface LlmConfig {
   /** 配置结构版本：2 = 温度/长度已改为可空；老版本留下的 0.3 / 1200 视为没配过 */
   llmVersion?: number
@@ -33,6 +46,8 @@ export interface LlmModelEntry {
   provider: LlmProviderId
   baseUrl: string
   model: string
+  /** 由 baseUrl 派生：本机回环 = local，其余 = external */
+  locality: LlmModelLocality
   /** 是否能看图；关掉后视觉类能力会被拦下 */
   vision: boolean
   /** 是否支持 response_format json_object */
@@ -197,6 +212,10 @@ export interface LlmCapabilityInfo {
   /** 实际会用的模型；null 表示还没有可用模型 */
   modelId: string | null
   modelName: string | null
+  /** 实际模型的部署位置；用于界面标记本机/外部 */
+  modelLocality: LlmModelLocality | null
+  /** 这个能力的模型是否已具备调用条件（本机模型不需要 Key） */
+  keyReady: boolean
   /** 实际模型是否能看图；视觉类能力为 false 时入口要灰显 */
   vision: boolean
 }

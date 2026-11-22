@@ -13,6 +13,7 @@ function model(id: string, patch: Partial<LlmModelEntry> = {}): LlmModelEntry {
     provider: 'openai-compatible',
     baseUrl: 'https://example.com/v1',
     model: id,
+    locality: 'external',
     vision: true,
     jsonMode: true,
     maxOutputTokens: null,
@@ -104,6 +105,34 @@ describe('normalizeLlmSettings', () => {
     expect(settings.defaultModelId).toBe('a')
     expect(settings.routing['photo.quality']).toBe('b')
     expect(settings.routing['photo.advice']).toBeUndefined()
+  })
+})
+
+describe('模型部署位置', () => {
+  it('回环地址按本机处理，https 与局域网按外部处理', () => {
+    const settings = normalizeLlmSettings({
+      models: [
+        model('a', { baseUrl: 'http://127.0.0.1:11434/v1' }),
+        model('b', { baseUrl: 'http://localhost:11434/v1' }),
+        model('c', { baseUrl: 'http://[::1]:11434/v1' }),
+        model('d', { baseUrl: 'https://api.example.com/v1' }),
+        model('e', { baseUrl: 'http://192.168.1.10:11434/v1' })
+      ]
+    })
+    expect(settings.models.map((entry) => entry.locality)).toEqual([
+      'local',
+      'local',
+      'local',
+      'external',
+      'external'
+    ])
+  })
+
+  it('非回环 http 地址不再被静默改成 OpenAI 默认地址', () => {
+    const settings = normalizeLlmSettings({
+      models: [model('lan', { baseUrl: 'http://192.168.1.10:11434/v1' })]
+    })
+    expect(settings.models[0].baseUrl).toBe('http://192.168.1.10:11434/v1')
   })
 })
 

@@ -7,7 +7,7 @@ import type {
   LlmSettings,
   LlmStoredSettings
 } from '../../shared/llm'
-import { LLM_CAPABILITY_DEFAULTS, LLM_CAPABILITY_IDS } from '../../shared/llm'
+import { isLocalBaseUrl, LLM_CAPABILITY_DEFAULTS, LLM_CAPABILITY_IDS } from '../../shared/llm'
 import { readConfig, updateConfig } from '../settings'
 import { DEFAULT_BASE_URL } from './providers'
 
@@ -38,14 +38,16 @@ function normalizeProvider(value: unknown): LlmProviderId {
   return value === 'anthropic' ? 'anthropic' : 'openai-compatible'
 }
 
-/** 只接受 https；本机 Ollama 允许 http://127.0.0.1 / localhost，其余一律回退默认地址 */
+/**
+ * 保留用户填写的合法 http/https 地址，不再静默改道。
+ * 外部 http 是否允许由 readyState 拒绝；这里悄悄换成别的服务商比报错更危险。
+ */
 function normalizeBaseUrl(value: unknown, provider: LlmProviderId): string {
   const raw = String(value ?? '').trim().replace(/\/+$/, '')
   if (!raw) return DEFAULT_BASE_URL[provider]
   try {
     const url = new URL(raw)
-    const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
-    if (url.protocol === 'https:' || (url.protocol === 'http:' && local)) return raw
+    if (url.protocol === 'https:' || url.protocol === 'http:') return raw
   } catch {
     /* 非法地址按未填写处理 */
   }
@@ -89,6 +91,7 @@ function normalizeModel(raw: Partial<LlmModelEntry>, index: number): LlmModelEnt
     provider,
     baseUrl,
     model,
+    locality: isLocalBaseUrl(baseUrl) ? 'local' : 'external',
     vision: raw.vision !== false,
     jsonMode: raw.jsonMode !== false,
     maxOutputTokens: optionalClamp(raw.maxOutputTokens, 16, 32_000, true),
@@ -110,13 +113,15 @@ function legacyModel(stored: LlmStoredSettings): LlmModelEntry {
     legacyVersion && stored.maxTokens === 1200
       ? null
       : optionalClamp(stored.maxTokens, 16, 32_000, true)
+  const baseUrl = normalizeBaseUrl(stored.baseUrl, provider)
   return {
     id: 'm_legacy',
     name: '默认模型',
     vendor: '自定义',
     provider,
-    baseUrl: normalizeBaseUrl(stored.baseUrl, provider),
+    baseUrl,
     model: String(stored.model ?? '').trim(),
+    locality: isLocalBaseUrl(baseUrl) ? 'local' : 'external',
     // 老配置没有视觉标记，按可看图处理，避免升级后功能突然消失
     vision: true,
     jsonMode: true,

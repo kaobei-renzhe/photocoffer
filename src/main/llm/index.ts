@@ -78,7 +78,23 @@ async function readyState(
       `当前模型「${model.name}」看不了图，请在设置里换一个视觉模型`
     )
   }
+  // 本机模型不强制 Key；如果用户给本机端点配了 Key，仍然照常发送
+  if (model.locality === 'local') {
+    const key = await readKey(model.id)
+    return { settings, model, key: key ?? '' }
+  }
+
   await migrateLegacyKey()
+  let protocol = ''
+  try {
+    protocol = new URL(model.baseUrl).protocol
+  } catch {
+    /* 地址已在配置层归一，解析失败按非 http 处理 */
+  }
+  if (protocol === 'http:') {
+    throw new LlmError('bad_request', '外部模型必须使用 https 地址；只有本机回环地址允许 http')
+  }
+
   const key = await readKey(model.id)
   if (!key) throw new LlmError('not_configured', `模型「${model.name}」还没有保存 API Key`)
   return { settings, model, key }
@@ -103,10 +119,15 @@ export async function getStatus(): Promise<LlmStatus> {
       enabled: settings.capabilities[capability.id] !== false,
       modelId: model?.id ?? null,
       modelName: model?.name ?? null,
+      modelLocality: model?.locality ?? null,
+      keyReady: model ? model.locality === 'local' || Boolean(keyHints[model.id]) : false,
       vision: Boolean(model?.vision)
     }
   })
-  const defaultModel = resolveModel(settings)
+  // 只要有一个已启用、支持视觉且可用的能力（本机无需 Key，外部需 Key），就算就绪
+  const usable = capabilities.some(
+    (capability) => capability.enabled && capability.vision && capability.keyReady
+  )
   return {
     settings,
     keyHints,
@@ -114,9 +135,7 @@ export async function getStatus(): Promise<LlmStatus> {
     lastCall: lastCall(),
     recent: recentCalls(8),
     capabilities,
-    ready: Boolean(
-      settings.enabled && defaultModel && defaultModel.model.trim() && keyHints[defaultModel.id]
-    )
+    ready: Boolean(settings.enabled && usable)
   }
 }
 
@@ -284,14 +303,18 @@ export async function runCapability(capabilityId: string, input: unknown): Promi
   const capability = getCapability(capabilityId)
   if (!capability) throw new LlmError('bad_request', `未知能力：${capabilityId}`)
 
-  // 用量闸门：只拦硬暂停与熔断；软提醒交给渲染层弹确认（后端不知道用户是否已确认）
+  const { model, key } = await readyState(capability.id as LlmCapabilityId)
+  const external = model.locality === 'external'
   const photoCount = countPhotosInInput(input)
-  const verdict = checkQuota(photoCount)
-  if (verdict.level === 'hard' || verdict.level === 'circuit') {
-    throw new LlmError('quota_exceeded', verdict.message)
+
+  // 用量闸门只对外部模型生效；本机模型不计数、不熔断
+  if (external) {
+    const verdict = checkQuota(photoCount)
+    if (verdict.level === 'hard' || verdict.level === 'circuit') {
+      throw new LlmError('quota_exceeded', verdict.message)
+    }
   }
 
-  const { model, key } = await readyState(capability.id as LlmCapabilityId)
   const client = createClient({ config: requestConfig(model), key })
   const startedAt = Date.now()
   let attempts = 0
@@ -323,13 +346,21 @@ export async function runCapability(capabilityId: string, input: unknown): Promi
 
   try {
     const result = await capability.run(context as never, input as never)
-    // 只有成功才记账：服务商报错时不该扣用户额度
-    consumeQuota(photoCount, totalTokens)
-    noteLlmSuccess()
+    if (external) {
+      // 只有外部调用成功才记账：服务商报错时不该扣用户额度；本机永不计数
+      consumeQuota(photoCount, totalTokens)
+      noteLlmSuccess()
+    }
     return result
   } catch (error) {
-    noteLlmFailure()
-    const normalized = toLlmError(error)
+    if (external) noteLlmFailure()
+    let normalized = toLlmError(error)
+    if (!external && normalized.code === 'network') {
+      normalized = new LlmError(
+        'network',
+        `连不上本机模型服务，确认 Ollama / 本地服务已启动：${model.baseUrl}`
+      )
+    }
     recordCall({
       at: Date.now(),
       capabilityId,

@@ -25,17 +25,19 @@ import { checkQuota, consumeQuota, noteLlmFailure, noteLlmSuccess } from './quot
 import { countPhotosInInput } from '../../shared/quota'
 import { getCapability, listCapabilities, registerCapability, type CapabilityContext } from './registry'
 import { prepareImage, prepareRegionImage } from './image'
-import { saveQualityScores } from '../repo'
+import { saveLlmAutoTags, saveQualityScores } from '../repo'
 import { LlmError, isLlmError, type LlmMessage } from './types'
 import { qualityCapability } from './capabilities/quality'
 import { adviceCapability } from './capabilities/advice'
 import { smartFilterCapability } from './capabilities/smartFilter'
+import { autoTagCapability } from './capabilities/autoTag'
 import { socraticCapability } from './capabilities/socratic'
 
 // 能力在这里登记一次；新增能力只需实现接口 + 加一行
 registerCapability(qualityCapability)
 registerCapability(adviceCapability)
 registerCapability(smartFilterCapability)
+registerCapability(autoTagCapability)
 registerCapability(socraticCapability)
 
 /** 现有四个能力都要读图；以后加纯文本能力时再放白名单 */
@@ -255,6 +257,22 @@ export async function scorePhotos(itemIds: number[]): Promise<PhotoQualitySaved>
   const result = (await runCapability('photo.quality', { itemIds })) as PhotoQualityResult
   const model = resolveModel(getLlmSettings(), 'photo.quality')
   const persisted = saveQualityScores(result.results, model?.model ?? '')
+  return { ...result, persisted }
+}
+
+/**
+ * 大模型版自动分类：判定结果直接写进 auto_tags，筛选器立即可用。
+ * 与本地零样本的区别只在 model 字段（`llm:` 前缀）与准确度。
+ */
+export async function autoTagPhotos(
+  itemIds: number[]
+): Promise<{ results: Array<{ itemId: number; category: string; confidence: number; reason: string }>; failed: Array<{ itemId: number; message: string }>; persisted: number }> {
+  const result = (await runCapability('photo.autoTag', { itemIds })) as {
+    results: Array<{ itemId: number; category: string; confidence: number; reason: string }>
+    failed: Array<{ itemId: number; message: string }>
+  }
+  const model = resolveModel(getLlmSettings(), 'photo.autoTag')
+  const persisted = saveLlmAutoTags(result.results, `llm:${model?.model ?? 'unknown'}`)
   return { ...result, persisted }
 }
 

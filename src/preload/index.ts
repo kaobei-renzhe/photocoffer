@@ -236,6 +236,7 @@ const api: Api = {
   llmTest: (modelId?: string) => ipcRenderer.invoke('llm:test', modelId),
   llmRun: (capabilityId, input) => ipcRenderer.invoke('llm:run', capabilityId, input),
   llmScore: (itemIds) => ipcRenderer.invoke('llm:quality', itemIds),
+  llmAutoTag: (itemIds: number[]) => ipcRenderer.invoke('llm:autoTag', itemIds),
   getAiScoreMinRating: () => ipcRenderer.invoke('llm:scoreMinRating:get'),
   saveAiScoreMinRating: (value: number) => ipcRenderer.invoke('llm:scoreMinRating:save', value),
   getAiFolderIds: () => ipcRenderer.invoke('llm:scopeFolders:get'),

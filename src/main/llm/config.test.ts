@@ -49,7 +49,8 @@ describe('normalizeLlmSettings', () => {
         'photo.quality': true,
         'photo.advice': false,
         'photo.smartFilter': true,
-        'photo.socratic': true
+        'photo.socratic': true,
+        'photo.autoTag': true
       }
     })
     expect(settings.models).toHaveLength(1)

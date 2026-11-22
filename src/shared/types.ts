@@ -1054,6 +1054,13 @@ export interface Api {
   llmRun: (capabilityId: string, input: unknown) => Promise<LlmRunOutcome>
   /** 评分并落库，返回每张的分数与实际写入条数 */
   llmScore: (itemIds: number[]) => Promise<LlmRunOutcome<PhotoQualitySaved>>
+  llmAutoTag: (itemIds: number[]) => Promise<
+    LlmRunOutcome<{
+      results: Array<{ itemId: number; category: string; confidence: number; reason: string }>
+      failed: Array<{ itemId: number; message: string }>
+      persisted: number
+    }>
+  >
   /** AI 评分的最低星级：0 = 全部照片 */
   getAiScoreMinRating: () => Promise<number>
   saveAiScoreMinRating: (value: number) => Promise<number>

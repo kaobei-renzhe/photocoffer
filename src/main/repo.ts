@@ -607,6 +607,34 @@ export function bulkUpdate(
  * 保存大模型评分：同一张图重复评分只保留最新的一份。
  * 返回真正写入的条数（失败的图不会走到这里）。
  */
+/**
+ * 保存大模型判定的分类标签。
+ *
+ * 写入与本地零样本同一张 auto_tags 表，靠 model 字段区分来源（`llm:` 前缀）。
+ * score 归一化到 0-1，与本地相似度同量纲；item_id 是主键，一张图只保留最新一条。
+ */
+export function saveLlmAutoTags(
+  items: Array<{ itemId: number; category: string; confidence: number }>,
+  model: string
+): number {
+  if (items.length === 0) return 0
+  const db = getDb()
+  const stmt = db.prepare(
+    `INSERT INTO auto_tags (item_id, category, score, model) VALUES (?, ?, ?, ?)
+     ON CONFLICT(item_id) DO UPDATE SET
+       category = excluded.category,
+       score = excluded.score,
+       model = excluded.model`
+  )
+  const tx = db.transaction((list: typeof items) => {
+    for (const item of list) {
+      stmt.run(item.itemId, item.category, Math.max(0, Math.min(1, item.confidence / 100)), model)
+    }
+  })
+  tx(items)
+  return items.length
+}
+
 export function saveQualityScores(
   scores: Array<{
     itemId: number

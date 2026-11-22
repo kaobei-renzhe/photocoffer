@@ -70,6 +70,7 @@ import { pickHttpUrl } from './lib/urlImport'
 import { inAiScope, loadAiScope, type AiScope } from './lib/aiScope'
 import { estimateBatchTokens } from './lib/aiCost'
 import { quotaHintFor } from './lib/aiQuota'
+import { llmHint } from './lib/llmHint'
 import { useLayoutSizes } from './hooks/useLayoutSizes'
 import { useAppearance } from './hooks/useAppearance'
 import { useLightbox } from './hooks/useLightbox'
@@ -834,6 +835,49 @@ export default function App() {
       bump()
     },
     [selectedIds, activeId, pushUndo, notify, bump]
+  )
+
+  /**
+   * 大模型版自动分类：与本地零样本写同一张 auto_tags，靠 model 前缀区分来源。
+   * 定位是「少量精选照片的精确标注」——全库走这条路既贵又慢，所以只做手动触发。
+   */
+  const [aiAutoTagging, setAiAutoTagging] = useState(false)
+  const autoTagItems = useCallback(
+    async (ids: number[]) => {
+      if (!ids.length || aiAutoTagging) return
+      const picked = ids.slice(0, 12)
+
+      const quotaHint = await quotaHintFor(picked.length, '分类')
+      if (quotaHint.level === 'hard') {
+        notify(quotaHint.line)
+        return
+      }
+      const ok = await window.api.confirm(
+        'AI 自动分类',
+        `本次会让大模型判断 ${picked.length} 张照片的类目。` +
+          (ids.length > 12 ? `\n超出单次上限的 ${ids.length - 12} 张本次不处理。` : '') +
+          `\n\n${quotaHint.line}`
+      )
+      if (!ok) return
+
+      setAiAutoTagging(true)
+      try {
+        const outcome = await window.api.llmAutoTag(picked)
+        if (!outcome.ok) {
+          notify(llmHint(outcome.code, outcome.message))
+          return
+        }
+        const { persisted, failed, results } = outcome.data
+        const parts = [`已分类 ${persisted} 张`]
+        if (failed.length) parts.push(`${failed.length} 张没归类`)
+        if (ids.length > 12) parts.push(`本次只处理前 12 张`)
+        notify(parts.join('，'))
+        if (results.length) bump()
+      } finally {
+        setAiAutoTagging(false)
+      }
+    },
+    [aiAutoTagging, notify, bump]
   )
 
   /**
@@ -1836,6 +1880,9 @@ export default function App() {
             onFlagSelected={setFlagSelected}
             onStackSelected={stackSelected}
             onScoreSelected={() => void scoreItems(selectedIds)}
+            onAutoTagSelected={() => void autoTagItems(selectedIds)}
+            canAutoTag={aiCaps['photo.autoTag'] !== false}
+            aiAutoTagging={aiAutoTagging}
             aiScoring={aiScoring}
             aiRule={aiRule}
             onOpenSmartFilter={() => setSmartFilterOpen(true)}

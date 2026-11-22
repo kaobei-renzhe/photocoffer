@@ -150,8 +150,7 @@ import {
   saveApiKey,
   scorePhotos,
   testConnection,
-  updateConfig as updateLlmConfig
-} from './llm'
+  updateConfig as updateLlmConfig, autoTagPhotos } from './llm'
 import {
   addToFolder,
   createFolder,
@@ -1586,6 +1585,11 @@ export function registerIpc(): void {
   // 评分与其它能力不同：结果要落库，所以单独开一个通道
   ipcMain.handle('llm:quality', (_e, itemIds: number[]) =>
     envelope(() => scorePhotos(Array.isArray(itemIds) ? itemIds : []))
+  )
+
+  // 大模型版自动分类：与本地零样本写同一张 auto_tags，靠 model 前缀区分来源
+  ipcMain.handle('llm:autoTag', (_e, itemIds: number[]) =>
+    envelope(() => autoTagPhotos(Array.isArray(itemIds) ? itemIds : []))
   )
 
   // AI 评分的星级门槛：设置页读写 + 当前范围内的照片数

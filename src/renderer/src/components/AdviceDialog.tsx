@@ -4,6 +4,8 @@ import type { Item } from '@shared/types'
 import type { LlmErrorCode, PhotoAdvice } from '@shared/llm'
 import { thumbUrl } from '../lib/format'
 import { llmHint } from '../lib/llmHint'
+import { useAiQuotaHint } from '../hooks/useAiQuotaHint'
+import AiDataNotice from './AiDataNotice'
 
 interface AdviceDialogProps {
   item: Item
@@ -34,6 +36,7 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
   const [advice, setAdvice] = useState<PhotoAdvice | null>(null)
   const [error, setError] = useState<{ code: LlmErrorCode; message: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const quotaHint = useAiQuotaHint('photo.advice', 1, '建议')
 
   const run = useCallback(async () => {
     setPhase('loading')
@@ -106,9 +109,11 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
             </div>
           </div>
 
+          <AiDataNotice hint={quotaHint} className="mt-3" />
+
           {phase === 'idle' && (
             <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3 text-[12px] leading-5 text-[var(--muted)]">
-              点了下面的「生成建议」才会把这张图发给模型，不点不产生费用。
+              点了下面的「生成建议」才会调用模型，不点不会产生费用。
             </div>
           )}
 
@@ -228,7 +233,12 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
             )}
             <button
               className="btn h-7 px-2 text-[12px]"
-              disabled={phase === 'loading'}
+              disabled={phase === 'loading' || quotaHint?.level === 'hard'}
+              title={
+                quotaHint?.level === 'hard'
+                  ? '今日外部 AI 额度已用完，可在设置里调高上限或重置'
+                  : undefined
+              }
               onClick={() => void run()}
             >
               <RefreshCw size={14} />

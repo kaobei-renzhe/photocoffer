@@ -813,7 +813,7 @@ export default function Toolbar({
                     className="btn btn-ghost h-6 px-2 text-[12px]"
                     disabled={aiScoring}
                     onClick={onScoreSelected}
-                    title="用大模型给选中的图评分（一次最多 12 张），结果会存进图库，每次都会调用模型"
+                    title="用 AI 给选中的图评分（一次最多 12 张），结果会存进图库；本机模型不计额度"
                   >
                     <Sparkles size={16} strokeWidth={1.75} /> {aiScoring ? '评分中…' : 'AI 评分'}
                   </button>
@@ -823,7 +823,7 @@ export default function Toolbar({
                     className="btn btn-ghost h-6 px-2 text-[12px]"
                     disabled={aiAutoTagging}
                     onClick={onAutoTagSelected}
-                    title="用大模型判断类目（一次最多 12 张）。比本地零样本准，但会调用外部服务并计入额度。"
+                    title="AI 自动分类（自定义模型，最多 12 张）。比本地零样本准；本机模型不计额度，外部服务会计入额度。"
                   >
                     <Tag size={16} strokeWidth={1.75} /> {aiAutoTagging ? '分类中…' : 'AI 分类'}
                   </button>

@@ -1,6 +1,8 @@
 import { Gauge, Sparkles } from 'lucide-react'
 import type { Item } from '@shared/types'
 import { formatDate, scoreColor } from '../../lib/format'
+import { useAiQuotaHint } from '../../hooks/useAiQuotaHint'
+import AiDataNotice from '../AiDataNotice'
 import { Section } from './ui'
 
 export interface PerfTabProps {
@@ -25,6 +27,8 @@ export default function PerfTab({
   onScore,
   onAdvice
 }: PerfTabProps) {
+  const quotaHint = useAiQuotaHint('photo.quality', 1, '评分')
+
   return (
     <div className="p-3">
       {item.quality ? (
@@ -85,28 +89,39 @@ export default function PerfTab({
         </div>
       ) : (
         (canScore || canAdvice) && (
-          <div className={`mt-3 grid gap-1.5 ${canScore && canAdvice ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {canScore && (
-              <button
-                className="btn h-7 px-2 text-[12px]"
-                onClick={onScore}
-                disabled={aiScoring}
-                title="用大模型评估构图、曝光、色彩、清晰度，结果存进图库（会调用模型）"
-              >
-                <Gauge size={14} color="var(--accent-2)" />
-                {aiScoring ? '评分中…' : item.quality ? '重新评分' : 'AI 评分'}
-              </button>
-            )}
-            {canAdvice && (
-              <button
-                className="btn h-7 px-2 text-[12px]"
-                onClick={onAdvice}
-                title="让大模型给出修图方向、参数调整与风格参考（会调用模型）"
-              >
-                <Sparkles size={14} color="var(--accent-2)" /> AI 后期建议
-              </button>
-            )}
-          </div>
+          <>
+            {canScore && <AiDataNotice hint={quotaHint} className="mt-3" />}
+            <div
+              className={`mt-3 grid gap-1.5 ${
+                canScore && canAdvice ? 'grid-cols-2' : 'grid-cols-1'
+              }`}
+            >
+              {canScore && (
+                <button
+                  className="btn h-7 px-2 text-[12px]"
+                  onClick={onScore}
+                  disabled={aiScoring || quotaHint?.level === 'hard'}
+                  title={
+                    quotaHint?.level === 'hard'
+                      ? '今日外部 AI 额度已用完，可在设置里调高上限或重置'
+                      : '用 AI 评估构图、曝光、色彩、清晰度，结果存进图库（会调用模型）'
+                  }
+                >
+                  <Gauge size={14} color="var(--accent-2)" />
+                  {aiScoring ? '评分中…' : item.quality ? '重新评分' : 'AI 评分'}
+                </button>
+              )}
+              {canAdvice && (
+                <button
+                  className="btn h-7 px-2 text-[12px]"
+                  onClick={onAdvice}
+                  title="让 AI 给出修图方向、参数调整与风格参考（会调用模型）"
+                >
+                  <Sparkles size={14} color="var(--accent-2)" /> AI 后期建议
+                </button>
+              )}
+            </div>
+          </>
         )
       )}
 

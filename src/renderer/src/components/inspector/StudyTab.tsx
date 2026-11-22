@@ -22,6 +22,8 @@ import type {
 import { formatDate } from '../../lib/format'
 import { llmHint } from '../../lib/llmHint'
 import { modLabel } from '../../lib/platform'
+import { useAiQuotaHint } from '../../hooks/useAiQuotaHint'
+import AiDataNotice from '../AiDataNotice'
 
 export interface StudyTabProps {
   item: Item
@@ -107,6 +109,8 @@ export default function StudyTab({
   const [followFor, setFollowFor] = useState<number | null>(null)
   const [followDraft, setFollowDraft] = useState('')
   const [followBusy, setFollowBusy] = useState(false)
+  const aiQuotaHint = useAiQuotaHint('photo.socratic', 1, '研读')
+  const aiHardBlocked = aiQuotaHint?.level === 'hard'
 
   // 提交前更新当前照片 id，旧请求返回时才知道自己已经过期
   useLayoutEffect(() => {
@@ -378,6 +382,8 @@ export default function StudyTab({
         </div>
       )}
 
+      <AiDataNotice hint={aiQuotaHint} />
+
       {threads === null ? (
         <div className="py-6 text-center text-[12px] text-[var(--faint)]">读取笔记…</div>
       ) : ordered.length === 0 ? (
@@ -490,14 +496,14 @@ export default function StudyTab({
                         <>
                           <button
                             className="btn h-6 px-2 text-[11px]"
-                            disabled={aiBusy || !followDraft.trim()}
+                            disabled={aiBusy || aiHardBlocked || !followDraft.trim()}
                             onClick={() => void submitFollowWithAi(thread, false)}
                           >
                             <Sparkles size={14} /> 问 AI
                           </button>
                           <button
                             className="btn btn-ghost h-6 px-2 text-[11px]"
-                            disabled={aiBusy || !followDraft.trim()}
+                            disabled={aiBusy || aiHardBlocked || !followDraft.trim()}
                             onClick={() => void submitFollowWithAi(thread, true)}
                           >
                             直接给答案
@@ -593,9 +599,11 @@ export default function StudyTab({
               <>
                 <button
                   className="btn h-7 px-2 text-[11px]"
-                  disabled={aiBusy || !draft.trim()}
+                  disabled={aiBusy || aiHardBlocked || !draft.trim()}
                   onClick={() => void submitWithAi(false)}
-                  title="让老师先反问，最多两轮"
+                  title={
+                    aiHardBlocked ? '今日外部 AI 额度已用完' : '让老师先反问，最多两轮'
+                  }
                 >
                   {rootThinking ? (
                     <Loader2 size={14} className="animate-spin" />
@@ -606,9 +614,9 @@ export default function StudyTab({
                 </button>
                 <button
                   className="btn btn-ghost h-7 px-2 text-[11px]"
-                  disabled={aiBusy || !draft.trim()}
+                  disabled={aiBusy || aiHardBlocked || !draft.trim()}
                   onClick={() => void submitWithAi(true)}
-                  title="跳过反问，直接给答案"
+                  title={aiHardBlocked ? '今日外部 AI 额度已用完' : '跳过反问，直接给答案'}
                 >
                   直接告诉我
                 </button>

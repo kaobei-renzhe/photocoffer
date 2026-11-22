@@ -5,9 +5,11 @@ import type { LlmErrorCode, SmartFilterResult } from '@shared/llm'
 import { thumbUrl } from '../lib/format'
 import { inAiScope, loadAiScope, type AiScope } from '../lib/aiScope'
 import { estimateBatchTokens } from '../lib/aiCost'
-import { quotaHintFor } from '../lib/aiQuota'
+import { quotaHintForCapability } from '../lib/aiQuota'
 import { llmHint } from '../lib/llmHint'
 import { modLabel } from '../lib/platform'
+import { useAiQuotaHint } from '../hooks/useAiQuotaHint'
+import AiDataNotice from './AiDataNotice'
 
 interface SmartFilterDialogProps {
   /** 当前已加载的照片，用来做候选与展示名字/缩略图 */
@@ -50,6 +52,7 @@ export default function SmartFilterDialog({
     () => estimateBatchTokens('smartFilter', candidates.length),
     [candidates.length]
   )
+  const boundary = useAiQuotaHint('photo.smartFilter', candidates.length, '筛选')
   const itemMap = useMemo(() => new Map(items.map((item) => [item.id, item])), [items])
   const reasonMap = useMemo(
     () => new Map((result?.reasons ?? []).map((entry) => [entry.itemId, entry.reason])),
@@ -67,15 +70,15 @@ export default function SmartFilterDialog({
   const run = async (): Promise<void> => {
     const text = rule.trim()
     if (!text || phase === 'loading' || candidates.length === 0) return
-    // 配额先查：今日额度用完就别让用户白点一次确认
-    const hint = await quotaHintFor(candidates.length, '筛选')
+    // 配额先查：今日额度用完就别让用户白点一次确认；本机模型不计数
+    const hint = await quotaHintForCapability('photo.smartFilter', candidates.length, '筛选')
     if (hint.level === 'hard') {
       setError({ code: 'quota_exceeded', message: hint.line })
       setPhase('error')
       return
     }
-    // 张数多时先提醒量级：一次筛选最多 30 张，按批送模型，token 会明显上去
-    if (cost.heavy || hint.level === 'soft') {
+    // 只有外部调用才提醒量级：本机模型不产生费用
+    if (hint.locality === 'external' && (cost.heavy || hint.level === 'soft')) {
       const ok = await window.api.confirm(
         '这次 AI 筛选会多花一点时间',
         `这次要处理 ${candidates.length} 张照片。` +
@@ -142,6 +145,8 @@ export default function SmartFilterDialog({
             }}
           />
 
+          <AiDataNotice hint={boundary} className="mt-2" />
+
           <div className="mt-2 flex items-center gap-2 text-[11px] text-[var(--faint)]">
             <span>
               当前视图 {total} 张 · 本次最多看 {MAX_ITEMS} 张
@@ -150,7 +155,12 @@ export default function SmartFilterDialog({
             </span>
             <button
               className="btn h-7 px-2.5 text-[12px] ml-auto"
-              disabled={!rule.trim() || phase === 'loading' || candidates.length === 0}
+              disabled={
+                !rule.trim() ||
+                phase === 'loading' ||
+                candidates.length === 0 ||
+                boundary?.level === 'hard'
+              }
               onClick={() => void run()}
               title={`开始筛选（${modLabel}+Enter）`}
             >
@@ -226,7 +236,7 @@ export default function SmartFilterDialog({
         <div className="shrink-0 px-4 py-2.5 border-t border-[var(--border)] flex items-center gap-2">
           <span className="text-[11px] text-[var(--faint)]">
             只有点「开始筛选」才会发请求 · 这 {candidates.length} 张会多花一点时间
-            {cost.heavy ? '（量较大，会先确认）' : ''}
+            {cost.heavy && boundary?.locality === 'external' ? '（量较大，会先确认）' : ''}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
             {needsSettings && (

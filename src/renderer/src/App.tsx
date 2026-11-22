@@ -69,7 +69,7 @@ import { formatBytes, folderName, samePath } from './lib/format'
 import { pickHttpUrl } from './lib/urlImport'
 import { inAiScope, loadAiScope, type AiScope } from './lib/aiScope'
 import { estimateBatchTokens } from './lib/aiCost'
-import { quotaHintFor } from './lib/aiQuota'
+import { quotaHintForCapability } from './lib/aiQuota'
 import { llmHint } from './lib/llmHint'
 import { useLayoutSizes } from './hooks/useLayoutSizes'
 import { useAppearance } from './hooks/useAppearance'
@@ -847,14 +847,14 @@ export default function App() {
       if (!ids.length || aiAutoTagging) return
       const picked = ids.slice(0, 12)
 
-      const quotaHint = await quotaHintFor(picked.length, '分类')
+      const quotaHint = await quotaHintForCapability('photo.autoTag', picked.length, '分类')
       if (quotaHint.level === 'hard') {
         notify(quotaHint.line)
         return
       }
       const ok = await window.api.confirm(
         'AI 自动分类',
-        `本次会让大模型判断 ${picked.length} 张照片的类目。` +
+        `本次会让 AI 判断 ${picked.length} 张照片的类目。` +
           (ids.length > 12 ? `\n超出单次上限的 ${ids.length - 12} 张本次不处理。` : '') +
           `\n\n${quotaHint.line}`
       )
@@ -910,21 +910,21 @@ export default function App() {
       }
       const picked = candidates.slice(0, 12)
       // 批量处理前先把数量和预估 token 交给用户确认；单张点选不再多弹一次
-      const quotaHint = await quotaHintFor(picked.length, '评分')
+      const quotaHint = await quotaHintForCapability('photo.quality', picked.length, '评分')
       if (quotaHint.level === 'hard') {
         notify(quotaHint.line)
         return
       }
       if (picked.length > 1) {
         const cost = estimateBatchTokens('quality', picked.length)
-        const hint = quotaHint
+        const external = quotaHint.locality === 'external'
         const detail =
           `本次会给 ${picked.length} 张照片评分，会多花一点时间。` +
           (skipped > 0 ? `另有 ${skipped} 张不在 AI 作用范围，会跳过。` : '') +
-          (cost.heavy ? '这次调用量较大，确认后才会开始。' : '') +
-          (hint.line ? `\n\n${hint.line}` : '')
+          (external && cost.heavy ? '这次调用量较大，确认后才会开始。' : '') +
+          (quotaHint.line ? `\n\n${quotaHint.line}` : '')
         const ok = await window.api.confirm(
-          cost.heavy ? '这次评分花的时间会久一些' : 'AI 评分',
+          external && cost.heavy ? '这次评分花的时间会久一些' : 'AI 评分',
           detail
         )
         if (!ok) return
@@ -983,7 +983,7 @@ export default function App() {
           Object.fromEntries(
             status.capabilities.map((capability) => [
               capability.id,
-              capability.enabled && capability.vision
+              capability.enabled && capability.vision && capability.keyReady
             ])
           )
         )

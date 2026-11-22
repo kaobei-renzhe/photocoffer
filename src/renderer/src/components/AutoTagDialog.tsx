@@ -126,6 +126,11 @@ export default function AutoTagDialog({ onClose, onFinished }: AutoTagDialogProp
               : '正在读取…'}
           </div>
 
+          <div className="text-[11px] leading-4 text-[var(--faint)]">
+            这是本机零样本分类，免费、离线。想更准，选中少量照片后用工具栏的「AI
+            自动分类（自定义模型，最多 12 张）」。
+          </div>
+
           {status && status.indexed < status.total && (
             <div className="rounded-2xl border border-[var(--warn-border)] bg-[var(--warn-soft)] px-2.5 py-2 text-[12px] text-[var(--warn)]">
               还有 {status.total - status.indexed} 张没识图，不会参与分类。先在侧栏点「语义索引」补齐。

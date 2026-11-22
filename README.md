@@ -1,7 +1,7 @@
 # 存照 · photocoffer
 
 <p align="center">
-  <img src="build/icon.png" width="96" alt="存照 logo" />
+  <img src="build/icon.png" width="96" alt="photocoffer logo" />
 </p>
 
 <p align="center">
@@ -19,6 +19,16 @@
 
 <p align="center">
   Windows 10 / 11 · macOS 12+ · 免费开源（MIT）· 默认完全离线
+</p>
+
+<p align="center">
+  <b>photocoffer</b> — a local-first photo library for photographers.<br />
+  Chinese-first semantic search (CLIP) · star-based culling · client proofing — all offline.<br />
+  Your originals never move, never upload.
+</p>
+
+<p align="center">
+  <sub>The UI is Chinese-first; English semantic search works out of the box.</sub>
 </p>
 
 ---

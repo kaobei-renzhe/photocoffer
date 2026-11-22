@@ -38,22 +38,28 @@
 
 **Windows**
 
-1. 下载 `photocoffer-<版本号>-win-x64-setup.exe`，双击运行。
+1. 在 [Releases](https://github.com/kaobei-renzhe/photocoffer/releases) 页面下载最新的 `.exe`，双击运行。
 2. 安装包没有买代码签名，Windows 会提示「已保护你的电脑」→ 点「更多信息」→「仍要运行」。
 3. 装完从开始菜单打开「存照」。
 
 **macOS**
 
-1. 下载对应架构的 dmg（Apple 芯片选 `arm64`，Intel 选 `x64`），把「存照」拖进「应用程序」。
-2. 首次打开被 Gatekeeper 拦住时：右键点「存照」→「打开」，或执行 `xattr -cr /Applications/存照.app`。原因是安装包没有 Apple 开发者签名。
+目前还没提供预编译的包 —— 原生模块必须在 macOS 上安装，没法在 Windows 上交叉打包。需要的话自己构建：
 
-> 想自己从源码构建 macOS 版：原生模块必须在 macOS 上安装，没法在 Windows 上交叉打包。先 `npm ci`，再 `npm run dist:mac`，产物在 `release/` 下。
+```bash
+npm ci
+npm run dist:mac
+```
+
+产物在 `release/` 下，会同时产出 `arm64` 与 `x64` 两个 dmg。
+
+装好后首次打开被 Gatekeeper 拦住时：右键点「存照」→「打开」，或执行 `xattr -cr /Applications/存照.app`。原因是安装包没有 Apple 开发者签名。
 
 **懒得自己动手？让 AI 代劳**
 
 把下载好的安装包路径发给你常用的 AI 助手，附一句：
 
-> 帮我装好存照：Windows 直接运行这个 exe，按默认设置装完；macOS 打开 dmg，把「存照」拖进「应用程序」。装完打开一次，确认能启动。
+> 帮我装好存照：运行这个 exe，按默认设置装完，然后打开一次确认能启动。
 
 卸载：Windows 在 设置 → 应用 里卸载；macOS 把「存照」拖进废纸篓。**卸载不会删你的照片和图库。**
 

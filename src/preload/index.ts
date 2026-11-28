@@ -242,8 +242,12 @@ const api: Api = {
   llmSaveKey: (modelId, key) => ipcRenderer.invoke('llm:key:save', modelId, key),
   llmClearKey: (modelId) => ipcRenderer.invoke('llm:key:clear', modelId),
   llmTest: (modelId?: string) => ipcRenderer.invoke('llm:test', modelId),
-  llmRun: (capabilityId, input) => ipcRenderer.invoke('llm:run', capabilityId, input),
-  llmScore: (itemIds) => ipcRenderer.invoke('llm:quality', itemIds),
+  llmRun: (capabilityId, input, force?: boolean) =>
+    ipcRenderer.invoke('llm:run', capabilityId, input, force),
+  llmScore: (itemIds, force?: boolean) => ipcRenderer.invoke('llm:quality', itemIds, force),
+  llmCacheStats: () => ipcRenderer.invoke('llm:cache:stats'),
+  llmCacheClear: (capabilityId?: string) =>
+    ipcRenderer.invoke('llm:cache:clear', capabilityId),
   llmAutoTag: (itemIds: number[]) => ipcRenderer.invoke('llm:autoTag', itemIds),
   getAiScoreMinRating: () => ipcRenderer.invoke('llm:scoreMinRating:get'),
   saveAiScoreMinRating: (value: number) => ipcRenderer.invoke('llm:scoreMinRating:save', value),

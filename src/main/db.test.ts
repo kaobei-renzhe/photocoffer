@@ -96,6 +96,13 @@ describe('openLibrary 迁移', () => {
       .prepare(`SELECT rowid FROM items_fts WHERE items_fts MATCH '"moonrise"'`)
       .all() as Array<{ rowid: number }>
     expect(hit).toHaveLength(1)
+
+    // 老库升级后也要建出 LLM 结果缓存表，否则缓存读写会直接报错
+    expect(
+      (db.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE name = 'llm_cache'").get() as {
+        c: number
+      }).c
+    ).toBe(1)
   })
 
   it('重复打开同一代老库保持幂等', () => {
@@ -116,6 +123,11 @@ describe('openLibrary 迁移', () => {
     expect(db.pragma('user_version', { simple: true })).toBe(CURRENT_SCHEMA)
     expect(
       (db.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE name = 'facets'").get() as {
+        c: number
+      }).c
+    ).toBe(1)
+    expect(
+      (db.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE name = 'llm_cache'").get() as {
         c: number
       }).c
     ).toBe(1)

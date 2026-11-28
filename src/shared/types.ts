@@ -7,7 +7,14 @@ import type {
   ThumbCacheTarget,
   ThumbQualityPref
 } from './thumbs'
-import type { LlmRunOutcome, LlmSettings, LlmStatus, LlmTestResult, PhotoQualitySaved } from './llm'
+import type {
+  CacheStats,
+  LlmRunOutcome,
+  LlmSettings,
+  LlmStatus,
+  LlmTestResult,
+  PhotoQualitySaved
+} from './llm'
 
 export interface ExifData {
   camera?: string
@@ -1065,9 +1072,13 @@ export interface Api {
   llmClearKey: (modelId: string) => Promise<LlmStatus>
   /** 不传 modelId 时测默认模型 */
   llmTest: (modelId?: string) => Promise<LlmTestResult>
-  llmRun: (capabilityId: string, input: unknown) => Promise<LlmRunOutcome>
-  /** 评分并落库，返回每张的分数与实际写入条数 */
-  llmScore: (itemIds: number[]) => Promise<LlmRunOutcome<PhotoQualitySaved>>
+  llmRun: (capabilityId: string, input: unknown, force?: boolean) => Promise<LlmRunOutcome>
+  /** 评分并落库，返回每张的分数与实际写入条数；force = 用户明确要求重新评分 */
+  llmScore: (itemIds: number[], force?: boolean) => Promise<LlmRunOutcome<PhotoQualitySaved>>
+  /** LLM 结果缓存统计：条数、命中数与按能力分布 */
+  llmCacheStats: () => Promise<CacheStats>
+  /** 清除结果缓存；返回实际删除条数 */
+  llmCacheClear: (capabilityId?: string) => Promise<number>
   llmAutoTag: (itemIds: number[]) => Promise<
     LlmRunOutcome<{
       results: Array<{ itemId: number; category: string; confidence: number; reason: string }>

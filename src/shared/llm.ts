@@ -313,3 +313,10 @@ export interface SmartFilterResult {
   /** 某一批识别失败时的说明；不影响其它批次的结果 */
   errors?: string[]
 }
+
+/** LLM 结果缓存的统计快照：设置页展示用 */
+export interface CacheStats {
+  entries: number
+  totalHits: number
+  byCapability: Array<{ capabilityId: string; entries: number; hits: number }>
+}

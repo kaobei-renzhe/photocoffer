@@ -32,6 +32,7 @@ import { adviceCapability } from './capabilities/advice'
 import { smartFilterCapability } from './capabilities/smartFilter'
 import { autoTagCapability } from './capabilities/autoTag'
 import { socraticCapability } from './capabilities/socratic'
+import { cacheStats, clearCache, isCacheable, makeCacheKey, readCache, writeCache } from './cache'
 
 // 能力在这里登记一次；新增能力只需实现接口 + 加一行
 registerCapability(qualityCapability)
@@ -272,8 +273,8 @@ export async function testConnection(modelId?: string): Promise<LlmTestResult> {
  * 评分并落库：能力返回的成功结果写进 quality_scores，失败的图保持原样。
  * 同步在渲染层刷新后，卡片与详情面板就能直接读到分数。
  */
-export async function scorePhotos(itemIds: number[]): Promise<PhotoQualitySaved> {
-  const result = (await runCapability('photo.quality', { itemIds })) as PhotoQualityResult
+export async function scorePhotos(itemIds: number[], force = false): Promise<PhotoQualitySaved> {
+  const result = (await runCapability('photo.quality', { itemIds }, { force })) as PhotoQualityResult
   const model = resolveModel(getLlmSettings(), 'photo.quality')
   const persisted = saveQualityScores(result.results, model?.model ?? '')
   return { ...result, persisted }
@@ -299,12 +300,26 @@ export async function autoTagPhotos(
  * 执行一个能力：统一做配置校验、图片准备、调用统计与错误归一。
  * 能力实现只拿到 chat / image 两个原语，不接触密钥与 HTTP。
  */
-export async function runCapability(capabilityId: string, input: unknown): Promise<unknown> {
+export async function runCapability(
+  capabilityId: string,
+  input: unknown,
+  options?: { force?: boolean }
+): Promise<unknown> {
   const capability = getCapability(capabilityId)
   if (!capability) throw new LlmError('bad_request', `未知能力：${capabilityId}`)
 
   const { model, key } = await readyState(capability.id as LlmCapabilityId)
   const external = model.locality === 'external'
+
+  // 缓存读取必须在 readyState() 之后：总开关、能力开关、模型就绪校验仍然生效；
+  // 又要在额度检查之前：命中缓存没真的走模型，不该计用量
+  const cacheable = isCacheable(capability.id)
+  const cacheKey = cacheable ? makeCacheKey(capability.id, model, input) : ''
+  if (cacheable && !options?.force) {
+    const hit = readCache(cacheKey)
+    if (hit !== null) return hit
+  }
+
   const photoCount = countPhotosInInput(input)
 
   // 用量闸门只对外部模型生效；本机模型不计数、不熔断
@@ -346,6 +361,8 @@ export async function runCapability(capabilityId: string, input: unknown): Promi
 
   try {
     const result = await capability.run(context as never, input as never)
+    // 只缓存成功结果；失败下次仍要真实请求
+    if (cacheable) writeCache(cacheKey, capability.id, model.id, input, result)
     if (external) {
       // 只有外部调用成功才记账：服务商报错时不该扣用户额度；本机永不计数
       consumeQuota(photoCount, totalTokens)
@@ -372,3 +389,6 @@ export async function runCapability(capabilityId: string, input: unknown): Promi
     throw normalized
   }
 }
+
+/** 设置页的缓存统计与清理；放这里是因为 IPC 只从这里拿 llm 能力 */
+export { cacheStats, clearCache }

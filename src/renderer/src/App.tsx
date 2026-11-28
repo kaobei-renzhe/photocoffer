@@ -887,7 +887,7 @@ export default function App() {
    * 这里只负责刷新列表，让卡片角标与详情面板立刻读到分数。
    */
   const scoreItems = useCallback(
-    async (ids: number[]) => {
+    async (ids: number[], force = false) => {
       if (!ids.length || aiScoringRef.current) return
       // 批量评分只处理设置里圈定的范围；单张按钮在范围外根本不会出现
       const scope = await loadAiScope()
@@ -934,7 +934,7 @@ export default function App() {
       aiScoringRef.current = true
       setAiScoring(true)
       try {
-        const outcome = await window.api.llmScore(picked)
+        const outcome = await window.api.llmScore(picked, force)
         if (!outcome.ok) {
           notify(outcome.message)
           return
@@ -2000,7 +2000,7 @@ export default function App() {
             onUnstack={unstackItem}
             onFindSimilar={() => void findSimilar(activeItem.id)}
             onAdvice={() => setAdviceOpen(true)}
-            onScore={() => void scoreItems([activeItem.id])}
+            onScore={() => void scoreItems([activeItem.id], true)}
             aiScoring={aiScoring}
             aiReady={aiReady}
             visionBlocked={aiVisionBlocked}

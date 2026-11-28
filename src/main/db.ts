@@ -13,10 +13,11 @@ let indexPath = ''
  * 结构化 schema 版本，存在 SQLite 的 `PRAGMA user_version` 里。
  * 1 = 基础表；2 = 数据安全与配对/堆叠基础；3 = 文件夹层级与后续批次；4 = 人像检测缓存；
  * 5 = 人像人工纠错（override 三列）；6 = AI 评分物化到 items.ai_score；
- * 7 = 按图库隔离的分类类目表；8 = auto_tags(category) 索引，服务人像降级查询。
+ * 7 = 按图库隔离的分类类目表；8 = auto_tags(category) 索引，服务人像降级查询；
+ * 9 = LLM 结果缓存表（能力级结果缓存）。
  * 以后每次加表 / 加列都必须 +1 并在 MIGRATION_STEPS 里补一步。
  */
-export const CURRENT_SCHEMA = 8
+export const CURRENT_SCHEMA = 9
 
 /** 迁移步骤必须幂等：老库可能从任意版本开始，补齐缺失的表与列即可收敛 */
 const SCHEMA = /* sql */ `
@@ -450,6 +451,26 @@ function migrationV8(db: Database.Database): void {
   })
 }
 
+/** v9：LLM 结果缓存（能力级结果，key 自带图片指纹与模型指纹） */
+function migrationV9(db: Database.Database): void {
+  subStep('建 LLM 结果缓存表', () => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS llm_cache (
+        cache_key     TEXT PRIMARY KEY,
+        capability_id TEXT NOT NULL,
+        model_id      TEXT NOT NULL,
+        item_ids      TEXT NOT NULL DEFAULT '[]',
+        payload       TEXT NOT NULL,
+        created_at    INTEGER NOT NULL,
+        last_hit_at   INTEGER NOT NULL,
+        hits          INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_llm_cache_capability ON llm_cache(capability_id);
+      CREATE INDEX IF NOT EXISTS idx_llm_cache_last_hit ON llm_cache(last_hit_at);
+    `)
+  })
+}
+
 const MIGRATION_STEPS: MigrationStep[] = [
   { version: 1, up: migrationV1 },
   { version: 2, up: migrationV2 },
@@ -458,7 +479,8 @@ const MIGRATION_STEPS: MigrationStep[] = [
   { version: 5, up: migrationV5 },
   { version: 6, up: migrationV6 },
   { version: 7, up: migrationV7 },
-  { version: 8, up: migrationV8 }
+  { version: 8, up: migrationV8 },
+  { version: 9, up: migrationV9 }
 ]
 
 /** 按 user_version 逐级升级；每一步独立事务，版本号跟着步骤走 */

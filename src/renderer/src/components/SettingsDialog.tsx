@@ -35,6 +35,7 @@ import type {
   XmpSettings
 } from '@shared/types'
 import type {
+  CacheStats,
   LlmCapabilityId,
   LlmModelEntry,
   LlmProviderId,
@@ -249,6 +250,10 @@ export default function SettingsDialog({
   const [keyBusyId, setKeyBusyId] = useState<string | null>(null)
   const [testingId, setTestingId] = useState<string | null>(null)
   const [llmTests, setLlmTests] = useState<Record<string, LlmTestResult | undefined>>({})
+  /** LLM 结果缓存统计；null = 还没读回来 */
+  const [cacheStats, setCacheStats] = useState<CacheStats | null>(null)
+  const [cacheBusy, setCacheBusy] = useState(false)
+  const [cacheMsg, setCacheMsg] = useState('')
   const [storage, setStorage] = useState<LibraryStorage | null>(null)
   /** 关于页：版本与数据位置 */
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null)
@@ -317,6 +322,10 @@ export default function SettingsDialog({
       .llmQuota()
       .then(setQuota)
       .catch(() => setQuota(null))
+    void window.api
+      .llmCacheStats()
+      .then(setCacheStats)
+      .catch(() => setCacheStats(null))
     void window.api
       .portraitStatus()
       .then(setPortraitStatus)
@@ -1130,6 +1139,22 @@ export default function SettingsDialog({
     }
   }
 
+  /** 清空结果缓存后重新拉统计，让条数立刻归零 */
+  const clearLlmCache = async (): Promise<void> => {
+    if (cacheBusy) return
+    setCacheBusy(true)
+    setCacheMsg('')
+    try {
+      const removed = await window.api.llmCacheClear()
+      setCacheStats(await window.api.llmCacheStats())
+      setCacheMsg(removed > 0 ? `已清理 ${removed} 条` : '缓存本来就是空的')
+    } catch {
+      setCacheMsg('清理失败，请稍后再试')
+    } finally {
+      setCacheBusy(false)
+    }
+  }
+
   /** 今日用量占比，用于进度条颜色分档 */
   const quotaRatio = quota ? quota.state.usedPhotos / Math.max(1, quota.settings.hardDaily) : 0
 
@@ -1755,6 +1780,56 @@ export default function SettingsDialog({
                     </>
                   ) : (
                     <div className="text-[12px] text-[var(--faint)]">正在读取用量…</div>
+                  )}
+                </div>
+
+                {/* 结果缓存：让用户看到复用省下的调用，并能一键清空 */}
+                <div className="mt-4 flex items-baseline justify-between">
+                  <span className="text-[13.5px]">结果缓存</span>
+                  {cacheStats && cacheStats.totalHits > 0 && (
+                    <span className="text-[11px] text-[var(--faint)]">
+                      命中省下 {cacheStats.totalHits} 次调用
+                    </span>
+                  )}
+                </div>
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--panel-2)] px-3 py-3">
+                  {cacheStats ? (
+                    <>
+                      <div className="text-[12.5px] tabular-nums text-[var(--muted)]">
+                        已缓存 {cacheStats.entries} 条 · 命中 {cacheStats.totalHits} 次
+                      </div>
+                      {cacheStats.byCapability
+                        .filter((row) => row.entries > 0)
+                        .map((row) => (
+                          <div
+                            key={row.capabilityId}
+                            className="mt-1 text-[11px] text-[var(--faint)]"
+                          >
+                            {llm?.capabilities.find(
+                              (capability) => capability.id === row.capabilityId
+                            )?.title ?? row.capabilityId}
+                            {' · '}
+                            {row.entries} 条 / 命中 {row.hits} 次
+                          </div>
+                        ))}
+                      <div className="mt-3 flex items-start justify-between gap-3">
+                        <span className="text-[11px] leading-4 text-[var(--faint)]">
+                          同一张照片重复评分、生成建议会复用上次结果，不重复扣费。修改照片或切换模型后自动失效。加到批量评分时按整批组合匹配，换一批照片会重新请求。
+                        </span>
+                        <button
+                          className="shrink-0 text-[11px] text-[var(--accent-text)] hover:underline disabled:opacity-50"
+                          disabled={cacheBusy}
+                          onClick={() => void clearLlmCache()}
+                        >
+                          {cacheBusy ? '清理中…' : '清除缓存'}
+                        </button>
+                      </div>
+                      {cacheMsg && (
+                        <div className="mt-1 text-[11px] text-[var(--faint)]">{cacheMsg}</div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-[12px] text-[var(--faint)]">正在读取缓存…</div>
                   )}
                 </div>
 

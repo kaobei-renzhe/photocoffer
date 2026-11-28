@@ -38,11 +38,11 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
   const [copied, setCopied] = useState(false)
   const quotaHint = useAiQuotaHint('photo.advice', 1, '建议')
 
-  const run = useCallback(async () => {
+  const run = useCallback(async (force: boolean) => {
     setPhase('loading')
     setError(null)
     setCopied(false)
-    const outcome = await window.api.llmRun('photo.advice', { itemId: item.id })
+    const outcome = await window.api.llmRun('photo.advice', { itemId: item.id }, force)
     if (outcome.ok) {
       setAdvice(outcome.data as PhotoAdvice)
       setPhase('done')
@@ -239,7 +239,7 @@ export default function AdviceDialog({ item, onClose, onOpenSettings }: AdviceDi
                   ? '今日外部 AI 额度已用完，可在设置里调高上限或重置'
                   : undefined
               }
-              onClick={() => void run()}
+              onClick={() => void run(phase !== 'idle')}
             >
               <RefreshCw size={14} />
               {phase === 'idle' ? '生成建议' : phase === 'loading' ? '生成中…' : '重新生成'}

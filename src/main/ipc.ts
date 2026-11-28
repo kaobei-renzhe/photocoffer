@@ -160,7 +160,11 @@ import {
   saveApiKey,
   scorePhotos,
   testConnection,
-  updateConfig as updateLlmConfig, autoTagPhotos } from './llm'
+  updateConfig as updateLlmConfig,
+  autoTagPhotos,
+  cacheStats as llmCacheStats,
+  clearCache as llmCacheClear
+} from './llm'
 import {
   addToFolder,
   createFolder,
@@ -235,7 +239,13 @@ import type {
 import { SUPPORTED_EXT_LIST } from '../shared/formats'
 import type { LayoutSizes } from '../shared/layout'
 import type { ThumbQualityPref, ThumbCacheTarget } from '../shared/thumbs'
-import type { LlmSettings, LlmErrorCode, LlmRunOutcome } from '../shared/llm'
+import {
+  LLM_CAPABILITY_IDS,
+  type LlmSettings,
+  type LlmErrorCode,
+  type LlmRunOutcome,
+  type LlmCapabilityId
+} from '../shared/llm'
 import { SKINS, type SkinId } from '../shared/skins'
 
 const IMAGE_FILTERS = [
@@ -1620,12 +1630,12 @@ export function registerIpc(): void {
     }
   }
 
-  ipcMain.handle('llm:run', (_e, id: string, input: unknown) =>
-    envelope(() => runCapability(String(id ?? ''), input))
+  ipcMain.handle('llm:run', (_e, id: string, input: unknown, force?: boolean) =>
+    envelope(() => runCapability(String(id ?? ''), input, { force: Boolean(force) }))
   )
   // 评分与其它能力不同：结果要落库，所以单独开一个通道
-  ipcMain.handle('llm:quality', (_e, itemIds: number[]) =>
-    envelope(() => scorePhotos(Array.isArray(itemIds) ? itemIds : []))
+  ipcMain.handle('llm:quality', (_e, itemIds: number[], force?: boolean) =>
+    envelope(() => scorePhotos(Array.isArray(itemIds) ? itemIds : [], Boolean(force)))
   )
 
   // 大模型版自动分类：与本地零样本写同一张 auto_tags，靠 model 前缀区分来源
@@ -1655,6 +1665,16 @@ export function registerIpc(): void {
   ipcMain.handle('llm:scoreCandidates', () =>
     scoreCandidateCounts(getAiScoreMinRating(), getAiFolderIds())
   )
+  // 结果缓存：命中不花钱，所以只给统计与清理，不留开关
+  ipcMain.handle('llm:cache:stats', () => llmCacheStats())
+  ipcMain.handle('llm:cache:clear', (_e, capabilityId?: string) => {
+    // 不传 = 清全部；传了就必须是已知能力，避免拼错 id 被当成"清全部"
+    if (capabilityId === undefined || capabilityId === null || capabilityId === '') {
+      return llmCacheClear()
+    }
+    if (!LLM_CAPABILITY_IDS.includes(capabilityId as LlmCapabilityId)) return 0
+    return llmCacheClear(capabilityId as LlmCapabilityId)
+  })
 
   ipcMain.on('ui:dialog-reply', (_e, id: number, result: AppDialogResult) => {
     const resolve = pendingDialogs.get(id)
